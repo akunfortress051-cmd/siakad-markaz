@@ -1,0 +1,38 @@
+[
+  {
+    "id": "d0097b4d-28d4-42b5-9d40-c7c07797e453",
+    "santriId": "33d90874-cff0-4147-9c27-2e35b5654d9d",
+    "tempatLahir": "Wonosobo",
+    "tanggalLahir": "2000-08-11T00:00:00.000Z",
+    "alamat": "Jawakarta rt9 rw 2, kec ladusing kab. ngawo",
+    "programPeminatan": "Takhossus Nahwu",
+    "tanggalMulai": "2026-03-10T00:00:00.000Z",
+    "tanggalSampai": "2026-04-05T00:00:00.000Z",
+    "presensi": 100,
+    "qawaid": 100,
+    "qiraah": 80,
+    "tasmi": 90,
+    "nilaiAkumulatif": 92.5,
+    "predikat": "Mumtaz",
+    "createdAt": "2026-03-18T03:25:05.138Z",
+    "updatedAt": "2026-03-18T03:25:05.138Z"
+  },
+  {
+    "id": "24d8de93-e197-4e9e-af3a-ab96c5bb468b",
+    "santriId": "2992108a-d49e-4398-918e-1cfb5549af64",
+    "tempatLahir": "Wonosobo",
+    "tanggalLahir": "2002-06-11T00:00:00.000Z",
+    "alamat": "Jaraksari, Rt09/Rw02, Wonosobo, Wonosobo, Jawa Tengah",
+    "programPeminatan": "Muhadatsah",
+    "tanggalMulai": "2026-05-10T00:00:00.000Z",
+    "tanggalSampai": "2026-06-05T00:00:00.000Z",
+    "presensi": 100,
+    "qawaid": 100,
+    "qiraah": 100,
+    "tasmi": 100,
+    "nilaiAkumulatif": 100,
+    "predikat": "Mumtaz",
+    "createdAt": "2026-03-18T16:46:54.082Z",
+    "updatedAt": "2026-03-18T16:47:29.728Z"
+  }
+]

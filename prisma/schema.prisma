@@ -7,23 +7,64 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Ijazah {
-  id               String   @id @default(uuid())
-  santriId         String   @unique
-  tempatLahir      String
-  tanggalLahir     DateTime
-  alamat           String
-  programPeminatan String
-  tanggalMulai     DateTime
-  tanggalSampai    DateTime
-  
-  presensi         Float
-  qawaid           Float
-  qiraah           Float
-  tasmi            Float
-  nilaiAkumulatif  Float
-  predikat         String
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Kelas {
+  id            String          @id @default(cuid())
+  nama_indo     String          @unique
+  nama_arab     String
+  kkm           Int
+  kelasMapels   KelasMapel[]
+  santriRecords SantriInternal[]
+}
+
+model Mapel {
+  id          String       @id @default(cuid())
+  nama_indo   String       @unique
+  nama_arab   String
+  kelasMapels KelasMapel[]
+  nilaiList   Nilai[]
+}
+
+model KelasMapel {
+  kelasId String
+  mapelId String
+  urutan  Int
+  kelas   Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  mapel   Mapel @relation(fields: [mapelId], references: [id], onDelete: Cascade)
+
+  @@id([kelasId, mapelId])
+  @@unique([kelasId, urutan])
+}
+
+model SantriInternal {
+  id               String   @id
+  kelasId          String?
+  tempat_lahir     String?
+  tanggal_lahir    String?
+  alamat           String?
+  is_setoran_lulus Boolean  @default(false)
+  is_tasmi         Boolean  @default(false)
+  status_kelulusan String   @default("TIDAK_LULUS")
+  kelas            Kelas?   @relation(fields: [kelasId], references: [id], onDelete: SetNull)
+  nilaiList        Nilai[]
+}
+
+model Nilai {
+  id       String         @id @default(cuid())
+  santriId String
+  mapelId  String
+  skor     Int
+  santri   SantriInternal @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  mapel    Mapel          @relation(fields: [mapelId], references: [id], onDelete: Restrict)
+
+  @@unique([santriId, mapelId])
+}
+
+model SyahadahTemplate {
+  id                 Int    @id @default(autoincrement())
+  tgl_cetak_indo     String
+  tgl_cetak_arab     String
+  nama_mudir_indo    String
+  nama_mudir_arab    String
+  jabatan_mudir_indo String
+  jabatan_mudir_arab String
 }
