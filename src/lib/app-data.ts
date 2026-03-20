@@ -387,6 +387,13 @@ export async function getRiwayatSantriRows() {
             mapel: true,
           },
         },
+        absenSakanList: true,
+        absenKelasList: true,
+        absenKegiatanList: {
+          include: {
+            kategori: true,
+          },
+        },
       },
       orderBy: {
         dufahNama: "desc",
@@ -431,6 +438,40 @@ export async function getRiwayatSantriRows() {
       program,
     );
 
+    const absenSakanSummary = {
+      hadir: riwayat.absenSakanList.filter((a: any) => a.status === "HADIR").length,
+      izin: riwayat.absenSakanList.filter((a: any) => a.status === "IZIN").length,
+      sakit: riwayat.absenSakanList.filter((a: any) => a.status === "SAKIT").length,
+      alpha: riwayat.absenSakanList.filter((a: any) => a.status === "ALPHA").length,
+      total: riwayat.absenSakanList.length,
+    };
+
+    // Group kelas absen by hissoh
+    const hissohList = ["ULA", "TSANI", "TSALIS", "RABI", "KHAMIS"];
+    const absenKelasByHissoh = hissohList.map((h) => {
+      const list = riwayat.absenKelasList.filter((a: any) => a.hissoh === h);
+      return {
+        hissoh: h,
+        hadir: list.filter((a: any) => a.status === "HADIR").length,
+        alpha: list.filter((a: any) => a.status === "ALPHA").length,
+        total: list.length,
+      };
+    }).filter((h) => h.total > 0);
+
+    // Group kegiatan absen by kategori
+    const kegiatanMap = new Map<string, { nama: string; hadir: number; alpha: number; total: number }>();
+    for (const a of riwayat.absenKegiatanList) {
+      const key = a.kategoriId;
+      const kategoriNama = a.kategori?.nama ?? "Kegiatan";
+      if (!kegiatanMap.has(key)) {
+        kegiatanMap.set(key, { nama: kategoriNama, hadir: 0, alpha: 0, total: 0 });
+      }
+      const entry = kegiatanMap.get(key)!;
+      entry.total += 1;
+      if (a.status === "HADIR") entry.hadir += 1;
+      else if (a.status === "ALPHA") entry.alpha += 1;
+    }
+
     group.records.push({
       riwayatId: riwayat.id,
       dufahNama: riwayat.dufahNama,
@@ -447,8 +488,12 @@ export async function getRiwayatSantriRows() {
         skor: n.skor,
       })),
       rataRata: nilaiList.length > 0 ? (nilaiList.reduce((acc: number, n: any) => acc + n.skor, 0) / nilaiList.length).toFixed(2) : null,
+      absenSakan: absenSakanSummary,
+      absenKelasByHissoh,
+      absenKegiatan: Array.from(kegiatanMap.values()),
     });
   }
 
   return Array.from(groupsMap.values()).sort((a, b) => a.nama.localeCompare(b.nama, "id"));
 }
+

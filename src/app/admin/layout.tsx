@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/admin/sidebar";
+import { Toaster } from "react-hot-toast";
 
 export default function AdminLayout({
   children,
@@ -15,6 +16,7 @@ export default function AdminLayout({
           </div>
         </div>
       </main>
+      <Toaster position="bottom-center" toastOptions={{ style: { fontWeight: "600", fontSize: "14px" } }} />
     </div>
   );
 }

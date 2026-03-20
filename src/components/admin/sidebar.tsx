@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck } from "lucide-react";
 import { useState } from "react";
 
 const navigationGroups = [
@@ -10,6 +10,12 @@ const navigationGroups = [
     title: "Utama",
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ]
+  },
+  {
+    title: "Divisi Absensi",
+    items: [
+      { href: "/admin/absensi", label: "Data Absensi", icon: CalendarCheck },
     ]
   },
   {

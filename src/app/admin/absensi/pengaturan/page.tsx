@@ -1,0 +1,17 @@
+import { Metadata } from "next";
+import { PengaturanKegiatanClient } from "@/components/admin/pengaturan-kegiatan-client";
+import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Pengaturan Kegiatan - Admin Panel",
+};
+
+export default async function PengaturanKegiatanPage() {
+  const kegiatanList = await prisma.kategoriKegiatan.findMany({
+    orderBy: { nama: "asc" }
+  });
+
+  return <PengaturanKegiatanClient initialList={kegiatanList} />;
+}
