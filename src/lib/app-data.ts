@@ -119,12 +119,13 @@ export async function getDashboardSantriRows() {
       const kelas = riwayat?.kelas ?? null;
       const nilaiList = riwayat?.nilaiList ?? [];
       const totalMapel = program?.programMapels.length ?? 0;
-      const hasCompleteNilai = totalMapel > 0 && nilaiList.length === totalMapel;
+      const hasCompleteNilai = totalMapel > 0 && nilaiList.length === totalMapel && 
+        nilaiList.every((n: any) => n.nilaiUsbu1 !== null && n.nilaiUsbu2 !== null && n.nilaiNihai !== null);
       const status = calculateStatus(
         {
           is_tasmi: riwayat?.is_tasmi ?? false,
         },
-        nilaiList,
+        nilaiList.map((n: any) => ({ skor: n.nilaiAkhir || 0 })),
         program,
       );
 
@@ -204,8 +205,17 @@ export async function getSantriFormData(id: string) {
     (r: any) => riwayatMatch ? r.id === riwayatMatch.id : r.dufahNama === masterSantri.dufahNama
   ) ?? null;
 
+  let currentUsbu = 1;
+  const dufah = await prisma.dufah.findUnique({
+    where: { nama: masterSantri.dufahNama }
+  });
+  if (dufah) {
+    currentUsbu = dufah.currentUsbu;
+  }
+
   return {
     masterSantri,
+    currentUsbu,
     programList,
     internalSantri: santriInternal
       ? {
@@ -227,7 +237,11 @@ export async function getSantriFormData(id: string) {
           id: nilai.id,
           mapelId: nilai.mapelId,
           mapelNama: nilai.mapel.nama_indo,
-          skor: nilai.skor,
+          nilaiUsbu1: nilai.nilaiUsbu1,
+          nilaiUsbu2: nilai.nilaiUsbu2,
+          nilaiNihai: nilai.nilaiNihai,
+          nilaiAkhir: nilai.nilaiAkhir,
+          skor: nilai.nilaiAkhir ?? 0,
         })),
       } : null,
     allRiwayat: santriInternal?.riwayatRecords ?? [],
@@ -307,12 +321,16 @@ export async function getCertificateData(id: string) {
   const nilaiMap = new Map(riwayat.nilaiList.map((nilai: any) => [nilai.mapelId, nilai]));
   const nilaiRows = riwayat.program.programMapels.map((programMapel: any) => {
     const nilai = nilaiMap.get(programMapel.mapel.id);
-    const skor = nilai?.skor ?? null;
+    const skor = nilai?.nilaiAkhir ?? null;
 
     return {
       mapelId: programMapel.mapel.id,
       nama_indo: programMapel.mapel.nama_indo,
       nama_arab: programMapel.mapel.nama_arab,
+      nilaiUsbu1: nilai?.nilaiUsbu1 ?? null,
+      nilaiUsbu2: nilai?.nilaiUsbu2 ?? null,
+      nilaiNihai: nilai?.nilaiNihai ?? null,
+      nilaiAkhir: nilai?.nilaiAkhir ?? null,
       skor,
       predikat: skor === null ? null : getPredikat(skor),
     };
@@ -431,10 +449,11 @@ export async function getRiwayatSantriRows() {
     const kelas = riwayat.kelas;
     const nilaiList = riwayat.nilaiList ?? [];
     const totalMapel = program?.programMapels.length ?? 0;
-    const hasCompleteNilai = totalMapel > 0 && nilaiList.length === totalMapel;
+    const hasCompleteNilai = totalMapel > 0 && nilaiList.length === totalMapel &&
+      nilaiList.every((n: any) => n.nilaiUsbu1 !== null && n.nilaiUsbu2 !== null && n.nilaiNihai !== null);
     const status = calculateStatus(
       { is_tasmi: riwayat.is_tasmi },
-      nilaiList,
+      nilaiList.map((n: any) => ({ skor: n.nilaiAkhir || 0 })),
       program,
     );
 
@@ -485,9 +504,9 @@ export async function getRiwayatSantriRows() {
       canViewIjazah: Boolean(program) && hasCompleteNilai,
       nilaiList: nilaiList.map((n: any) => ({
         mapelNama: n.mapel.nama_indo,
-        skor: n.skor,
+        skor: n.nilaiAkhir ?? 0,
       })),
-      rataRata: nilaiList.length > 0 ? (nilaiList.reduce((acc: number, n: any) => acc + n.skor, 0) / nilaiList.length).toFixed(2) : null,
+      rataRata: nilaiList.length > 0 ? (nilaiList.reduce((acc: number, n: any) => acc + (n.nilaiAkhir ?? 0), 0) / nilaiList.length).toFixed(2) : null,
       absenSakan: absenSakanSummary,
       absenKelasByHissoh,
       absenKegiatan: Array.from(kegiatanMap.values()),

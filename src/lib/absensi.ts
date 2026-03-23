@@ -4,12 +4,13 @@ import { getMasterSantriList } from "@/lib/santri-api";
 const TIMEZONE = "Asia/Jakarta";
 
 /**
- * Parses a YYYY-MM-DD string into a standard JS Date object 
- * representing exactly 00:00:00 WIB (Asia/Jakarta).
- * This explicitly uses +07:00 offset so it's immune to server timezone.
+ * Parses a YYYY-MM-DD string into a UTC Midnight Date object.
+ * Karena schema Prisma menggunakan @db.Date, semua waktu (jam) akan dipotong oleh PostgreSQL.
+ * Jika kita gunakan +07:00, 27 Maret 00:00 WIB akan dieksekusi sebagai 26 Maret 17:00 UTC,
+ * dan PostgreSQL akan menyimpan 26 Maret. Oleh karena itu kita paksa simpan sebagai UTC.
  */
 export function parseWibDateString(dateString: string): Date {
-  return new Date(`${dateString}T00:00:00+07:00`);
+  return new Date(`${dateString}T00:00:00Z`);
 }
 
 /**
@@ -20,6 +21,55 @@ export function getTodayWibString(): string {
   const now = new Date();
   const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
   return wibTime.toISOString().split("T")[0];
+}
+
+export async function syncDufahTable() {
+  const masterList = await getMasterSantriList();
+  const dufahSet = new Set<string>();
+  masterList.forEach(m => {
+    if (m.dufahNama && m.dufahNama !== "-") {
+      dufahSet.add(m.dufahNama);
+    }
+  });
+
+  if (dufahSet.size > 0) {
+    const existingDufahs = await prisma.dufah.findMany({
+      where: { nama: { in: Array.from(dufahSet) } },
+      select: { nama: true }
+    });
+    const existingNames = new Set(existingDufahs.map(d => d.nama));
+    
+    const missingDufahs = Array.from(dufahSet).filter(name => !existingNames.has(name));
+    if (missingDufahs.length > 0) {
+      await prisma.dufah.createMany({
+        data: missingDufahs.map(nama => ({ nama, currentUsbu: 1 })),
+        skipDuplicates: true
+      });
+    }
+  }
+}
+
+export async function getActiveDufahName(): Promise<string | null> {
+  const masterList = await getMasterSantriList();
+  const activeDufahs = new Map<string, Date>(); // dufahNama -> date
+  masterList.forEach(m => {
+    if (m.isAktif && m.dufahNama && m.dufahNama !== "-") {
+      const dateVal = m.tanggalMulaiDufah ? new Date(m.tanggalMulaiDufah) : new Date(0);
+      if (!activeDufahs.has(m.dufahNama) || dateVal > activeDufahs.get(m.dufahNama)!) {
+        activeDufahs.set(m.dufahNama, dateVal);
+      }
+    }
+  });
+
+  if (activeDufahs.size === 0) return null;
+
+  const sorted = Array.from(activeDufahs.entries()).sort((a, b) => {
+    const timeDiff = b[1].getTime() - a[1].getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return b[0].localeCompare(a[0], undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  return sorted[0][0];
 }
 
 export type SantriAbsenTarget = {
@@ -49,6 +99,9 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
       activeSantriMap.set(ms.id, ms.dufahNama);
     }
   }
+
+  // PENTING: Sinkronkan dulu Dufah table agar tidak memicu P2003 (Foreign Key Constraint Failed)
+  await syncDufahTable();
 
   // SINKRONISASI OTOMATIS: Pastikan santri aktif memiliki RiwayatSantri di DB lokal
   const activeMasterSantri = masterSantriList.filter(ms => ms.isAktif);

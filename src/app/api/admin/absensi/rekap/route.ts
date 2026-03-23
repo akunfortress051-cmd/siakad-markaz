@@ -9,14 +9,8 @@ export async function GET(request: Request) {
   const sampai = searchParams.get("sampai");
 
   const dateFilter: any = {};
-  if (dari) {
-    dateFilter.gte = parseWibDateString(dari);
-  }
-  if (sampai) {
-    // Set ke akhir hari (23:59:59.999 WIB) dengan offset +07:00
-    const endDate = new Date(`${sampai}T23:59:59+07:00`);
-    dateFilter.lte = endDate;
-  }
+  if (dari) dateFilter.gte = new Date(`${dari}T00:00:00Z`);
+  if (sampai) dateFilter.lte = new Date(`${sampai}T23:59:59Z`);
 
   const tanggalWhere = Object.keys(dateFilter).length > 0 ? { tanggal: dateFilter } : {};
 

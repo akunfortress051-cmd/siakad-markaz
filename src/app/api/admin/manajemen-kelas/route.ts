@@ -33,11 +33,23 @@ export async function POST(request: Request) {
     );
 
     const operations: any[] = [];
+    const uniqueDufahs = new Set<string>();
     
     for (let i = 0; i < payload.santriIds.length; i++) {
         const id = payload.santriIds[i];
         const ms = masterDataResults[i];
         if (!ms) continue;
+
+        if (!uniqueDufahs.has(ms.dufahNama)) {
+          uniqueDufahs.add(ms.dufahNama);
+          operations.push(
+            prisma.dufah.upsert({
+               where: { nama: ms.dufahNama },
+               update: {},
+               create: { nama: ms.dufahNama, currentUsbu: 1 }
+            })
+          );
+        }
 
         // Ensure SantriInternal exists base record
         operations.push(

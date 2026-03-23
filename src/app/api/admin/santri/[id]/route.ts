@@ -18,7 +18,10 @@ export async function PUT(
       is_tasmi?: boolean;
       nilaiList?: Array<{
         mapelId: string;
-        skor: number;
+        nilaiUsbu1: number | null;
+        nilaiUsbu2: number | null;
+        nilaiNihai: number | null;
+        nilaiAkhir: number | null;
       }>;
     };
 
@@ -73,22 +76,32 @@ export async function PUT(
     }
 
     const invalidNilai = nilaiList.find(
-      (nilai) => !Number.isInteger(nilai.skor) || nilai.skor < 0 || nilai.skor > 100,
+      (nilai) => 
+        (nilai.nilaiUsbu1 !== null && (!Number.isFinite(nilai.nilaiUsbu1) || nilai.nilaiUsbu1! < 0 || nilai.nilaiUsbu1! > 100)) ||
+        (nilai.nilaiUsbu2 !== null && (!Number.isFinite(nilai.nilaiUsbu2) || nilai.nilaiUsbu2! < 0 || nilai.nilaiUsbu2! > 100)) ||
+        (nilai.nilaiNihai !== null && (!Number.isFinite(nilai.nilaiNihai) || nilai.nilaiNihai! < 0 || nilai.nilaiNihai! > 100))
     );
 
     if (invalidNilai) {
-      return NextResponse.json({ error: "Nilai harus berupa bilangan bulat 0-100." }, { status: 400 });
+      return NextResponse.json({ error: "Nilai harus berupa bilangan 0-100." }, { status: 400 });
     }
 
     const statusKelulusan = calculateStatus(
       {
         is_tasmi: payload.is_tasmi ?? false,
       },
-      nilaiList,
+      nilaiList.map(n => ({ skor: n.nilaiAkhir || 0 })),
       program,
     );
 
     await prisma.$transaction(async (transaction) => {
+      // 0. Auto-sync Dufah record 
+      await transaction.dufah.upsert({
+        where: { nama: targetDufah },
+        update: {},
+        create: { nama: targetDufah, currentUsbu: 1 }
+      });
+
       // 1. Upsert Profil Dasar Santri
       await transaction.santriInternal.upsert({
         where: { id: santriId },
@@ -152,7 +165,10 @@ export async function PUT(
           data: nilaiList.map((nilai: any) => ({
             riwayatId: riwayat.id,
             mapelId: nilai.mapelId,
-            skor: nilai.skor,
+            nilaiUsbu1: nilai.nilaiUsbu1,
+            nilaiUsbu2: nilai.nilaiUsbu2,
+            nilaiNihai: nilai.nilaiNihai,
+            nilaiAkhir: nilai.nilaiAkhir,
           })),
         });
       }

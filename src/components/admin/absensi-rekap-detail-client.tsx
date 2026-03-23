@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import { ChevronLeft, FileText, ChevronDown, ChevronRight, Search } from "lucide-react";
 import {
   BarChart,
@@ -28,6 +30,7 @@ type SantriDetail = {
   status: "HADIR" | "IZIN" | "SAKIT" | "ALPHA";
   keterangan: string;
   tanggal: string; // YYYY-MM-DD
+  usbu: string;
 };
 
 const STATUS_CONFIG = [
@@ -338,17 +341,11 @@ export function AbsensiRekapDetailClient() {
                               const santris = Array.from(new Set(group.records.map(r => r.namaSantri))).sort();
                               const sessionKeys = ["SESI_1", "SESI_2", "SESI_3", "SESI_4", "SESI_5", "SESI_6"];
 
-                              // Group dates by week
-                              const getWeekKey = (dateString: string) => {
-                                const d = new Date(dateString);
-                                d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-                                const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-                                const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-                                return `${d.getUTCFullYear()}-W${weekNo}`;
-                              };
+                              // Group dates by Usbu
                               const weeksMap = new Map<string, string[]>();
                               datesInClass.forEach(date => {
-                                const wk = getWeekKey(date);
+                                const sampleRecord = group.records.find(r => r.tanggal === date);
+                                const wk = sampleRecord ? sampleRecord.usbu : "Usbu'";
                                 if (!weeksMap.has(wk)) weeksMap.set(wk, []);
                                 weeksMap.get(wk)!.push(date);
                               });
@@ -367,11 +364,11 @@ export function AbsensiRekapDetailClient() {
                                           <React.Fragment key={`wh1-${week.wk}`}>
                                             {week.dates.map(date => (
                                               <th key={`dh1-${date}`} colSpan={7} className="px-4 py-2 text-center border-b border-r-2 border-slate-300 font-bold text-slate-700">
-                                                {date}
+                                                {format(new Date(date), "EEEE, d MMM yyyy", { locale: id })}
                                               </th>
                                             ))}
                                             <th key={`wh1-sum-${week.wk}`} colSpan={4} className="px-4 py-2 text-center border-b border-r-4 border-slate-400 font-bold text-slate-800 bg-slate-100">
-                                              Minggu {wIdx + 1}
+                                              {week.wk}
                                             </th>
                                           </React.Fragment>
                                         ))}
@@ -480,17 +477,11 @@ export function AbsensiRekapDetailClient() {
                               const datesInGroup = Array.from(new Set(group.records.map(r => r.tanggal))).sort();
                               const santris = Array.from(new Set(group.records.map(r => r.namaSantri))).sort();
 
-                              // Group dates by week
-                              const getWeekKey = (dateString: string) => {
-                                const d = new Date(dateString);
-                                d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-                                const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-                                const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-                                return `${d.getUTCFullYear()}-W${weekNo}`;
-                              };
+                              // Group dates by Usbu
                               const weeksMap = new Map<string, string[]>();
                               datesInGroup.forEach(date => {
-                                const wk = getWeekKey(date);
+                                const sampleRecord = group.records.find(r => r.tanggal === date);
+                                const wk = sampleRecord ? sampleRecord.usbu : "Usbu'";
                                 if (!weeksMap.has(wk)) weeksMap.set(wk, []);
                                 weeksMap.get(wk)!.push(date);
                               });
@@ -508,12 +499,15 @@ export function AbsensiRekapDetailClient() {
                                         {weeks.map((week, wIdx) => (
                                           <React.Fragment key={`wh1-${week.wk}`}>
                                             {week.dates.map(date => (
-                                              <th key={`dh1-${date}`} rowSpan={2} className="px-1.5 py-2 text-center border-b border-r border-slate-200 font-semibold text-slate-600 min-w-[28px] text-xs">
-                                                {date.split("-")[2]}
+                                              <th key={`dh1-${date}`} rowSpan={2} className="px-1.5 py-2 text-center border-b border-r border-slate-200 font-semibold text-slate-600 min-w-[36px] text-xs">
+                                                <div className="flex flex-col items-center">
+                                                  <span className="text-[10px] text-slate-400">{format(new Date(date), "E", { locale: id })}</span>
+                                                  <span>{format(new Date(date), "d", { locale: id })}</span>
+                                                </div>
                                               </th>
                                             ))}
                                             <th key={`wh1-sum-${week.wk}`} colSpan={4} className="px-2 py-2 text-center border-b border-l-2 border-r-2 border-slate-300 font-bold text-slate-800 bg-slate-100/50 text-xs">
-                                              {week.dates.length > 3 ? `Mgg ${wIdx + 1}` : `M${wIdx + 1}`}
+                                              {week.wk}
                                             </th>
                                           </React.Fragment>
                                         ))}
@@ -621,8 +615,11 @@ export function AbsensiRekapDetailClient() {
                                       </tr>
                                       <tr>
                                         {uniqueEvents.map((ev, i) => (
-                                          <th key={`date-${i}`} className="px-1.5 py-1.5 text-center border-b border-slate-200 border-x font-bold text-slate-600 min-w-[32px] text-xs">
-                                            {ev.tanggal.split("-")[2]}
+                                          <th key={`date-${i}`} className="px-1.5 py-1.5 text-center border-b border-slate-200 border-x font-bold text-slate-600 min-w-[36px] text-xs">
+                                            <div className="flex flex-col items-center">
+                                              <span className="text-[10px] text-slate-400">{format(new Date(ev.tanggal), "E", { locale: id })}</span>
+                                              <span>{format(new Date(ev.tanggal), "d", { locale: id })}</span>
+                                            </div>
                                           </th>
                                         ))}
                                         <th className="px-2 py-1.5 text-center text-xs font-black text-emerald-700 bg-emerald-50 border-b border-r border-slate-300">H</th>

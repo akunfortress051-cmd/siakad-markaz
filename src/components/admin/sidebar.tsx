@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3 } from "lucide-react";
-import { useState } from "react";
+import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const navigationGroups = [
   {
     title: "Utama",
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ]
+  },
+  {
+    title: "Divisi Angkatan (Duf'ah)",
+    items: [
+      { href: "/admin/dufah", label: "Manajemen Angkatan & Usbu'", icon: CalendarCheck },
     ]
   },
   {
@@ -33,6 +39,7 @@ const navigationGroups = [
     title: "Divisi Syahadah",
     items: [
       { href: "/admin/syahadah", label: "Data Syahadah", icon: GraduationCap },
+      { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer },
       { href: "/admin/riwayat", label: "Riwayat Santri", icon: History },
       { href: "/admin/master-data", label: "Pengaturan Syahadah", icon: Settings },
     ]
@@ -42,6 +49,14 @@ const navigationGroups = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [activeCtx, setActiveCtx] = useState<{ activeDufah: string | null; usbuLabel: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/active-context")
+      .then((res) => res.json())
+      .then((data) => setActiveCtx(data))
+      .catch((err) => console.error("Failed to load context", err));
+  }, []);
 
   return (
     <>
@@ -83,6 +98,16 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 p-4 space-y-8 mt-4 lg:mt-0">
+          {/* Active Context Information */}
+          {activeCtx && activeCtx.activeDufah && (
+            <div className="px-2 mb-2 lg:mt-0 mt-2">
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-[11px] font-bold text-emerald-700 shadow-sm">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+                Aktif: {activeCtx.activeDufah} • {activeCtx.usbuLabel}
+              </div>
+            </div>
+          )}
+
           {navigationGroups.map((group) => (
             <div key={group.title}>
               <p className="px-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">

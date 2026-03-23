@@ -16,11 +16,8 @@ export async function GET(request: Request) {
     }
 
     const dateFilter: any = {};
-    if (dari) dateFilter.gte = parseWibDateString(dari);
-    if (sampai) {
-      const endDate = new Date(`${sampai}T23:59:59+07:00`);
-      dateFilter.lte = endDate;
-    }
+    if (dari) dateFilter.gte = new Date(`${dari}T00:00:00Z`);
+    if (sampai) dateFilter.lte = new Date(`${sampai}T23:59:59Z`);
     const tanggalWhere = Object.keys(dateFilter).length > 0 ? { tanggal: dateFilter } : {};
 
     let records: any[] = [];
@@ -66,6 +63,13 @@ export async function GET(request: Request) {
       }
     }
 
+    // Ambil data Dufah untuk mengetahui batas Usbu'
+    const dufahList = await prisma.dufah.findMany();
+    const dufahMap = new Map<string, any>();
+    for (const d of dufahList) {
+      dufahMap.set(d.nama, d);
+    }
+
     // Filter output: Hanya yang dufah-nya sama dengan active dufah
     const filteredRecords = records.filter(r => {
       const activeDufah = activeSantriMap.get(r.riwayat.santriId);
@@ -74,6 +78,25 @@ export async function GET(request: Request) {
 
     const result = filteredRecords.map((r) => {
       const ms = masterSantriList.find(m => m.id === r.riwayat.santriId);
+      
+      // Fix timezone offset (Prisma UTC vs WIB literal)
+      const tanggalStr = r.tanggal.toISOString().split("T")[0];
+
+      // Tentukan Usbu'
+      let usbuLabel = "Usbu' 1";
+      const df = dufahMap.get(r.riwayat.dufahNama);
+      if (df) {
+        const u1 = df.usbu1EndDate ? new Date(df.usbu1EndDate).getTime() : Infinity;
+        const u2 = df.usbu2EndDate ? new Date(df.usbu2EndDate).getTime() : Infinity;
+        
+        // r.tanggal is already 00:00:00 UTC representing the day. df.usbuEndDate is also 00:00:00 UTC.
+        const tTime = r.tanggal.getTime();
+        
+        if (tTime <= u1) usbuLabel = "Usbu' 1";
+        else if (tTime <= u2) usbuLabel = "Usbu' 2";
+        else usbuLabel = "Nihai";
+      }
+
       return {
         id: r.id,
         riwayatId: r.riwayatId,
@@ -84,7 +107,8 @@ export async function GET(request: Request) {
         kegiatanNama: r.kategori?.nama || null,
         status: r.status,
         keterangan: r.keterangan || "-",
-        tanggal: r.tanggal.toISOString().split("T")[0],
+        tanggal: tanggalStr,
+        usbu: usbuLabel,
       };
     });
 

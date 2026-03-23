@@ -8,20 +8,20 @@ datasource db {
 }
 
 model Program {
-  id            String          @id @default(cuid())
-  nama_indo     String          @unique
-  nama_arab     String
-  kkm           Int
-  programMapels ProgramMapel[]
+  id             String          @id @default(cuid())
+  nama_indo      String          @unique
+  nama_arab      String
+  kkm            Int
+  programMapels  ProgramMapel[]
   riwayatRecords RiwayatSantri[]
-  kelasList     Kelas[]
+  kelasList      Kelas[]
 }
 
 model Kelas {
-  id            String          @id @default(cuid())
-  nama          String          @unique
-  programId     String
-  program       Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  id             String          @id @default(cuid())
+  nama           String          @unique
+  programId      String
+  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
   riwayatRecords RiwayatSantri[]
 }
 
@@ -45,46 +45,75 @@ model ProgramMapel {
 }
 
 model SantriInternal {
-  id               String   @id
-  nama             String?
-  tempat_lahir     String?
-  tanggal_lahir    String?
-  alamat           String?
-  riwayatRecords   RiwayatSantri[]
+  id             String          @id
+  nama           String?
+  tempat_lahir   String?
+  tanggal_lahir  String?
+  alamat         String?
+  riwayatRecords RiwayatSantri[]
+}
+
+model Dufah {
+  nama           String          @id
+  currentUsbu    Int             @default(1)
+  usbu1EndDate   DateTime?       @db.Date
+  usbu2EndDate   DateTime?       @db.Date
+  usbu3EndDate   DateTime?       @db.Date
+  riwayatRecords RiwayatSantri[]
 }
 
 model RiwayatSantri {
-  id               String   @id @default(cuid())
-  santriId         String
-  dufahNama        String
-  programId        String?
-  kelasId          String?
-  is_tasmi         Boolean  @default(false)
-  status_kelulusan String   @default("TIDAK_LULUS")
-  santri           SantriInternal @relation(fields: [santriId], references: [id], onDelete: Cascade)
-  program          Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
-  kelas            Kelas?   @relation(fields: [kelasId], references: [id], onDelete: SetNull)
-  nilaiList        Nilai[]
-  absenSakanList   AbsenSakan[]
-  absenKelasList   AbsenKelas[]
+  id                String          @id @default(cuid())
+  santriId          String
+  dufahNama         String
+  programId         String?
+  kelasId           String?
+  is_tasmi          Boolean         @default(false)
+  status_kelulusan  String          @default("TIDAK_LULUS")
+  santri            SantriInternal  @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  dufah             Dufah           @relation(fields: [dufahNama], references: [nama], onDelete: Restrict)
+  program           Program?        @relation(fields: [programId], references: [id], onDelete: SetNull)
+  kelas             Kelas?          @relation(fields: [kelasId], references: [id], onDelete: SetNull)
+  nilaiList         Nilai[]
+  absenSakanList    AbsenSakan[]
+  absenKelasList    AbsenKelas[]
   absenKegiatanList AbsenKegiatan[]
+  riwayatUsbuList   RiwayatUsbu[]
 
   @@unique([santriId, dufahNama])
 }
 
 model Nilai {
-  id       String         @id @default(cuid())
-  riwayatId String
-  mapelId   String
-  skor      Int
-  riwayat   RiwayatSantri  @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
-  mapel     Mapel          @relation(fields: [mapelId], references: [id], onDelete: Restrict)
+  id         String        @id @default(cuid())
+  riwayatId  String
+  mapelId    String
+  nilaiUsbu1 Float?
+  nilaiUsbu2 Float?
+  nilaiNihai Float?
+  nilaiAkhir Int?
+  riwayat    RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  mapel      Mapel         @relation(fields: [mapelId], references: [id], onDelete: Restrict)
 
   @@unique([riwayatId, mapelId])
 }
 
+model RiwayatUsbu {
+  id            String @id @default(cuid())
+  riwayatId     String
+  usbu          Int
+  totalHadir    Int    @default(0)
+  totalIzin     Int    @default(0)
+  totalSakit    Int    @default(0)
+  totalAlpha    Int    @default(0)
+  rataRataNilai Float?
+
+  riwayat RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+
+  @@unique([riwayatId, usbu])
+}
+
 model SyahadahTemplate {
-  id                 Int    @id @default(autoincrement())
+  id                 Int     @id @default(autoincrement())
   tgl_cetak_indo     String
   tgl_cetak_arab     String
   tgl_mulai_indo     String?
@@ -114,44 +143,44 @@ enum SesiKelas {
 }
 
 model AbsenSakan {
-  id          String        @id @default(cuid())
-  riwayatId   String
-  tanggal     DateTime      @db.Date
-  status      StatusAbsen
-  keterangan  String?
-  riwayat     RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  id         String        @id @default(cuid())
+  riwayatId  String
+  tanggal    DateTime      @db.Date
+  status     StatusAbsen
+  keterangan String?
+  riwayat    RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
 
   @@unique([riwayatId, tanggal])
 }
 
 model AbsenKelas {
-  id          String        @id @default(cuid())
-  riwayatId   String
-  tanggal     DateTime      @db.Date
-  sesi        SesiKelas
-  status      StatusAbsen
-  keterangan  String?
-  riwayat     RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  id         String        @id @default(cuid())
+  riwayatId  String
+  tanggal    DateTime      @db.Date
+  sesi       SesiKelas
+  status     StatusAbsen
+  keterangan String?
+  riwayat    RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
 
   @@unique([riwayatId, tanggal, sesi])
 }
 
 model KategoriKegiatan {
-  id              String          @id @default(cuid())
-  nama            String          @unique
-  aktif           Boolean         @default(true)
-  absenRecords    AbsenKegiatan[]
+  id           String          @id @default(cuid())
+  nama         String          @unique
+  aktif        Boolean         @default(true)
+  absenRecords AbsenKegiatan[]
 }
 
 model AbsenKegiatan {
-  id          String           @id @default(cuid())
-  riwayatId   String
-  kategoriId  String
-  tanggal     DateTime         @db.Date
-  status      StatusAbsen
-  keterangan  String?
-  riwayat     RiwayatSantri    @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
-  kategori    KategoriKegiatan @relation(fields: [kategoriId], references: [id], onDelete: Cascade)
+  id         String           @id @default(cuid())
+  riwayatId  String
+  kategoriId String
+  tanggal    DateTime         @db.Date
+  status     StatusAbsen
+  keterangan String?
+  riwayat    RiwayatSantri    @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  kategori   KategoriKegiatan @relation(fields: [kategoriId], references: [id], onDelete: Cascade)
 
   @@unique([riwayatId, kategoriId, tanggal])
 }
