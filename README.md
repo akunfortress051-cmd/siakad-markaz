@@ -34,3 +34,78 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+## API Documentation
+
+### Laporan Santri (Mobile App)
+
+Endpoint ini digunakan untuk memuat semua riwayat laporan (akademik, absensi, kegiatan, tes) milik santri berdasarkan nama. Endpoint ini mengembalikan sekumpulan data dalam bentuk `Array` yang berisi riwayat dari seluruh term/Dufah yang pernah diikuti santri, serta menyertakan keterangan Dufah yang sedang berlangsung saat ini.
+
+- **URL:** `/api/mobile/laporan-santri`
+- **Metode:** `GET`
+- **Content-Type:** `application/json`
+
+#### Query Parameters
+
+| Parameter     | Tipe     | Wajib | Deskripsi |
+| :---          | :---     | :---  | :---      |
+| `nama`        | `String` | **Ya**    | String nama santri yang ingin dicari. Mendukung pencarian sebagian nama dan *case-insensitive* (tidak peka huruf besar/kecil). Contoh: `?nama=ahmad` |
+| `dufahNama`   | `String` | Tidak | Opsi untuk mendefinisikan pencarian riwayat pada rentang waktu (Dufah) yang spesifik. Jika dibiarkan kosong, maka sistem akan mereturn **semua** riwayat sekaligus. |
+
+#### Struktur Respon (Berhasil - 200 OK)
+
+```json
+{
+  "success": true,
+  "active_dufah": "Dufah 7",
+  "data": [
+    {
+      "id_riwayat": "cuid...",
+      "dufah": "Dufah 7",
+      "santri": {
+        "id": "S...",
+        "nama": "Ahmad Fulan",
+        "tempat_lahir": "...",
+        "tanggal_lahir": "..."
+      },
+      "akademik": {
+        "program": "Program A",
+        "kelas": "Kelas A1",
+        "status_kelulusan": "LULUS"
+      },
+      "nilai_per_mapel": [...],
+      "rekap_absen_per_usbu": [...],
+      "histori_absen_terbaru": {
+        "kelas": [...],
+        "sakan": [...],
+        "kegiatan": [...]
+      }
+    },
+    {
+      "id_riwayat": "cuid...",
+      "dufah": "Dufah 6",
+      "santri": {...},
+      "akademik": {...},
+      // Data lama...
+    }
+  ]
+}
+```
+
+#### Struktur Respon (Error 400 - Bad Request)
+```json
+{
+  "success": false,
+  "message": "Nama santri diperlukan (Misal: ?nama=Ahmad)"
+}
+```
+
+#### Struktur Respon (Error 404 - Not Found)
+```json
+{
+  "success": false,
+  "message": "Data santri dengan nama tersebut tidak ditemukan."
+}
+```

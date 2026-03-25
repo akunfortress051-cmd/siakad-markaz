@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getActiveDufahName } from '@/lib/absensi';
 
 export async function GET(request: Request) {
   try {
@@ -29,8 +30,11 @@ export async function GET(request: Request) {
       whereClause.dufahNama = dufahNama;
     }
 
+    // Ambil data dufah yang sedang aktif
+    const activeDufah = await getActiveDufahName();
+
     // Ambil data lengkap terkait RiwayatSantri tersebut
-    const dataRiwayat = await prisma.riwayatSantri.findFirst({
+    const dataRiwayatList = await prisma.riwayatSantri.findMany({
       where: whereClause,
       // Kalau dufahNama tidak diisi, otomatis ambil data riwayat yang paling terbaru (Dufah terakhir)
       orderBy: {
@@ -73,7 +77,7 @@ export async function GET(request: Request) {
       }
     });
 
-    if (!dataRiwayat) {
+    if (!dataRiwayatList || dataRiwayatList.length === 0) {
       return NextResponse.json(
         { success: false, message: 'Data santri dengan nama tersebut tidak ditemukan.' },
         { status: 404 }
@@ -83,7 +87,8 @@ export async function GET(request: Request) {
     // Format (Transform) data agar strukturnya bersih dan mudah dibaca oleh Flutter
     const responseData = {
       success: true,
-      data: {
+      active_dufah: activeDufah || 'Tidak Diketahui',
+      data: dataRiwayatList.map((dataRiwayat) => ({
         id_riwayat: dataRiwayat.id,
         dufah: dataRiwayat.dufahNama,
         santri: {
@@ -115,7 +120,7 @@ export async function GET(request: Request) {
         histori_absen_terbaru: {
           kelas: dataRiwayat.absenKelasList,
           sakan: dataRiwayat.absenSakanList,
-          kegiatan: dataRiwayat.absenKegiatanList.map(a => ({
+          kegiatan: dataRiwayat.absenKegiatanList.map((a: any) => ({
             id: a.id,
             tanggal: a.tanggal,
             status: a.status,
@@ -123,7 +128,7 @@ export async function GET(request: Request) {
             keterangan: a.keterangan
           }))
         }
-      }
+      }))
     };
 
     // Tambahkan header CORS khusus agar Flutter Mobile App / web local tester tidak kena block
