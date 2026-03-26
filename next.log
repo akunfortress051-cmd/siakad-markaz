@@ -1,0 +1,23 @@
+
+> ijazah-sample@0.1.0 dev
+> next dev -p 3007
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/ibnualwan/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /home/ibnualwan/ijazah-sample/package-lock.json
+
+▲ Next.js 16.1.7 (Turbopack)
+- Local:         http://localhost:3007
+- Network:       http://10.255.255.254:3007
+- Environments: .env
+
+✓ Starting...
+✓ Ready in 3.1s
+ GET / 307 in 1377ms (compile: 1149ms, render: 228ms)
+ POST /api/instagram/sync 200 in 7.4s (compile: 563ms, render: 6.9s)
+ GET /api/instagram/feed 200 in 215ms (compile: 142ms, render: 73ms)
+  Reload env: .env
+  Reload env: .env

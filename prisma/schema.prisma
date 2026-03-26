@@ -205,9 +205,11 @@ model Agenda {
 }
 
 model InstagramPost {
-  id        String   @id @default(cuid())
-  judul     String?
-  url       String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  judul        String?
+  url          String
+  thumbnailUrl String?
+  author       String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
 }
