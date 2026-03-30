@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   color-scheme: light;
@@ -33,4 +33,46 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+@media screen {
+  /* Syahadah = 330mm x 215mm */
+  .container-syahadah {
+    --doc-width: 1247.24;
+    --doc-height: 812.6;
+    --padding-x: 32;
+    --scale: min(1, calc((100vw - var(--padding-x) * 1px) / var(--doc-width)));
+    display: flex;
+    justify-content: center;
+  }
+  .doc-syahadah {
+    transform: scale(var(--scale));
+    transform-origin: top center;
+    margin-bottom: calc(var(--doc-height) * 1px * (var(--scale) - 1));
+  }
+
+  /* Ijazah = 210mm x 297mm */
+  .container-ijazah {
+    --doc-width: 793.7;
+    --doc-height: 1122.5;
+    --padding-x: 32;
+    --scale: min(1, calc((100vw - var(--padding-x) * 1px) / var(--doc-width)));
+    display: flex;
+    justify-content: center;
+  }
+  .doc-ijazah {
+    transform: scale(var(--scale));
+    transform-origin: top center;
+    margin-bottom: calc(var(--doc-height) * 1px * (var(--scale) - 1));
+  }
+}
+
+@media print {
+  .container-syahadah, .container-ijazah {
+    display: block !important;
+  }
+  .doc-syahadah, .doc-ijazah {
+    transform: none !important;
+    margin-bottom: 0 !important;
+  }
 }

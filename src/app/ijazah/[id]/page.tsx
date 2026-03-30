@@ -56,11 +56,12 @@ export default async function IjazahPage({
     >
       <PrintToolbar backHref="/admin/dashboard" backLabel="Kembali ke Dashboard" maxWidth="210mm" />
 
-      <div
-        className="mx-auto relative overflow-hidden bg-white shadow-2xl print:shadow-none"
-        style={{ width: "210mm", minHeight: "297mm" }}
-      >
-        <img
+      <div className="container-ijazah flex justify-center w-full print:block print:w-auto">
+        <div
+          className="doc-ijazah relative overflow-hidden bg-white shadow-2xl print:shadow-none shrink-0"
+          style={{ width: "210mm", minHeight: "297mm" }}
+        >
+          <img
           src="/images/bg-border.png"
           alt=""
           style={{
@@ -201,6 +202,7 @@ export default async function IjazahPage({
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <style>{`

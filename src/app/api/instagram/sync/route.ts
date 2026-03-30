@@ -33,13 +33,18 @@ export async function POST() {
       // 1. Dapatkan user_id menggunakan endpoint user_info
       const infoUrl = `https://${rapidApiHost}/user_info?user_name=${username}`;
       const infoRes = await fetch(infoUrl, options);
-      if (!infoRes.ok) continue;
+      
+      if (!infoRes.ok) {
+        const errText = await infoRes.text();
+        console.error(`⚠️ [Sync] Gagal mendapatkan ID untuk ${username}: HTTP ${infoRes.status} - ${errText}`);
+        continue;
+      }
       
       const infoData = await infoRes.json();
       const userId = infoData?.data?.id;
       
       if (!userId) {
-        console.error(`⚠️ [Sync] Gagal mendapatkan ID untuk ${username}:`, infoData);
+        console.error(`⚠️ [Sync] Gagal mendapatkan ID untuk ${username} (Data tidak valid):`, infoData);
         continue;
       }
 
@@ -48,7 +53,8 @@ export async function POST() {
       const mediasUrl = `https://${rapidApiHost}/medias_v2?user_id=${userId}&batch_size=10`;
       const mediasRes = await fetch(mediasUrl, options);
       if (!mediasRes.ok) {
-        console.error(`⚠️ [Sync] Gagal mengambil Feed untuk ${username}. HTTP Status:`, mediasRes.status);
+        const errText = await mediasRes.text();
+        console.error(`⚠️ [Sync] Gagal mengambil Feed untuk ${username}. HTTP Status: ${mediasRes.status} - ${errText}`);
         continue;
       }
 

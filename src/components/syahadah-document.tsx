@@ -39,8 +39,9 @@ export function SyahadahDocument({ qrUrl, data }: SyahadahDocumentProps) {
   const averagePredikat = isMusyarokah ? "" : data.averagePredikat.arab;
 
   return (
-    <div className="flex items-center justify-center print:block print:min-h-0" style={{ pageBreakAfter: "always" }}>
+    <div className="container-syahadah flex items-center justify-center print:block print:min-h-0" style={{ pageBreakAfter: "always" }}>
       <div
+        className="doc-syahadah"
         style={{
           width: "330mm",
           height: "215mm",
