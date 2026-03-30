@@ -83,18 +83,30 @@ export async function GET(request: Request) {
       const tanggalStr = r.tanggal.toISOString().split("T")[0];
 
       // Tentukan Usbu'
-      let usbuLabel = "Usbu' 1";
+      let usbuLabel = "Tidak terjadwal";
       const df = dufahMap.get(r.riwayat.dufahNama);
       if (df) {
-        const u1 = df.usbu1EndDate ? new Date(df.usbu1EndDate).getTime() : Infinity;
-        const u2 = df.usbu2EndDate ? new Date(df.usbu2EndDate).getTime() : Infinity;
-        
-        // r.tanggal is already 00:00:00 UTC representing the day. df.usbuEndDate is also 00:00:00 UTC.
         const tTime = r.tanggal.getTime();
-        
-        if (tTime <= u1) usbuLabel = "Usbu' 1";
-        else if (tTime <= u2) usbuLabel = "Usbu' 2";
-        else usbuLabel = "Nihai";
+
+        const u1Start = df.usbu1StartDate ? new Date(df.usbu1StartDate).getTime() : 0;
+        const u1End = df.usbu1EndDate ? new Date(df.usbu1EndDate).getTime() + 86399999 : Infinity;
+        const u2Start = df.usbu2StartDate ? new Date(df.usbu2StartDate).getTime() : 0;
+        const u2End = df.usbu2EndDate ? new Date(df.usbu2EndDate).getTime() + 86399999 : Infinity;
+        const u3Start = df.usbu3StartDate ? new Date(df.usbu3StartDate).getTime() : 0;
+        const u3End = df.usbu3EndDate ? new Date(df.usbu3EndDate).getTime() + 86399999 : Infinity;
+
+        if (!df.usbu1StartDate && !df.usbu2StartDate && !df.usbu3StartDate) {
+          // Backward compatibility: old data only had EnDates boundary
+          if (tTime <= u1End) usbuLabel = "Usbu' 1";
+          else if (tTime <= u2End) usbuLabel = "Usbu' 2";
+          else usbuLabel = "Nihai";
+        } else {
+          // Advanced Usbu Architecture ranges
+          if (tTime >= u1Start && tTime <= u1End) usbuLabel = "Usbu' 1";
+          else if (tTime >= u2Start && tTime <= u2End) usbuLabel = "Usbu' 2";
+          else if (tTime >= u3Start && tTime <= u3End) usbuLabel = "Nihai";
+          else usbuLabel = "Di Luar Usbu'";
+        }
       }
 
       return {

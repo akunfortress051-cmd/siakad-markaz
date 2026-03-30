@@ -36,7 +36,7 @@ export default async function InputNilaiPage({
 
       <InputNilaiForm
         santri={data.masterSantri}
-        currentUsbu={data.currentUsbu}
+        activeFlags={data.activeFlags}
         programList={data.programList}
         internalSantri={data.internalSantri} 
         activeRiwayat={data.activeRiwayat} 

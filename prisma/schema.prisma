@@ -54,11 +54,20 @@ model SantriInternal {
 }
 
 model Dufah {
-  nama           String          @id
-  currentUsbu    Int             @default(1)
-  usbu1EndDate   DateTime?       @db.Date
-  usbu2EndDate   DateTime?       @db.Date
-  usbu3EndDate   DateTime?       @db.Date
+  nama String @id
+
+  usbu1StartDate DateTime? @db.Date
+  usbu1EndDate   DateTime? @db.Date
+  usbu1Active    Boolean   @default(false)
+
+  usbu2StartDate DateTime? @db.Date
+  usbu2EndDate   DateTime? @db.Date
+  usbu2Active    Boolean   @default(false)
+
+  usbu3StartDate DateTime? @db.Date
+  usbu3EndDate   DateTime? @db.Date
+  usbu3Active    Boolean   @default(false)
+
   riwayatRecords RiwayatSantri[]
 }
 

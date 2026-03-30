@@ -74,13 +74,13 @@ export function InputNilaiForm({
   programList,
   internalSantri,
   activeRiwayat,
-  currentUsbu,
+  activeFlags,
 }: {
   santri: MasterSantri;
   programList: ProgramOption[];
   internalSantri: InternalSantri;
   activeRiwayat: ActiveRiwayat;
-  currentUsbu: number;
+  activeFlags: { u1: boolean; u2: boolean; u3: boolean };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -136,9 +136,9 @@ export function InputNilaiForm({
     activeMapelList.some((mapel) => {
       const val = nilaiByMapel[mapel.id];
       if (!val) return true;
-      if (currentUsbu === 1 && val.u1.trim() === "") return true;
-      if (currentUsbu === 2 && val.u2.trim() === "") return true;
-      if (currentUsbu === 3 && val.n.trim() === "") return true;
+      if (activeFlags.u1 && val.u1.trim() === "") return true;
+      if (activeFlags.u2 && val.u2.trim() === "") return true;
+      if (activeFlags.u3 && val.n.trim() === "") return true;
       return false;
     });
 
@@ -373,8 +373,8 @@ export function InputNilaiForm({
 
                   <div className="grid grid-cols-3 gap-2 mt-auto">
                     <div>
-                      <p className={`text-[10px] uppercase font-bold text-center mb-1 ${currentUsbu === 1 ? 'text-emerald-600' : 'text-slate-400'}`}>Usbu' 1</p>
-                      {currentUsbu === 1 ? (
+                      <p className={`text-[10px] uppercase font-bold text-center mb-1 ${activeFlags.u1 ? 'text-emerald-600' : 'text-slate-400'}`}>Usbu' 1</p>
+                      {activeFlags.u1 ? (
                       <input
                         type="number" min={0} max={100} value={val.u1}
                         onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, u1: e.target.value } }))}
@@ -385,8 +385,8 @@ export function InputNilaiForm({
                       )}
                     </div>
                     <div>
-                      <p className={`text-[10px] uppercase font-bold text-center mb-1 ${currentUsbu === 2 ? 'text-emerald-600' : 'text-slate-400'}`}>Usbu' 2</p>
-                      {currentUsbu === 2 ? (
+                      <p className={`text-[10px] uppercase font-bold text-center mb-1 ${activeFlags.u2 ? 'text-emerald-600' : 'text-slate-400'}`}>Usbu' 2</p>
+                      {activeFlags.u2 ? (
                       <input
                         type="number" min={0} max={100} value={val.u2}
                         onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, u2: e.target.value } }))}
@@ -397,8 +397,8 @@ export function InputNilaiForm({
                       )}
                     </div>
                     <div>
-                      <p className={`text-[10px] uppercase font-bold text-center mb-1 ${currentUsbu === 3 ? 'text-emerald-600' : 'text-slate-400'}`}>Nihai</p>
-                      {currentUsbu === 3 ? (
+                      <p className={`text-[10px] uppercase font-bold text-center mb-1 ${activeFlags.u3 ? 'text-emerald-600' : 'text-slate-400'}`}>Nihai</p>
+                      {activeFlags.u3 ? (
                       <input
                         type="number" min={0} max={100} value={val.n}
                         onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, n: e.target.value } }))}

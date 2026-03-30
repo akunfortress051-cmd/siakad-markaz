@@ -205,17 +205,17 @@ export async function getSantriFormData(id: string) {
     (r: any) => riwayatMatch ? r.id === riwayatMatch.id : r.dufahNama === masterSantri.dufahNama
   ) ?? null;
 
-  let currentUsbu = 1;
+  let activeFlags = { u1: false, u2: false, u3: false };
   const dufah = await prisma.dufah.findUnique({
     where: { nama: masterSantri.dufahNama }
   });
   if (dufah) {
-    currentUsbu = dufah.currentUsbu;
+    activeFlags = { u1: dufah.usbu1Active, u2: dufah.usbu2Active, u3: dufah.usbu3Active };
   }
 
   return {
     masterSantri,
-    currentUsbu,
+    activeFlags,
     programList,
     internalSantri: santriInternal
       ? {

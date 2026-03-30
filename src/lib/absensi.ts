@@ -42,7 +42,7 @@ export async function syncDufahTable() {
     const missingDufahs = Array.from(dufahSet).filter(name => !existingNames.has(name));
     if (missingDufahs.length > 0) {
       await prisma.dufah.createMany({
-        data: missingDufahs.map(nama => ({ nama, currentUsbu: 1 })),
+        data: missingDufahs.map(nama => ({ nama })),
         skipDuplicates: true
       });
     }

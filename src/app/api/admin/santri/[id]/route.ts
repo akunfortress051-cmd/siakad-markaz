@@ -99,7 +99,7 @@ export async function PUT(
       await transaction.dufah.upsert({
         where: { nama: targetDufah },
         update: {},
-        create: { nama: targetDufah, currentUsbu: 1 }
+        create: { nama: targetDufah }
       });
 
       // 1. Upsert Profil Dasar Santri

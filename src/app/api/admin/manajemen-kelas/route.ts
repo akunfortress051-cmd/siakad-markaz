@@ -46,7 +46,7 @@ export async function POST(request: Request) {
             prisma.dufah.upsert({
                where: { nama: ms.dufahNama },
                update: {},
-               create: { nama: ms.dufahNama, currentUsbu: 1 }
+               create: { nama: ms.dufahNama }
             })
           );
         }
