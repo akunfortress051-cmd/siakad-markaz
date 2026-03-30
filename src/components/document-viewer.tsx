@@ -168,26 +168,25 @@ export function DocumentViewer({
         onWheel={handleWheel}
         style={{ cursor: "grab" }}
       >
-        {/* Scaled document wrapper */}
+        {/* 
+          The outer shell is sized to the visual (scaled) dimensions.
+          The inner content div retains its natural width/minHeight and is
+          shrunk/grown via CSS transform so browsers never clip it.
+        */}
         <div
-          className="print:w-auto print:h-auto print:transform-none"
+          className="print:transform-none print:w-auto relative"
           style={{
             width: scaledW,
-            height: scaledH,
-            position: "relative",
+            minHeight: scaledH,
             flexShrink: 0,
           }}
         >
-          {/* Inner div is real document size, then scaled via CSS transform */}
           <div
             style={{
               width: docWidthPx,
-              height: docHeightPx,
+              minHeight: docHeightPx,
               transform: `scale(${zoom})`,
               transformOrigin: "top left",
-              position: "absolute",
-              top: 0,
-              left: 0,
             }}
           >
             {children}

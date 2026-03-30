@@ -61,9 +61,8 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
       <div
         style={{
           width: DOC_W,
-          height: DOC_H,
+          minHeight: DOC_H,
           position: "relative",
-          overflow: "hidden",
           background: "white",
           fontFamily: "'Times New Roman', Times, serif",
           boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
@@ -85,7 +84,7 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
         />
 
         {/* Content */}
-        <div className="relative flex min-h-full flex-col" style={{ padding: "14mm 20mm 12mm 20mm", zIndex: 2, minHeight: DOC_H }}>
+        <div className="relative flex flex-col" style={{ padding: "14mm 20mm 12mm 20mm", zIndex: 2, minHeight: DOC_H }}>
           <div className="flex flex-col items-center text-center" style={{ marginBottom: "3mm" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/logo.png" alt="Logo Markaz Arabiyah" style={{ width: "25mm", height: "25mm", objectFit: "contain", marginBottom: "2mm" }} />
