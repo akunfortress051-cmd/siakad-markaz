@@ -61,6 +61,15 @@ export async function GET(
       );
     }
 
+    // Helper: Hitung total H/I/S/A dari array berisi field 'status'
+    const hitungRekap = (records: { status: string }[]) => ({
+      total_hadir: records.filter((r) => r.status === 'HADIR').length,
+      total_izin: records.filter((r) => r.status === 'IZIN').length,
+      total_sakit: records.filter((r) => r.status === 'SAKIT').length,
+      total_alpha: records.filter((r) => r.status === 'ALPHA').length,
+      total_hari: records.length,
+    });
+
     // Format (Transform) data agar strukturnya bersih
     const responseData = {
       success: true,
@@ -94,26 +103,34 @@ export async function GET(
           total_alpha: u.totalAlpha,
           rata_rata_nilai: u.rataRataNilai,
         })),
+
+        // ===== REKAP TOTAL per Jenis Absen (dalam 1 Duf'ah) =====
+        rekap_absen_sakan: hitungRekap(dataRiwayat.absenSakanList),
+        rekap_absen_kelas: hitungRekap(dataRiwayat.absenKelasList),
+        rekap_absen_kegiatan: hitungRekap(dataRiwayat.absenKegiatanList),
+
+        // ===== RINCIAN Absensi per Tanggal =====
         histori_absen: {
           kelas: dataRiwayat.absenKelasList.map((a) => ({
             id: a.id,
             tanggal: a.tanggal,
             sesi: a.sesi,
             status: a.status,
-            keterangan: a.keterangan,
+            // Keterangan hanya ditampilkan jika status ALPHA
+            keterangan: a.status === 'ALPHA' ? a.keterangan : null,
           })),
           sakan: dataRiwayat.absenSakanList.map((a) => ({
             id: a.id,
             tanggal: a.tanggal,
             status: a.status,
-            keterangan: a.keterangan,
+            keterangan: a.status === 'ALPHA' ? a.keterangan : null,
           })),
           kegiatan: dataRiwayat.absenKegiatanList.map((a) => ({
             id: a.id,
             tanggal: a.tanggal,
             status: a.status,
             nama_kegiatan: a.kategori.nama,
-            keterangan: a.keterangan,
+            keterangan: a.status === 'ALPHA' ? a.keterangan : null,
           })),
         },
       })),
