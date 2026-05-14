@@ -104,7 +104,7 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
   await syncDufahTable();
 
   // SINKRONISASI OTOMATIS: Pastikan santri aktif memiliki RiwayatSantri di DB lokal
-  const activeMasterSantri = masterSantriList.filter(ms => ms.isAktif);
+  const activeMasterSantri = masterSantriList.filter(ms => ms.isAktif && ms.dufahNama && ms.dufahNama !== "-");
   if (activeMasterSantri.length > 0) {
     const activeSantriIds = activeMasterSantri.map(s => s.id);
     const existingRiwayat = await prisma.riwayatSantri.findMany({
