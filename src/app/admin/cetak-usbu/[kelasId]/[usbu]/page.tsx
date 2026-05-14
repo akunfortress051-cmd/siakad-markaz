@@ -52,15 +52,9 @@ export default async function CetakUsbuPrintPage({ params }: { params: Promise<{
     const mapelScores: (number | "-")[] = [];
     let sum = 0;
 
-    // We strictly use / 3 for average according to user request, wait
-    // Actually the user said accumulation. But in "NILAI AKUMULATIF", is it the sum or the average?
-    // In the image, presensi=100, grades=85,90,86,86,91 -> sum is 438. Average is 87.6.
-    // Wait, the image shows Mufid: Presensi 100, Istima 85, Kalam 90, Anasir 86, Qiroah 86, Kitabah 91. Nilai Akumulatif = 88.84.
-    // Average of (100, 85, 90, 86, 86, 91) = 538 / 6 = 89.6.
-    // Wait. Maybe presensi is evaluated in standard accumulation?
-    let divider = 0;
+    // We strictly use / 100 for average according to user request (deflasi bobot 100)
+    let totalSkorBobot = 0;
 
-    // Let's test standard Markaz formula: (Presensi + sum of mapels) / (total mapels + 1)
     for (const pm of kelas.program.programMapels) {
       const match = riwayat.nilaiList.find((n: any) => n.mapelId === pm.mapelId);
       const isPresensiMapel = pm.mapel.nama_indo.toLowerCase() === "presensi";
@@ -75,18 +69,15 @@ export default async function CetakUsbuPrintPage({ params }: { params: Promise<{
 
       if (score !== null && score !== undefined) {
         mapelScores.push(score);
-        if (!isPresensiMapel) {
-          sum += score;
-          divider++;
+        if (pm.mapel.masuk_akumulasi !== false) {
+          totalSkorBobot += score * (pm.mapel.bobot ?? 1);
         }
       } else {
         mapelScores.push("-");
       }
     }
 
-    // Average Mapel only (excluding presensi mapel)
-    const rawAccumulative = divider > 0 ? (sum / divider) : 0;
-    const nilaiAkumulatif = Number(rawAccumulative.toFixed(2));
+    const nilaiAkumulatif = Number((totalSkorBobot / 100).toFixed(2));
 
     return {
       nama,

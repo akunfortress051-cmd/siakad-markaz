@@ -389,11 +389,7 @@ export async function getCertificateData(id: string) {
 
   const accumulativeRows = nilaiRows.filter((nilai: any) => typeof nilai.skor === "number" && nilai.masuk_akumulasi);
   const totalSkorBobot = accumulativeRows.reduce((total: any, nilai: any) => total + (Number(nilai.skor) * nilai.bobot), 0);
-  const totalBobot = accumulativeRows.reduce((total: any, nilai: any) => total + nilai.bobot, 0);
-  const average =
-    totalBobot > 0
-      ? totalSkorBobot / totalBobot
-      : 0;
+  const average = accumulativeRows.length > 0 ? totalSkorBobot / 100 : 0;
   const status = calculateStatus(riwayat, accumulativeRows.map((nilai: any) => ({ skor: Number(nilai.skor) })), riwayat.program);
 
   return {

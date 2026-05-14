@@ -64,18 +64,18 @@ export async function GET(request: Request) {
 
       const computeAverage = (key: 'nilaiUsbu1' | 'nilaiUsbu2' | 'nilaiNihai' | 'nilaiAkhir') => {
         let sumBobot = 0;
-        let totalWeight = 0;
+        let countHasScore = 0;
         dataRiwayat.nilaiList.forEach((n: any) => {
           if (n.mapel.masuk_akumulasi !== false) { // Default to true if undefined
             const score = n[key];
             if (score !== null && score !== undefined) {
               const bobot = n.mapel.bobot ?? 1;
               sumBobot += score * bobot;
-              totalWeight += bobot;
+              countHasScore++;
             }
           }
         });
-        return totalWeight > 0 ? Number((sumBobot / totalWeight).toFixed(2)) : null;
+        return countHasScore > 0 ? Number((sumBobot / 100).toFixed(2)) : null;
       };
 
       groupedData[kelasName].santri.push({

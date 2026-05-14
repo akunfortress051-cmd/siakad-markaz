@@ -152,12 +152,8 @@ export function InputNilaiForm({
   const numericNilai = parsedNilai.filter(n => n.a !== null && n.masuk_akumulasi);
 
   const totalSkorBobot = numericNilai.reduce((total, nilai) => total + (nilai.skor * nilai.bobot), 0);
-  const totalBobot = numericNilai.reduce((total, nilai) => total + nilai.bobot, 0);
 
-  const average =
-    totalBobot > 0
-      ? totalSkorBobot / totalBobot
-      : 0;
+  const average = numericNilai.length > 0 ? totalSkorBobot / 100 : 0;
   const averagePredikat = getPredikat(average);
   const previewStatus = !selectedProgram
     ? "TIDAK_LULUS"
