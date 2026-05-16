@@ -19,30 +19,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
     const nextUrutan = (lastMapel?.urutan ?? 0) + 1;
 
-    // Cek apakah mapel dengan nama ini sudah ada secara global
-    let mapel = await prisma.mapel.findUnique({ where: { nama_indo: nama_indo.trim() } });
-
-    // Jika belum ada, buat mapel baru
-    if (!mapel) {
-      mapel = await prisma.mapel.create({
-        data: { 
-          nama_indo: nama_indo.trim(), 
-          nama_arab: nama_arab.trim(),
-          jumlah_tes: jumlah_tes !== undefined ? Number(jumlah_tes) : 3,
-          tampil_di_syahadah: tampil_di_syahadah !== undefined ? Boolean(tampil_di_syahadah) : true,
-          masuk_akumulasi: masuk_akumulasi !== undefined ? Boolean(masuk_akumulasi) : true,
-          bobot: body.bobot !== undefined ? Number(body.bobot) : 1,
-        },
-      });
-    }
-
-    // Cek apakah sudah terdaftar di program ini
-    const existing = await prisma.programMapel.findUnique({
-      where: { programId_mapelId: { programId, mapelId: mapel.id } },
+    // Cek apakah mapel dengan nama ini sudah terdaftar di program ini
+    const existingRel = await prisma.programMapel.findFirst({
+      where: {
+        programId,
+        mapel: { nama_indo: nama_indo.trim() },
+      },
     });
-    if (existing) {
-      return NextResponse.json({ error: "Mapel ini sudah terdaftar di program tersebut." }, { status: 400 });
+
+    if (existingRel) {
+      return NextResponse.json({ error: "Mapel dengan nama ini sudah terdaftar di program tersebut." }, { status: 400 });
     }
+
+    // Buat mapel baru mandiri khusus untuk program ini
+    const mapel = await prisma.mapel.create({
+      data: { 
+        nama_indo: nama_indo.trim(), 
+        nama_arab: nama_arab.trim(),
+        jumlah_tes: jumlah_tes !== undefined ? Number(jumlah_tes) : 3,
+        tampil_di_syahadah: tampil_di_syahadah !== undefined ? Boolean(tampil_di_syahadah) : true,
+        masuk_akumulasi: masuk_akumulasi !== undefined ? Boolean(masuk_akumulasi) : true,
+        bobot: body.bobot !== undefined ? Number(body.bobot) : 1,
+        bobot_usbu: body.bobot_usbu !== undefined ? Number(body.bobot_usbu) : 1,
+      },
+    });
 
     await prisma.programMapel.create({
       data: { programId, mapelId: mapel.id, urutan: nextUrutan },

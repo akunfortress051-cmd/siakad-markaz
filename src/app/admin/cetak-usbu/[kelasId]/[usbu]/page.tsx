@@ -57,7 +57,6 @@ export default async function CetakUsbuPrintPage({ params }: { params: Promise<{
 
     for (const pm of kelas.program.programMapels) {
       const match = riwayat.nilaiList.find((n: any) => n.mapelId === pm.mapelId);
-      const isPresensiMapel = pm.mapel.nama_indo.toLowerCase() === "presensi";
 
       let score: number | null = null;
       if (match) {
@@ -70,7 +69,8 @@ export default async function CetakUsbuPrintPage({ params }: { params: Promise<{
       if (score !== null && score !== undefined) {
         mapelScores.push(score);
         if (pm.mapel.masuk_akumulasi !== false) {
-          totalSkorBobot += score * (pm.mapel.bobot ?? 1);
+          const currentWeight = targetUsbu === 4 ? (pm.mapel.bobot ?? 1) : ((pm.mapel as any).bobot_usbu ?? 1);
+          totalSkorBobot += score * currentWeight;
         }
       } else {
         mapelScores.push("-");
@@ -102,7 +102,7 @@ export default async function CetakUsbuPrintPage({ params }: { params: Promise<{
     <div className="min-h-screen bg-slate-200 p-4 md:p-8">
       <CetakUsbuDocument
         kelasNama={kelas.nama}
-        usbuLabel={targetUsbu === 3 ? "Nihai" : targetUsbu === 4 ? "Nihai" : targetUsbu.toString()}
+        usbuLabel={targetUsbu === 3 ? "Nihai" : targetUsbu === 4 ? "Akumulatif" : targetUsbu.toString()}
         mapelHeaders={kelas.program.programMapels.map(pm => pm.mapel.nama_indo.toUpperCase() as string)}
         rows={rows}
       />

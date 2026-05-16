@@ -53,12 +53,10 @@ export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ 
       const gender = ms?.gender || "-";
 
       const mapelScores: (number | "-")[] = [];
-      let sum = 0;
-      let divider = 0;
+      let totalSkorBobot = 0;
 
       for (const pm of kelas.program.programMapels) {
         const match = riwayat.nilaiList.find((n: any) => n.mapelId === pm.mapelId);
-        const isPresensiMapel = pm.mapel.nama_indo.toLowerCase() === "presensi";
 
         let score: number | null = null;
         if (match) {
@@ -70,17 +68,16 @@ export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ 
 
         if (score !== null && score !== undefined) {
           mapelScores.push(score);
-          if (!isPresensiMapel) {
-            sum += score;
-            divider++;
+          if (pm.mapel.masuk_akumulasi !== false) {
+            const currentWeight = targetUsbu === 4 ? (pm.mapel.bobot ?? 1) : ((pm.mapel as any).bobot_usbu ?? 1);
+            totalSkorBobot += score * currentWeight;
           }
         } else {
           mapelScores.push("-");
         }
       }
 
-      const rawAccumulative = divider > 0 ? (sum / divider) : 0;
-      const nilaiAkumulatif = Number(rawAccumulative.toFixed(2));
+      const nilaiAkumulatif = Number((totalSkorBobot / 100).toFixed(2));
 
       return {
         nama,
@@ -127,7 +124,7 @@ export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ 
           <CetakUsbuDocument
             key={kelas.id}
             kelasNama={kelas.nama}
-            usbuLabel={targetUsbu === 3 ? "Nihai" : targetUsbu === 4 ? "Nihai" : targetUsbu.toString()}
+            usbuLabel={targetUsbu === 3 ? "Nihai" : targetUsbu === 4 ? "Akumulatif" : targetUsbu.toString()}
             mapelHeaders={kelas.program.programMapels.map(pm => pm.mapel.nama_indo.toUpperCase() as string)}
             rows={rows}
           />

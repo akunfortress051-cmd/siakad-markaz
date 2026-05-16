@@ -7,7 +7,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; mapelId: string }> }
 ) {
   try {
-    const { mapelId } = await params;
+    const { id, mapelId } = await params;
     const body = await request.json();
     const { nama_indo, nama_arab, jumlah_tes, tampil_di_syahadah, masuk_akumulasi } = body;
 
@@ -15,12 +15,16 @@ export async function PUT(
       return NextResponse.json({ error: "Nama mapel (Indo & Arab) wajib diisi." }, { status: 400 });
     }
 
-    // Cek duplikasi nama (kecuali mapel itu sendiri)
-    const duplicate = await prisma.mapel.findFirst({
-      where: { nama_indo: nama_indo.trim(), id: { not: mapelId } },
+    // Cek duplikasi nama di dalam program yang sama (kecuali mapel ini sendiri)
+    const duplicate = await prisma.programMapel.findFirst({
+      where: {
+        programId: id,
+        mapelId: { not: mapelId },
+        mapel: { nama_indo: nama_indo.trim() },
+      },
     });
     if (duplicate) {
-      return NextResponse.json({ error: "Nama mapel sudah digunakan." }, { status: 400 });
+      return NextResponse.json({ error: "Nama mapel sudah digunakan di program ini." }, { status: 400 });
     }
 
     const updated = await prisma.mapel.update({
@@ -32,6 +36,7 @@ export async function PUT(
         tampil_di_syahadah: tampil_di_syahadah !== undefined ? Boolean(tampil_di_syahadah) : undefined,
         masuk_akumulasi: masuk_akumulasi !== undefined ? Boolean(masuk_akumulasi) : undefined,
         bobot: body.bobot !== undefined ? Number(body.bobot) : undefined,
+        bobot_usbu: body.bobot_usbu !== undefined ? Number(body.bobot_usbu) : undefined,
       },
     });
 

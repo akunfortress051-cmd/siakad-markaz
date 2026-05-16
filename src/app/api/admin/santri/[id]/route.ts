@@ -160,16 +160,16 @@ export async function PUT(
         where: { riwayatId: riwayat.id },
       });
 
-      if (nilaiList.length > 0) {
-        await transaction.nilai.createMany({
-          data: nilaiList.map((nilai: any) => ({
+      for (const nilai of nilaiList) {
+        await transaction.nilai.create({
+          data: {
             riwayatId: riwayat.id,
             mapelId: nilai.mapelId,
             nilaiUsbu1: nilai.nilaiUsbu1,
             nilaiUsbu2: nilai.nilaiUsbu2,
             nilaiNihai: nilai.nilaiNihai,
             nilaiAkhir: nilai.nilaiAkhir,
-          })),
+          },
         });
       }
     });

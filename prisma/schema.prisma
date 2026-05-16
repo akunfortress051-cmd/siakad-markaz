@@ -27,12 +27,13 @@ model Kelas {
 
 model Mapel {
   id                 String         @id @default(cuid())
-  nama_indo          String         @unique
+  nama_indo          String
   nama_arab          String
   jumlah_tes         Int            @default(3)
   tampil_di_syahadah Boolean        @default(true)
   masuk_akumulasi    Boolean        @default(true)
   bobot              Int            @default(1)
+  bobot_usbu         Int            @default(1)
   programMapels      ProgramMapel[]
   nilaiList          Nilai[]
 }
@@ -103,7 +104,7 @@ model Nilai {
   nilaiUsbu1 Float?
   nilaiUsbu2 Float?
   nilaiNihai Float?
-  nilaiAkhir Int?
+  nilaiAkhir Float?
   riwayat    RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
   mapel      Mapel         @relation(fields: [mapelId], references: [id], onDelete: Restrict)
 

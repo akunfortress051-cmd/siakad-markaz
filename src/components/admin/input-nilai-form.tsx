@@ -122,7 +122,7 @@ export function InputNilaiForm({
     const currN = val.n === "" ? null : Number(val.n);
 
     const currA = mapel.jumlah_tes === 1 ? (val.a === "" ? null : Number(val.a)) :
-      ((currU1 !== null || currU2 !== null || currN !== null) ? Math.round(((currU1 || 0) * 0.3) + ((currU2 || 0) * 0.3) + ((currN || 0) * 0.4)) : null);
+      ((currU1 !== null || currU2 !== null || currN !== null) ? Number((((currU1 || 0) * 0.3) + ((currU2 || 0) * 0.3) + ((currN || 0) * 0.4)).toFixed(2)) : null);
 
     return {
       mapelId: mapel.id,

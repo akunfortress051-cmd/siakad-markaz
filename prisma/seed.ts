@@ -19,29 +19,89 @@ async function seedProgramAndMapel() {
       },
     });
 
-    for (const [index, mapelData] of programData.mapel.entries()) {
-      const mapel = await prisma.mapel.upsert({
-        where: { nama_indo: mapelData.nama_indo },
-        update: {
-          nama_arab: mapelData.nama_arab,
-        },
-        create: {
-          nama_indo: mapelData.nama_indo,
-          nama_arab: mapelData.nama_arab,
-        },
-      });
+    // Ambil daftar relasi lama untuk program ini agar kita tahu mapel mana saja milik program ini
+    const oldRels = await prisma.programMapel.findMany({
+      where: { programId: program.id },
+      include: { mapel: true },
+    });
+    const oldMapelMap = new Map(oldRels.map(r => [r.mapel.nama_indo, r.mapel]));
 
-      await prisma.programMapel.upsert({
-        where: {
-          programId_mapelId: {
-            programId: program.id,
-            mapelId: mapel.id,
+    // Hapus relasi lama agar urutan bisa di-rebuild tanpa konflik unique constraint
+    await prisma.programMapel.deleteMany({ where: { programId: program.id } });
+
+    // Ambil daftar riwayatId untuk program ini agar siap melakukan migrasi Nilai jika diperlukan
+    const riwayatList = await prisma.riwayatSantri.findMany({
+      where: { programId: program.id },
+      select: { id: true }
+    });
+    const riwayatIds = riwayatList.map(r => r.id);
+
+    for (const [index, mapelData] of programData.mapel.entries()) {
+      let mapel = oldMapelMap.get(mapelData.nama_indo);
+      let needsMigrationFromOldId: string | null = null;
+
+      if (mapel) {
+        // Cek apakah mapel ini MASIH dipakai/di-share oleh program lain
+        const otherProgramCount = await prisma.programMapel.count({
+          where: { mapelId: mapel.id, programId: { not: program.id } }
+        });
+
+        // Jika dipakai program lain, kita pisahkan agar setiap program memiliki entitas Mapel mandiri
+        // dan migrasikan data Nilai lama santri ke entitas Mapel yang baru ini.
+        if (otherProgramCount > 0) {
+          needsMigrationFromOldId = mapel.id;
+          mapel = undefined; // Force create new independent mapel
+        }
+      }
+
+      if (!mapel) {
+        // Cari mapel dengan nama tersebut yang belum dipakai program manapun
+        mapel = await prisma.mapel.findFirst({
+          where: {
+            nama_indo: mapelData.nama_indo,
+            programMapels: { none: {} },
           },
-        },
-        update: {
-          urutan: index + 1,
-        },
-        create: {
+        }) ?? undefined;
+      }
+
+      if (mapel) {
+        await prisma.mapel.update({
+          where: { id: mapel.id },
+          data: {
+            nama_arab: mapelData.nama_arab,
+            bobot: mapelData.bobot ?? 1,
+            bobot_usbu: mapelData.bobot_usbu ?? 1,
+            masuk_akumulasi: mapelData.masuk_akumulasi ?? true,
+            tampil_di_syahadah: mapelData.tampil_di_syahadah ?? true,
+            jumlah_tes: mapelData.jumlah_tes ?? 3,
+          },
+        });
+      } else {
+        mapel = await prisma.mapel.create({
+          data: {
+            nama_indo: mapelData.nama_indo,
+            nama_arab: mapelData.nama_arab,
+            bobot: mapelData.bobot ?? 1,
+            bobot_usbu: mapelData.bobot_usbu ?? 1,
+            masuk_akumulasi: mapelData.masuk_akumulasi ?? true,
+            tampil_di_syahadah: mapelData.tampil_di_syahadah ?? true,
+            jumlah_tes: mapelData.jumlah_tes ?? 3,
+          },
+        });
+
+        if (needsMigrationFromOldId && riwayatIds.length > 0) {
+          await prisma.nilai.updateMany({
+            where: {
+              mapelId: needsMigrationFromOldId,
+              riwayatId: { in: riwayatIds }
+            },
+            data: { mapelId: mapel.id }
+          });
+        }
+      }
+
+      await prisma.programMapel.create({
+        data: {
           programId: program.id,
           mapelId: mapel.id,
           urutan: index + 1,
