@@ -122,6 +122,10 @@ export function AbsensiKegiatanClient({
       const result = await res.json();
       if (result.success) {
         toast.success(`Berhasil menyimpan ${result.count} data absensi kegiatan`);
+        // Server otomatis kirim WA jika semua sakan sudah absen
+        if (result.waSent) {
+          toast.success(`📱 ${result.waDetail}`);
+        }
       } else {
         toast.error(result.error || "Gagal menyimpan absensi");
       }

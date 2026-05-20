@@ -1,9 +1,11 @@
+import { requirePermission } from "@/lib/permission";
 import { getDashboardSantriRows, getProgramCatalog } from "@/lib/app-data";
 import { ManajemenKelasClient } from "@/components/admin/manajemen-kelas-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ManajemenKelasPage() {
+  await requirePermission("manajemen_kelas");
   const allRows = await getDashboardSantriRows();
   const programList = await getProgramCatalog();
 

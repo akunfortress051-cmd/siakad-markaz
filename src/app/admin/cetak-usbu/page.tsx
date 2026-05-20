@@ -1,8 +1,10 @@
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { CetakUsbuSelector } from "@/components/admin/cetak-usbu-selector";
+import { requirePermission } from "@/lib/permission";
 
 export default async function CetakUsbuPage() {
+  await requirePermission("syahadah");
   const kelasList = await prisma.kelas.findMany({
     include: {
       program: true,

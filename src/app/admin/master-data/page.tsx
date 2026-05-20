@@ -2,10 +2,12 @@ import { MasterDataForm } from "@/components/admin/master-data-form";
 import { ProgramMapelManager } from "@/components/admin/program-mapel-manager";
 import { getProgramCatalog, getTemplateData } from "@/lib/app-data";
 import prisma from "@/lib/prisma";
+import { requirePermission } from "@/lib/permission";
 
 export const dynamic = "force-dynamic";
 
 export default async function MasterDataPage() {
+  await requirePermission("syahadah");
   const [programList, template, programsWithCount] = await Promise.all([
     getProgramCatalog(),
     getTemplateData(),

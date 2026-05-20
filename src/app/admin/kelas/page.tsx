@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import { getProgramCatalog } from "@/lib/app-data";
 import { KelasClient } from "@/components/admin/kelas-client";
 import { Metadata } from "next";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NamaKelasPage() {
+  await requirePermission("manajemen_kelas");
   const programList = await getProgramCatalog();
 
   return (

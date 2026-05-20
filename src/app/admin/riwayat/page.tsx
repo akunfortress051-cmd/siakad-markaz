@@ -1,6 +1,7 @@
 import { getRiwayatSantriRows } from "@/lib/app-data";
 import { RiwayatClient } from "@/components/admin/riwayat-client";
 import { Metadata } from "next";
+import { requirePermission } from "@/lib/permission";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RiwayatPage() {
+  await requirePermission("syahadah");
   const santriGroups = await getRiwayatSantriRows();
 
   return (

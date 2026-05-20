@@ -2,6 +2,7 @@ import { getBaseUrl } from "@/lib/base-url";
 import { Metadata } from "next";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { requirePermission } from "@/lib/permission";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LayoutEditorIndexPage() {
+  await requirePermission("syahadah");
   const programs = await prisma.program.findMany({
     orderBy: { nama_indo: "asc" },
   });

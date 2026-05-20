@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import { Metadata } from "next";
 import { getMasterSantriList } from "@/lib/santri-api";
 import { AbsensiKegiatanClient } from "@/components/admin/absensi-kegiatan-client";
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 
 
 export default async function AbsensiKegiatanPage() {
+  await requirePermission("absen_kegiatan");
   const session = await getSession();
   const userSakan = session?.sakan || undefined;
 

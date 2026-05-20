@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import prisma from "@/lib/prisma";
 import { DufahManager } from "@/components/admin/dufah-manager";
 import { syncDufahTable, getActiveDufahName } from "@/lib/absensi";
@@ -5,6 +6,7 @@ import { syncDufahTable, getActiveDufahName } from "@/lib/absensi";
 export const dynamic = "force-dynamic";
 
 export default async function DufahPage() {
+  await requirePermission("manajemen_dufah");
   await syncDufahTable();
   const activeDufahName = await getActiveDufahName();
 

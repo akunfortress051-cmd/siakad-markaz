@@ -15,16 +15,15 @@ const AVAILABLE_PERMISSIONS = [
   { id: "absen_sakan", label: "Absen Sakan", desc: "Akses untuk absen kehadiran di asrama" },
   { id: "absen_kelas", label: "Absen Kelas", desc: "Akses untuk absen kehadiran santri di kelas" },
   { id: "absen_kegiatan", label: "Absen Kegiatan", desc: "Akses untuk absen kegiatan santri" },
-  { id: "absen_pengajar", label: "Absen Pengajar", desc: "Akses untuk absen diri sendiri (pengajar/guru)" },
-  { id: "input_nilai", label: "Input Nilai", desc: "Akses untuk input nilai akademik" },
   { id: "rekap_sakan", label: "Rekap Sakan", desc: "Akses untuk melihat rekap kehadiran sakan" },
   { id: "rekap_kelas", label: "Rekap Kelas", desc: "Akses untuk melihat rekap kehadiran kelas" },
   { id: "rekap_kegiatan", label: "Rekap Kegiatan", desc: "Akses untuk melihat rekap kegiatan" },
   { id: "rekap_pengajar", label: "Rekap Pengajar", desc: "Akses untuk melihat laporan absen pengajar" },
-  { id: "manajemen_kelas", label: "Manajemen Kelas", desc: "Akses untuk atur plotting kelas" },
-  { id: "manajemen_dufah", label: "Manajemen Duf'ah", desc: "Akses untuk tambah/edit angkatan" },
-  { id: "manajemen_user", label: "Manajemen User & Role", desc: "Akses khusus Super Admin (tidak disarankan untuk KSU/Pengajar)" },
-  { id: "syahadah", label: "Manajemen Syahadah", desc: "Akses untuk fitur sertifikat & printout" },
+  { id: "manajemen_kelas", label: "Manajemen Kelas", desc: "Akses untuk atur plotting kelas dan ruang" },
+  { id: "manajemen_sesi", label: "Jadwal Buka/Tutup Sesi", desc: "Akses untuk mengatur jadwal mengajar (sesi)" },
+  { id: "manajemen_dufah", label: "Manajemen Angkatan & Agenda", desc: "Akses untuk tambah/edit angkatan dan agenda" },
+  { id: "manajemen_user", label: "Manajemen User & Role", desc: "Akses khusus Super Admin" },
+  { id: "syahadah", label: "Manajemen Syahadah", desc: "Akses untuk fitur sertifikat, cetak, dan riwayat" },
 ];
 
 export default function ManajemenRolePage() {

@@ -1,6 +1,7 @@
 import { getDashboardSantriRows, getProgramCatalog } from "@/lib/app-data";
 import { SyahadahClient } from "@/components/admin/syahadah-client";
 import { Metadata } from "next";
+import { requirePermission } from "@/lib/permission";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SyahadahPage() {
+  await requirePermission("syahadah");
   const allRows = await getDashboardSantriRows();
   const santriRows = allRows.filter((santri: any) => santri.isAktif);
   const programList = await getProgramCatalog();

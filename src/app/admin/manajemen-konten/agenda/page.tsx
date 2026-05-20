@@ -1,9 +1,11 @@
+import { requirePermission } from "@/lib/permission";
 import prisma from "@/lib/prisma";
 import { AgendaClient } from "@/components/admin/agenda-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function AgendaPage() {
+  await requirePermission("manajemen_dufah");
   const agendas = await prisma.agenda.findMany({
     orderBy: { waktuMulai: "desc" }
   });

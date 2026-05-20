@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { parseWibDateString, getActiveRiwayatListForAbsen } from "@/lib/absensi";
+import { getMasterSantriList } from "@/lib/santri-api";
+import { sendWhatsAppMessage, formatKegiatanAlphaReport } from "@/lib/fonnte";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,6 +48,11 @@ export async function POST(request: Request) {
 
     const parsedDate = parseWibDateString(tanggal);
 
+    // --- Cek apakah SEBELUM save semua sakan sudah lengkap ---
+    // Jika sudah lengkap sebelum save ini, berarti ini re-submit → jangan kirim WA lagi
+    const allSakanAlreadyComplete = await checkAllSakanComplete(tanggal, kategoriId, parsedDate);
+
+    // --- Simpan absensi ---
     const operations = absenList.map((absen) =>
       prisma.absenKegiatan.upsert({
         where: {
@@ -71,9 +78,152 @@ export async function POST(request: Request) {
 
     await prisma.$transaction(operations);
 
-    return NextResponse.json({ success: true, count: operations.length });
+    // --- Setelah save, cek lagi apakah sekarang semua sakan sudah lengkap ---
+    let waSent = false;
+    let waDetail = "";
+
+    if (!allSakanAlreadyComplete) {
+      const nowComplete = await checkAllSakanComplete(tanggal, kategoriId, parsedDate);
+
+      if (nowComplete) {
+        // Ini submit terakhir yang melengkapi semua sakan → kirim WA
+        const waResult = await sendKegiatanAlphaWa(tanggal, kategoriId, parsedDate);
+        waSent = waResult.sent;
+        waDetail = waResult.detail;
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      count: operations.length,
+      waSent,
+      waDetail,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Gagal menyimpan absensi kegiatan" }, { status: 500 });
   }
+}
+
+/**
+ * Cek apakah semua sakan sudah memiliki setidaknya 1 record absen kegiatan
+ * untuk kategori + tanggal tertentu.
+ */
+async function checkAllSakanComplete(
+  tanggalStr: string,
+  kategoriId: string,
+  parsedDate: Date,
+): Promise<boolean> {
+  const masterSantriList = await getMasterSantriList();
+
+  // Kumpulkan semua sakan unik dari santri aktif
+  const allSakan = new Set<string>();
+  for (const ms of masterSantriList) {
+    if (ms.isAktif && ms.sakan && ms.sakan !== "-") {
+      allSakan.add(ms.sakan);
+    }
+  }
+
+  if (allSakan.size === 0) return false;
+
+  // Ambil semua record absen kegiatan untuk tanggal+kategori ini
+  const absenRecords = await prisma.absenKegiatan.findMany({
+    where: {
+      tanggal: parsedDate,
+      kategoriId,
+    },
+    select: {
+      riwayat: {
+        select: {
+          santriId: true,
+          dufahNama: true,
+        },
+      },
+    },
+  });
+
+  // Map santriId -> dufah aktif
+  const activeSantriMap = new Map<string, string>();
+  for (const ms of masterSantriList) {
+    if (ms.isAktif) {
+      activeSantriMap.set(ms.id, ms.dufahNama);
+    }
+  }
+
+  // Tentukan sakan mana yang sudah ada record-nya
+  const sakanSudahAbsen = new Set<string>();
+  for (const record of absenRecords) {
+    const activeDufah = activeSantriMap.get(record.riwayat.santriId);
+    if (activeDufah && activeDufah === record.riwayat.dufahNama) {
+      const ms = masterSantriList.find(m => m.id === record.riwayat.santriId);
+      if (ms && ms.sakan && ms.sakan !== "-") {
+        sakanSudahAbsen.add(ms.sakan);
+      }
+    }
+  }
+
+  // Semua sakan sudah absen?
+  for (const s of allSakan) {
+    if (!sakanSudahAbsen.has(s)) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Kirim daftar santri alpha untuk kegiatan ke nomor WA keamanan/kedisiplinan.
+ */
+async function sendKegiatanAlphaWa(
+  tanggalStr: string,
+  kategoriId: string,
+  parsedDate: Date,
+): Promise<{ sent: boolean; detail: string }> {
+  const target = process.env.FONNTE_WA_KEGIATAN_TARGET;
+  if (!target) {
+    return { sent: false, detail: "FONNTE_WA_KEGIATAN_TARGET belum dikonfigurasi" };
+  }
+
+  // Ambil nama kategori
+  const kategori = await prisma.kategoriKegiatan.findUnique({
+    where: { id: kategoriId },
+  });
+  if (!kategori) {
+    return { sent: false, detail: "Kategori tidak ditemukan" };
+  }
+
+  // Ambil semua santri + absen data
+  const santriList = await getActiveRiwayatListForAbsen(undefined, "ALL");
+  const santriIds = santriList.map((s) => s.riwayatId);
+
+  const absenData = await prisma.absenKegiatan.findMany({
+    where: {
+      tanggal: parsedDate,
+      kategoriId,
+      riwayatId: { in: santriIds },
+    },
+  });
+
+  const absenMap = new Map<string, string>();
+  for (const a of absenData) {
+    absenMap.set(a.riwayatId, a.status);
+  }
+
+  // Filter santri yang ALPHA
+  const alphaList = santriList
+    .filter((s) => absenMap.get(s.riwayatId) === "ALPHA")
+    .map((s) => ({ nama: s.nama, sakan: s.sakan || "-" }));
+
+  if (alphaList.length === 0) {
+    return { sent: false, detail: "Tidak ada santri alpha" };
+  }
+
+  const message = formatKegiatanAlphaReport(tanggalStr, kategori.nama, alphaList);
+  const result = await sendWhatsAppMessage(target, message);
+
+  return { 
+    sent: result.success, 
+    detail: result.success 
+      ? `Daftar ${alphaList.length} santri alpha terkirim` 
+      : (result.detail || "Gagal mengirim") 
+  };
 }

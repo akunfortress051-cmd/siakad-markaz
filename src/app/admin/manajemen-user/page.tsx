@@ -39,6 +39,7 @@ const SESI_OPTIONS = [
 export default function ManajemenUserPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<string[]>(["ADMIN", "WALI_KELAS", "PENGAJAR", "KSU"]);
+  const [rolePermissions, setRolePermissions] = useState<{role: string, permission: string}[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [sakanList, setSakanList] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,8 +88,9 @@ export default function ManajemenUserPage() {
       if (sakanRes.ok) setSakanList(await sakanRes.json());
       
       if (rolesRes.ok) {
-        const { roles: apiRoles } = await rolesRes.json();
+        const { roles: apiRoles, permissions: apiPerms } = await rolesRes.json();
         setRoles(apiRoles);
+        if (apiPerms) setRolePermissions(apiPerms);
       }
     } catch (error) {
       toast.error("Gagal mengambil data");
@@ -250,6 +252,12 @@ export default function ManajemenUserPage() {
     }
   };
 
+  const canPlotSesi = (role: string) => {
+    if (role === "PENGAJAR" || role === "WALI_KELAS") return true;
+    const hasAccess = rolePermissions.some(p => p.role === role && (p.permission === "absen_kelas" || p.permission === "manajemen_sesi"));
+    return hasAccess;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -331,7 +339,7 @@ export default function ManajemenUserPage() {
                         {user.role === "KSU" && (
                           <span>Sakan Default: {user.sakan || <span className="text-rose-500 font-semibold">Belum diset</span>}</span>
                         )}
-                        {(user.role === "PENGAJAR" || user.role === "WALI_KELAS") && (
+                        {canPlotSesi(user.role) && (
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleOpenPlotting(user)}
@@ -342,7 +350,7 @@ export default function ManajemenUserPage() {
                             </button>
                           </div>
                         )}
-                        {user.role !== "WALI_KELAS" && user.role !== "KSU" && user.role !== "PENGAJAR" && (
+                        {!canPlotSesi(user.role) && user.role !== "KSU" && (
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
@@ -452,11 +460,14 @@ export default function ManajemenUserPage() {
                 </select>
               </div>
 
-              {formData.role === "WALI_KELAS" && (
+              {/* Wali Kelas / Custom Role Option for assigning a main class */}
+              {(formData.role === "WALI_KELAS" || (!["ADMIN", "KSU", "PENGAJAR"].includes(formData.role) && canPlotSesi(formData.role))) && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Wali Kelas Untuk Ruangan</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Hubungkan ke Kelas Utama (Opsional untuk Role Custom)
+                  </label>
                   <select
-                    required
+                    required={formData.role === "WALI_KELAS"}
                     value={formData.kelasId}
                     onChange={(e) => setFormData({ ...formData, kelasId: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"

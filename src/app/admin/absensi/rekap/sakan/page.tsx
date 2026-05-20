@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { RekapFilterClient } from "@/components/admin/rekap-filter-client";
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function RekapSakanPage() {
+export default async function RekapSakanPage() {
+  await requirePermission("rekap_sakan");
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 pb-2">

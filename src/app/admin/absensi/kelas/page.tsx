@@ -3,6 +3,7 @@ import { getProgramCatalog } from "@/lib/app-data";
 import { AbsensiKelasClient } from "@/components/admin/absensi-kelas-client";
 
 import { getSession } from "@/lib/auth";
+import { requirePermission } from "@/lib/permission";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AbsensiKelasPage() {
+  await requirePermission("absen_kelas");
   const session = await getSession();
   const programList = await getProgramCatalog();
   
@@ -19,22 +21,23 @@ export default async function AbsensiKelasPage() {
   let teacherSessions: { sesi: string, kelasId: string }[] = [];
   
   if (session) {
-    if (session.role === "WALI_KELAS" || session.role === "PENGAJAR") {
+    if (session.role !== "ADMIN") {
       const ps = await prisma.pengajarSesi.findMany({
         where: { userId: session.userId },
         select: { kelasId: true, sesi: true }
       });
-      // Ambil ID kelas unik
-      allowedClassIds = Array.from(new Set(ps.map(p => p.kelasId)));
       
-      // Jika WALI_KELAS belum diplotting, defaultkan ke kelas yang dia wali-kan untuk semua sesi? 
-      // Atau biarkan saja, jika dia belum diplotting dia tidak ada jadwal.
-      // Tambahkan kelas utama WALI_KELAS jika ada, jaga-jaga.
-      if (session.role === "WALI_KELAS" && session.kelasId && !allowedClassIds.includes(session.kelasId)) {
-        allowedClassIds.push(session.kelasId);
+      // Jika user punya jadwal ngajar ATAU punya kelasId (Wali Kelas), batasi aksesnya
+      // Jika tidak punya keduanya (misal KSU/Staff pemantau), biarkan allowedClassIds = null (akses semua)
+      if (ps.length > 0 || session.kelasId) {
+        allowedClassIds = Array.from(new Set(ps.map(p => p.kelasId)));
+        
+        if (session.kelasId && !allowedClassIds.includes(session.kelasId)) {
+          allowedClassIds.push(session.kelasId);
+        }
+        
+        teacherSessions = ps.map(p => ({ sesi: p.sesi, kelasId: p.kelasId }));
       }
-      
-      teacherSessions = ps.map(p => ({ sesi: p.sesi, kelasId: p.kelasId }));
     }
   }
 

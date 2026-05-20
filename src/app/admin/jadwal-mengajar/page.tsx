@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { JadwalMengajarClient } from "@/components/admin/jadwal-mengajar-client";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function JadwalMengajarPage() {
+  await requirePermission("manajemen_kelas");
   const programs = await prisma.program.findMany({
     include: {
       kelasList: {
@@ -25,9 +27,18 @@ export default async function JadwalMengajarPage() {
     }
   });
 
+  const plottingRolesPerm = await prisma.rolePermission.findMany({
+    where: {
+      permission: { in: ["absen_kelas", "manajemen_sesi", "rekap_kelas"] }
+    },
+    select: { role: true }
+  });
+
+  const plottingRoles = Array.from(new Set(["PENGAJAR", "WALI_KELAS", ...plottingRolesPerm.map(p => p.role)]));
+
   const availableTeachers = await prisma.user.findMany({
     where: { 
-      role: { in: ["PENGAJAR", "WALI_KELAS"] },
+      role: { in: plottingRoles },
       isActive: true
     },
     orderBy: { nama: 'asc' },

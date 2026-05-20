@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import { InputNilaiForm } from "@/components/admin/input-nilai-form";
 import { getSantriFormData } from "@/lib/app-data";
 import Link from "next/link";
@@ -12,6 +13,7 @@ export default async function InputNilaiPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePermission("input_nilai");
   const { id } = await params;
   const data = await getSantriFormData(id);
 

@@ -115,3 +115,58 @@ export function formatSakanStatusReport(
 
   return lines.join("\n");
 }
+
+/**
+ * Format laporan santri ALPHA pada kegiatan untuk dikirim ke bagian keamanan/kedisiplinan.
+ * 
+ * Contoh output:
+ * ```
+ * يرجي من الأسماء المكتوبة أدناه الاتجاه إلى الرواق التنفيذي في قسم الأمن والانضباط بعد الدراسة
+ * 
+ * Diharapkan semua nama-nama yang tertulis dibawah ini, untuk menghadap ke ruang pengurus dibagian keamanan dan kedisiplinan setelah pembelajaran
+ * 
+ * *Daftar Alpha - Halaqoh*
+ * *Rabu, 20 Mei 2026*
+ * 
+ * 1. Ainur Syafiq - Balfaqih
+ * 2. Arsil Azim - Ba'alawy
+ * ...
+ * 
+ * سأنتظركم حتى الساعة الواحدة
+ * Saya tunggu sampai jam dari jam 11.45- 13.00
+ * 
+ * NB : *tanda 1x menandakan tidak hadir pemanggilan 1x,...*
+ * ```
+ */
+export function formatKegiatanAlphaReport(
+  tanggalStr: string,
+  kegiatanNama: string,
+  alphaList: { nama: string; sakan: string }[],
+): string {
+  const lines: string[] = [];
+
+  // Header Arabic
+  lines.push("يرجي  من الأسماء المكتوبة أدناه الاتجاه إلى الرواق التنفيذي في قسم الأمن والانضباط بعد الدراسة");
+  lines.push("");
+  // Header Indonesian
+  lines.push("Diharapkan semua nama-nama yang tertulis dibawah ini, untuk menghadap ke ruang pengurus dibagian keamanan dan kedisiplinan setelah pembelajaran");
+  lines.push("");
+
+  // Tanggal + nama kegiatan
+  lines.push(`*Daftar Alpha - ${kegiatanNama}*`);
+  lines.push(formatTanggalWa(tanggalStr));
+  lines.push("");
+
+  // Numbered list: Nama - Sakan
+  alphaList.forEach((s, i) => {
+    lines.push(`${i + 1}. ${s.nama} - ${s.sakan}`);
+  });
+
+  lines.push("");
+  lines.push("سأنتظركم حتى الساعة الواحدة");
+  lines.push("Saya tunggu sampai jam dari jam 11.45- 13.00");
+  lines.push("");
+  lines.push("NB : *tanda 1x menandakan tidak hadir pemanggilan 1x,tanda 2x menandakan tidak hadir pemanggilan 2x, tanda 3x tidak hadir pemanggilan 3x dan jika sudah sampai 3x maka akan berlaku SP 1 ,tambahan bagi yang telat ataupun tidak hadir*");
+
+  return lines.join("\n");
+}

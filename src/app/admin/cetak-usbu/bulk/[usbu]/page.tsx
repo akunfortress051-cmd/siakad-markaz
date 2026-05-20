@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import prisma from "@/lib/prisma";
 import { getMasterSantriList } from "@/lib/santri-api";
 import { redirect } from "next/navigation";
@@ -5,6 +6,7 @@ import { CetakUsbuDocument } from "@/components/admin/cetak-usbu-document";
 import { getActiveDufahName } from "@/lib/absensi";
 
 export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ usbu: string }> }) {
+  await requirePermission("syahadah");
   const { usbu } = await params;
   const targetUsbu = parseInt(usbu);
 

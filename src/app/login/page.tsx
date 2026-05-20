@@ -4,26 +4,37 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User } from "lucide-react";
 import toast from "react-hot-toast";
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [formData, setFormData] = useState({ username: "", password: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg("");
+
+    if (!turnstileToken) {
+      setErrorMsg("Mohon selesaikan verifikasi Captcha terlebih dahulu");
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, turnstileToken }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        setErrorMsg(data.error || "Gagal login");
         throw new Error(data.error || "Gagal login");
       }
 
@@ -53,6 +64,11 @@ export default function LoginPage() {
         </div>
 
         <div className="p-8">
+          {errorMsg && (
+            <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700 shadow-sm animate-pulse">
+              ⚠️ {errorMsg}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -90,6 +106,15 @@ export default function LoginPage() {
                   placeholder="Masukkan password"
                 />
               </div>
+            </div>
+
+            <div className="flex justify-center pt-2 pb-2">
+              <Turnstile 
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""} 
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => setErrorMsg("Gagal memuat Captcha")}
+                options={{ theme: 'light' }}
+              />
             </div>
 
             <button

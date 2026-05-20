@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permission";
 import { getDashboardSantriRows, getProgramCatalog } from "@/lib/app-data";
 import { DashboardCharts } from "@/components/admin/dashboard-charts";
 import { Metadata } from "next";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
+  await requirePermission("dashboard");
   const [santriRows, programList] = await Promise.all([
     getDashboardSantriRows(),
     getProgramCatalog(),
