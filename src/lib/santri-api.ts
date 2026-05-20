@@ -9,6 +9,7 @@ export type MasterSantri = {
   tanggalMulaiDufah: string | null;
   tanggalSampaiDufah: string | null;
   isAktif: boolean;
+  kategori: string;
 };
 
 type ApiSantriResponse = {
@@ -33,6 +34,7 @@ type ApiSantriResponse = {
     } | null;
   }>;
   isAktif?: boolean;
+  kategori?: string;
 };
 
 const SANTRI_API_URL = "https://ppdb-markaz.vercel.app/api/santri";
@@ -51,6 +53,7 @@ function normalizeSantri(santri: ApiSantriResponse): MasterSantri {
     tanggalMulaiDufah: assignedRiwayat?.dufah?.tanggalBuka ?? null,
     tanggalSampaiDufah: assignedRiwayat?.dufah?.tanggalTutup ?? null,
     isAktif: santri.isAktif ?? false,
+    kategori: santri.kategori ?? "-",
   };
 }
 

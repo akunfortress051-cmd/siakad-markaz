@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { parseWibDateString, getActiveRiwayatListForAbsen } from "@/lib/absensi";
+import { getSession } from "@/lib/auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -24,28 +25,40 @@ export async function GET(request: Request) {
     },
   });
 
+  const userSession = (await getSession()) as any;
+  let absenPengajarData = null;
+  if (userSession && (userSession.role === "PENGAJAR" || userSession.role === "WALI_KELAS")) {
+     absenPengajarData = await prisma.absenPengajar.findUnique({
+       where: {
+         userId_tanggal_sesi: {
+           userId: userSession.userId,
+           tanggal: parsedDate,
+           sesi: sesi as any
+         }
+       }
+     });
+  }
+
   return NextResponse.json({
     santriList,
     absenData: existingAbsen,
+    absenPengajarData,
   });
 }
 
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
-    const { tanggal, sesi, absenList } = payload as { 
-      tanggal: string, 
-      sesi: any,
-      absenList: { riwayatId: string, status: any, keterangan?: string }[] 
-    };
+    const { tanggal, sesi, kelasId, absenList, absenPengajar } = payload as any;
 
     if (!tanggal || !sesi || !absenList || !Array.isArray(absenList)) {
       return NextResponse.json({ error: "Data tidak valid" }, { status: 400 });
     }
 
     const parsedDate = parseWibDateString(tanggal);
+    const userSession = (await getSession()) as any;
 
-    const operations = absenList.map((absen) =>
+    const operations: any[] = absenList.map((absen) =>
       prisma.absenKelas.upsert({
         where: {
           riwayatId_tanggal_sesi: {
@@ -67,6 +80,40 @@ export async function POST(request: Request) {
         },
       })
     );
+
+    if (userSession && (userSession.role === "PENGAJAR" || userSession.role === "WALI_KELAS") && absenPengajar && kelasId) {
+      operations.push(
+        prisma.absenPengajar.upsert({
+          where: {
+            userId_tanggal_sesi: {
+              userId: userSession.userId,
+              tanggal: parsedDate,
+              sesi: sesi,
+            }
+          },
+          update: {
+            waktuMulai: absenPengajar.waktuMulai,
+            waktuSelesai: absenPengajar.waktuSelesai,
+            materi: absenPengajar.materi,
+            atributNametag: absenPengajar.atributNametag,
+            atributKopiah: absenPengajar.atributKopiah,
+            atributBros: absenPengajar.atributBros,
+          },
+          create: {
+            userId: userSession.userId,
+            kelasId: kelasId,
+            tanggal: parsedDate,
+            sesi: sesi,
+            waktuMulai: absenPengajar.waktuMulai,
+            waktuSelesai: absenPengajar.waktuSelesai,
+            materi: absenPengajar.materi,
+            atributNametag: absenPengajar.atributNametag,
+            atributKopiah: absenPengajar.atributKopiah,
+            atributBros: absenPengajar.atributBros,
+          }
+        })
+      );
+    }
 
     await prisma.$transaction(operations);
 

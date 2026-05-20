@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { parseWibDateString, getActiveRiwayatListForAbsen } from "@/lib/absensi";
+import { getActiveRiwayatListForAbsen } from "@/lib/absensi";
+import { parseWibDateString } from "@/lib/jadwal-sesi";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

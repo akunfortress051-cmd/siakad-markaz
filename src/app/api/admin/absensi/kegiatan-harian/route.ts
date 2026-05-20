@@ -7,13 +7,14 @@ export async function GET(request: Request) {
   const tanggal = searchParams.get("tanggal");
   const kategoriId = searchParams.get("kategoriId");
   const sakan = searchParams.get("sakan") || "ALL";
+  const kelasId = searchParams.get("kelasId") || "ALL";
 
   if (!tanggal || !kategoriId) {
     return NextResponse.json({ error: "Tanggal dan Kategori harus diisi" }, { status: 400 });
   }
 
   const parsedDate = parseWibDateString(tanggal);
-  const santriList = await getActiveRiwayatListForAbsen(undefined, sakan);
+  const santriList = await getActiveRiwayatListForAbsen(kelasId, sakan);
   const santriIds = santriList.map((s) => s.riwayatId);
 
   const existingAbsen = await prisma.absenKegiatan.findMany({

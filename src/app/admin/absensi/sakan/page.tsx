@@ -3,6 +3,8 @@ import { getMasterSantriList } from "@/lib/santri-api";
 import { AbsensiSakanClient } from "@/components/admin/absensi-sakan-client";
 
 
+import { getSession } from "@/lib/auth";
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -10,6 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default async function AbsensiSakanPage() {
+  const session = await getSession();
+  const userSakan = session?.sakan || undefined;
+  
   const masterSantri = await getMasterSantriList();
   const sakanSet = new Set<string>();
   masterSantri.forEach(s => {
@@ -27,7 +32,7 @@ export default async function AbsensiSakanPage() {
           Pendataan kehadiran santri di asrama (1x sehari).
         </p>
       </div>
-      <AbsensiSakanClient sakanList={sakanList} />
+      <AbsensiSakanClient sakanList={sakanList} defaultSakan={userSakan} />
     </div>
   );
 }

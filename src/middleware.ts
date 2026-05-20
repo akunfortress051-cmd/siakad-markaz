@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { decrypt } from '@/lib/auth';
+
+const publicRoutes = ['/login', '/api/auth/login'];
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Biarkan route publik dan aset statis lewat
+  if (
+    publicRoutes.includes(pathname) ||
+    pathname.startsWith('/_next/') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
+  // Dapatkan session token
+  const sessionToken = request.cookies.get('session')?.value;
+  
+  // Jika mencoba akses route terproteksi tanpa token, redirect ke login
+  if (!sessionToken && (pathname.startsWith('/admin') || pathname.startsWith('/portal'))) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  if (sessionToken) {
+    const session = await decrypt(sessionToken);
+    
+    if (!session) {
+      // Token tidak valid, redirect ke login
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('session');
+      return response;
+    }
+
+    // Role-based routing: 
+    // Semua user (ADMIN, WALI_KELAS, PENGAJAR, KSU) menggunakan portal /admin
+    // Akses spesifik halaman akan dibatasi oleh UI (Sidebar) dan API
+    
+    // Redirect / atau /portal ke /admin/dashboard
+    if (pathname === '/' || pathname.startsWith('/portal')) {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    }
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};

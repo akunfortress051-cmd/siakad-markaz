@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { ChevronLeft, FileText, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, FileText, ChevronDown, ChevronRight, Search, Copy, ClipboardCheck, AlertTriangle } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -12,12 +12,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
 } from "recharts";
+import { StackedProgressBar } from "@/components/admin/stacked-progress-bar";
 
 type SantriDetail = {
   id: string;
@@ -97,14 +95,22 @@ export function AbsensiRekapDetailClient() {
       { name: "Alpha", total: counts.ALPHA },
     ];
 
-    const pieData = STATUS_CONFIG.map((c) => ({
-      name: c.label,
-      value: counts[c.key as keyof typeof counts],
-      color: c.color,
-    })).filter((c) => c.value > 0);
-
-    return { counts, total, barData, pieData };
+    return { counts, total, barData };
   }, [data]);
+
+  // --- Santri dengan ketidakhadiran >= 12 (untuk type=kelas) ---
+  const santriSP = useMemo(() => {
+    if (type !== "kelas") return [];
+    const map = new Map<string, { nama: string; kelas: string; total: number }>();
+    data.forEach((r) => {
+      if (r.status !== "HADIR") {
+        const key = r.namaSantri;
+        if (!map.has(key)) map.set(key, { nama: r.namaSantri, kelas: r.kelas, total: 0 });
+        map.get(key)!.total++;
+      }
+    });
+    return Array.from(map.values()).filter((s) => s.total >= 12).sort((a, b) => a.kelas.localeCompare(b.kelas) || a.nama.localeCompare(b.nama));
+  }, [data, type]);
 
   // Group by Kelas/Sakan
   const groupedData = useMemo(() => {
@@ -142,6 +148,80 @@ export function AbsensiRekapDetailClient() {
   }
 
   const collapseAll = () => setExpandedGroups({});
+
+  // --- Clipboard State ---
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyToClipboard = useCallback((text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2500);
+    });
+  }, []);
+
+  // --- Generate Laporan Pemanggilan (type=kegiatan) ---
+  const generateLaporanPemanggilan = useCallback(() => {
+    const alphaRecords = data.filter((r) => r.status === "ALPHA");
+    if (alphaRecords.length === 0) return "";
+    const header = `يرجي  من الأسماء المكتوبة أدناه الاتجاه إلى الرواق التنفيذي في قسم الأمن والانضباط بعد الدراسة\n\nDiharapkan semua nama-nama yang tertulis dibawah ini, untuk menghadap ke ruang pengurus dibagian keamanan dan kedisiplinan setelah pembelajaran\n`;
+    const names = alphaRecords.map((r, i) => `${i + 1}. ${r.namaSantri} - ${r.sakan}`).join("\n");
+    const footer = `\nسأنتظركم حتى الساعة الواحدة\nSaya tunggu sampai jam dari jam 11.45- 13.00\n\nNB : *tanda 1x menandakan tidak hadir pemanggilan 1x,tanda 2x menandakan tidak hadir pemanggilan 2x, tanda 3x tidak hadir pemanggilan 3x dan jika sudah sampai 3x maka akan berlaku SP 1 ,tambahan bagi yang telat ataupun tidak hadir*`;
+    return `${header}\n${names}\n${footer}`;
+  }, [data]);
+
+  // --- Generate Rekap Alfa Mingguan (type=kelas) ---
+  const generateRekapAlfaMingguan = useCallback(() => {
+    const alphaRecords = data.filter((r) => r.status === "ALPHA");
+    if (alphaRecords.length === 0) return "";
+    // Tentukan usbu label dari data
+    const usbuLabels = Array.from(new Set(data.map(r => r.usbu)));
+    const usbuTitle = usbuLabels.length === 1 ? usbuLabels[0] : usbuLabels.join(" & ");
+    let result = `*REKAP ALFA ${usbuTitle.toUpperCase()}*\n`;
+
+    // Group alpha by kelas
+    const byKelas: Record<string, typeof alphaRecords> = {};
+    alphaRecords.forEach((r) => {
+      if (!byKelas[r.kelas]) byKelas[r.kelas] = [];
+      byKelas[r.kelas].push(r);
+    });
+
+    Object.keys(byKelas).sort().forEach((kelas) => {
+      result += `\n*${kelas.toUpperCase()}*\n`;
+      // Group by tanggal
+      const byTanggal: Record<string, typeof alphaRecords> = {};
+      byKelas[kelas].forEach((r) => {
+        if (!byTanggal[r.tanggal]) byTanggal[r.tanggal] = [];
+        byTanggal[r.tanggal].push(r);
+      });
+      Object.keys(byTanggal).sort().forEach((tgl) => {
+        const dateFormatted = format(new Date(tgl), "EEEE, d MMMM yyyy", { locale: id });
+        result += `📖${dateFormatted}\n`;
+        byTanggal[tgl].forEach((r) => {
+          const sesiLabel = r.sesi ? r.sesi.replace("SESI_", "sesi ") : "";
+          result += `- ${r.namaSantri}${sesiLabel ? `, ${sesiLabel}` : ""}\n`;
+        });
+        result += "\n";
+      });
+    });
+    return result.trim();
+  }, [data]);
+
+  // --- Generate Laporan SP (type=kelas, santri >= 12x) ---
+  const generateLaporanSP = useCallback(() => {
+    if (santriSP.length === 0) return "";
+    let result = `*DATA TOTAL KETIDAKHADIRAN 12 / LEBIH*\n`;
+    const byKelas: Record<string, typeof santriSP> = {};
+    santriSP.forEach((s) => {
+      if (!byKelas[s.kelas]) byKelas[s.kelas] = [];
+      byKelas[s.kelas].push(s);
+    });
+    Object.keys(byKelas).sort().forEach((kelas) => {
+      result += `\n*${kelas.toUpperCase()}*\n`;
+      byKelas[kelas].forEach((s, i) => {
+        result += `${i + 1}. ${s.nama} ${s.total}\n`;
+      });
+    });
+    return result.trim();
+  }, [santriSP]);
 
   if (!type || !dari || !sampai) {
     return (
@@ -208,46 +288,121 @@ export function AbsensiRekapDetailClient() {
               </div>
             </div>
 
-            {/* Pie Chart Card & Summary */}
-            <div className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6 lg:gap-8">
-              <div className="flex-1 w-full h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats.pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {stats.pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value, name) => [`${value} Catatan`, name]}
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, color: '#475569' }} />
-                  </PieChart>
-                </ResponsiveContainer>
+            {/* Summary Card + Stacked Bar */}
+            <div className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {STATUS_CONFIG.map((s) => {
+                  const val = stats.counts[s.key as keyof typeof stats.counts];
+                  return (
+                    <div key={s.key} className="rounded-2xl border border-slate-100 p-4 text-center bg-slate-50/50">
+                      <p className="text-2xl font-black text-slate-900">{val.toLocaleString("id-ID")}</p>
+                      <div className="flex items-center justify-center gap-1.5 mt-1">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                        <span className="text-xs font-bold text-slate-500">{s.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="shrink-0 w-full md:w-48 space-y-3">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                  <p className="text-3xl font-black text-slate-800">{stats.total}</p>
-                  <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">Total Data</p>
-                </div>
-                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
-                  <p className="text-2xl font-black text-emerald-700">
-                    {stats.total > 0 ? Math.round((stats.counts.HADIR / stats.total) * 100) : 0}%
-                  </p>
-                  <p className="text-xs font-semibold text-emerald-600 mt-1 uppercase tracking-wider">Persentase Hadir</p>
-                </div>
+              <StackedProgressBar
+                hadir={stats.counts.HADIR}
+                izin={stats.counts.IZIN}
+                sakit={stats.counts.SAKIT}
+                alpha={stats.counts.ALPHA}
+                height="h-4"
+              />
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-xs font-semibold text-slate-400">Total: {stats.total.toLocaleString("id-ID")} catatan</p>
+                <p className="text-sm font-black text-emerald-600">
+                  {stats.total > 0 ? Math.round((stats.counts.HADIR / stats.total) * 100) : 0}% Hadir
+                </p>
               </div>
             </div>
           </div>
+
+          {/* === AKSI CEPAT: COPY BUTTONS === */}
+          {type === "kegiatan" && stats.counts.ALPHA > 0 && (
+            <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-800">
+                    {stats.counts.ALPHA} santri tercatat Alfa pada kegiatan ini
+                  </p>
+                  <p className="text-xs text-amber-600 font-medium mt-0.5">
+                    Salin laporan pemanggilan untuk dikirim ke grup WhatsApp
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => copyToClipboard(generateLaporanPemanggilan(), "pemanggilan")}
+                className="flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 shrink-0"
+              >
+                {copiedKey === "pemanggilan" ? <ClipboardCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedKey === "pemanggilan" ? "Tersalin!" : "📋 Salin Laporan Pemanggilan"}
+              </button>
+            </div>
+          )}
+
+          {type === "kelas" && (
+            <div className="space-y-4">
+              {/* Tombol Copy Rekap Alfa Mingguan */}
+              {stats.counts.ALPHA > 0 && (
+                <div className="rounded-[2rem] border border-violet-200 bg-violet-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold text-violet-800">📋 Rekap Alfa Mingguan</p>
+                    <p className="text-xs text-violet-600 font-medium mt-0.5">
+                      Salin daftar santri yang alfa per kelas per hari (format WhatsApp)
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(generateRekapAlfaMingguan(), "alfaMingguan")}
+                    className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700 shrink-0"
+                  >
+                    {copiedKey === "alfaMingguan" ? <ClipboardCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedKey === "alfaMingguan" ? "Tersalin!" : "Salin Rekap Alfa"}
+                  </button>
+                </div>
+              )}
+
+              {/* Panel Santri SP (>= 12x ketidakhadiran) */}
+              {santriSP.length > 0 && (
+                <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-rose-800">
+                          🚨 {santriSP.length} Santri dengan Ketidakhadiran ≥ 12 Kali
+                        </p>
+                        <p className="text-xs text-rose-600 font-medium mt-0.5">
+                          Salin data ini untuk proses Surat Peringatan (SP)
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(generateLaporanSP(), "sp")}
+                      className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700 shrink-0"
+                    >
+                      {copiedKey === "sp" ? <ClipboardCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copiedKey === "sp" ? "Tersalin!" : "🚨 Salin Data SP"}
+                    </button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {santriSP.map((s) => (
+                      <div key={s.nama} className="flex items-center justify-between bg-white rounded-xl border border-rose-100 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{s.nama}</p>
+                          <p className="text-[11px] font-semibold text-slate-500">{s.kelas}</p>
+                        </div>
+                        <span className="text-lg font-black text-rose-600">{s.total}×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Grouped Data Wrapper */}
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
@@ -317,17 +472,16 @@ export function AbsensiRekapDetailClient() {
                           </div>
                         </div>
 
-                        {/* Visual bar kecil di sebelah kanan header */}
-                        <div className="hidden md:flex gap-1">
-                          {STATUS_CONFIG.map(c => {
-                            const v = gCounts[c.key as keyof typeof gCounts];
-                            if (v === 0) return null;
-                            return (
-                              <span key={c.key} className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${c.light}`}>
-                                {v} {c.label}
-                              </span>
-                            )
-                          })}
+                        {/* Visual stacked bar di sebelah kanan header */}
+                        <div className="hidden md:block w-40 lg:w-56">
+                          <StackedProgressBar
+                            hadir={gCounts.HADIR}
+                            izin={gCounts.IZIN}
+                            sakit={gCounts.SAKIT}
+                            alpha={gCounts.ALPHA}
+                            showLabels={false}
+                            height="h-2"
+                          />
                         </div>
                       </button>
 
@@ -477,16 +631,6 @@ export function AbsensiRekapDetailClient() {
                               const datesInGroup = Array.from(new Set(group.records.map(r => r.tanggal))).sort();
                               const santris = Array.from(new Set(group.records.map(r => r.namaSantri))).sort();
 
-                              // Group dates by Usbu
-                              const weeksMap = new Map<string, string[]>();
-                              datesInGroup.forEach(date => {
-                                const sampleRecord = group.records.find(r => r.tanggal === date);
-                                const wk = sampleRecord ? sampleRecord.usbu : "Usbu'";
-                                if (!weeksMap.has(wk)) weeksMap.set(wk, []);
-                                weeksMap.get(wk)!.push(date);
-                              });
-                              const weeks = Array.from(weeksMap.entries()).map(([wk, dts]) => ({ wk, dates: dts }));
-
                               const recordMap = new Map();
                               group.records.forEach(r => recordMap.set(`${r.namaSantri}_${r.tanggal}`, r));
 
@@ -496,35 +640,20 @@ export function AbsensiRekapDetailClient() {
                                     <thead className="bg-slate-50">
                                       <tr>
                                         <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-slate-300 font-bold text-slate-700 sticky left-0 bg-slate-50 z-20 min-w-[200px] uppercase text-xs tracking-wider">NAMA SANTRI</th>
-                                        {weeks.map((week, wIdx) => (
-                                          <React.Fragment key={`wh1-${week.wk}`}>
-                                            {week.dates.map(date => (
-                                              <th key={`dh1-${date}`} rowSpan={2} className="px-1.5 py-2 text-center border-b border-r border-slate-200 font-semibold text-slate-600 min-w-[36px] text-xs">
-                                                <div className="flex flex-col items-center">
-                                                  <span className="text-[10px] text-slate-400">{format(new Date(date), "E", { locale: id })}</span>
-                                                  <span>{format(new Date(date), "d", { locale: id })}</span>
-                                                </div>
-                                              </th>
-                                            ))}
-                                            <th key={`wh1-sum-${week.wk}`} colSpan={4} className="px-2 py-2 text-center border-b border-l-2 border-r-2 border-slate-300 font-bold text-slate-800 bg-slate-100/50 text-xs">
-                                              {week.wk}
-                                            </th>
-                                          </React.Fragment>
+                                        {datesInGroup.map(date => (
+                                          <th key={`dh1-${date}`} rowSpan={2} className="px-1.5 py-2 text-center border-b border-r border-slate-200 font-semibold text-slate-600 min-w-[36px] text-xs">
+                                            <div className="flex flex-col items-center">
+                                              <span className="text-[10px] text-slate-400">{format(new Date(date), "E", { locale: id })}</span>
+                                              <span>{format(new Date(date), "d", { locale: id })}</span>
+                                            </div>
+                                          </th>
                                         ))}
                                         <th colSpan={4} className="px-3 py-2 text-center border-b border-l-4 border-slate-400 font-black text-slate-900 bg-emerald-50 text-xs">
                                           TOTAL
                                         </th>
                                       </tr>
                                       <tr>
-                                        {weeks.map((week) => (
-                                          <React.Fragment key={`wh2-${week.wk}`}>
-                                            <th className="px-1.5 py-1.5 text-center text-[10px] font-bold text-emerald-600 bg-slate-50 border-b border-r border-l-2 border-slate-300">H</th>
-                                            <th className="px-1.5 py-1.5 text-center text-[10px] font-bold text-indigo-600 bg-slate-50 border-b border-r border-slate-300">I</th>
-                                            <th className="px-1.5 py-1.5 text-center text-[10px] font-bold text-amber-600 bg-slate-50 border-b border-r border-slate-300">S</th>
-                                            <th className="px-1.5 py-1.5 text-center text-[10px] font-bold text-rose-600 bg-slate-50 border-b border-r-2 border-slate-300">A</th>
-                                          </React.Fragment>
-                                        ))}
-                                        <th className="px-2 py-1.5 text-center text-xs font-black text-emerald-700 bg-emerald-50 border-b border-r border-slate-300">H</th>
+                                        <th className="px-2 py-1.5 text-center text-xs font-black text-emerald-700 bg-emerald-50 border-b border-l-4 border-slate-400 border-r border-slate-300">H</th>
                                         <th className="px-2 py-1.5 text-center text-xs font-black text-indigo-700 bg-emerald-50 border-b border-r border-slate-300">I</th>
                                         <th className="px-2 py-1.5 text-center text-xs font-black text-amber-700 bg-emerald-50 border-b border-r border-slate-300">S</th>
                                         <th className="px-2 py-1.5 text-center text-xs font-black text-rose-700 bg-emerald-50 border-b">A</th>
@@ -539,35 +668,24 @@ export function AbsensiRekapDetailClient() {
                                               <span className="text-slate-400 mr-2 text-[11px] w-4 inline-block">{idx + 1}</span>
                                               {santri}
                                             </td>
-                                            {weeks.map((week) => {
-                                              let weekH = 0, weekI = 0, weekS = 0, weekA = 0;
+                                            {datesInGroup.map(date => {
+                                              const rec = recordMap.get(`${santri}_${date}`);
+                                              let cellContent = <span className="text-slate-200 text-xs font-medium">-</span>;
+                                              if (rec) {
+                                                if (rec.status === "HADIR") { cellContent = <span className="font-bold text-emerald-500 text-base">✓</span>; totalH++; }
+                                                else if (rec.status === "IZIN") { cellContent = <span className="font-bold text-indigo-500 text-sm">I</span>; totalI++; }
+                                                else if (rec.status === "SAKIT") { cellContent = <span className="font-bold text-amber-500 text-sm">S</span>; totalS++; }
+                                                else if (rec.status === "ALPHA") { cellContent = <span className="font-bold text-rose-500 text-sm">X</span>; totalA++; }
+                                              }
                                               return (
-                                                <React.Fragment key={`row-${santri}-w-${week.wk}`}>
-                                                  {week.dates.map(date => {
-                                                    const rec = recordMap.get(`${santri}_${date}`);
-                                                    let cellContent = <span className="text-slate-200 text-xs font-medium">L</span>;
-                                                    if (rec) {
-                                                      if (rec.status === "HADIR") { cellContent = <span className="font-bold text-emerald-500 text-base">✓</span>; weekH++; totalH++; }
-                                                      else if (rec.status === "IZIN") { cellContent = <span className="font-bold text-indigo-500 text-sm">I</span>; weekI++; totalI++; }
-                                                      else if (rec.status === "SAKIT") { cellContent = <span className="font-bold text-amber-500 text-sm">S</span>; weekS++; totalS++; }
-                                                      else if (rec.status === "ALPHA") { cellContent = <span className="font-bold text-rose-500 text-sm">X</span>; weekA++; totalA++; }
-                                                    }
-                                                    return (
-                                                      <td key={`${santri}-${date}`} className="p-0 border-b border-r border-slate-100 align-middle">
-                                                        <div className="flex items-center justify-center w-full h-full min-h-[32px] hover:bg-slate-50">
-                                                          {cellContent}
-                                                        </div>
-                                                      </td>
-                                                    );
-                                                  })}
-                                                  <td className="px-1.5 py-2 text-center text-xs font-bold text-emerald-700 bg-slate-50 border-b border-r border-l-2 border-slate-300">{weekH}</td>
-                                                  <td className="px-1.5 py-2 text-center text-xs font-bold text-indigo-700 bg-slate-50 border-b border-r border-slate-300">{weekI}</td>
-                                                  <td className="px-1.5 py-2 text-center text-xs font-bold text-amber-700 bg-slate-50 border-b border-r border-slate-300">{weekS}</td>
-                                                  <td className="px-1.5 py-2 text-center text-xs font-bold text-rose-700 bg-slate-50 border-b border-r-2 border-slate-300">{weekA}</td>
-                                                </React.Fragment>
+                                                <td key={`${santri}-${date}`} className="p-0 border-b border-r border-slate-100 align-middle">
+                                                  <div className="flex items-center justify-center w-full h-full min-h-[32px] hover:bg-slate-50">
+                                                    {cellContent}
+                                                  </div>
+                                                </td>
                                               );
                                             })}
-                                            <td className="px-2 py-2 text-center text-sm font-black text-emerald-800 bg-emerald-50 border-b border-r border-slate-300">{totalH}</td>
+                                            <td className="px-2 py-2 text-center text-sm font-black text-emerald-800 bg-emerald-50 border-b border-r border-slate-300 border-l-4">{totalH}</td>
                                             <td className="px-2 py-2 text-center text-sm font-black text-indigo-800 bg-emerald-50 border-b border-r border-slate-300">{totalI}</td>
                                             <td className="px-2 py-2 text-center text-sm font-black text-amber-800 bg-emerald-50 border-b border-r border-slate-300">{totalS}</td>
                                             <td className="px-2 py-2 text-center text-sm font-black text-rose-800 bg-emerald-50 border-b">{totalA}</td>

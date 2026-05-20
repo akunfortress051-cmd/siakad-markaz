@@ -1,6 +1,22 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+export async function GET() {
+  try {
+    const kelasList = await prisma.kelas.findMany({
+      orderBy: { nama: "asc" },
+      include: {
+        program: {
+          select: { nama_indo: true }
+        }
+      }
+    });
+    return NextResponse.json(kelasList);
+  } catch (error) {
+    return NextResponse.json({ error: "Gagal mengambil daftar kelas" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

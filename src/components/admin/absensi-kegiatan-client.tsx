@@ -7,6 +7,9 @@ type SantriAbsenTarget = {
   riwayatId: string;
   santriId: string;
   nama: string;
+  sakan: string;
+  gender: string;
+  kategori: string;
   kelasId: string | null;
   kelasNama: string | null;
   programId: string | null;
@@ -24,13 +27,18 @@ type KategoriKegiatan = {
 export function AbsensiKegiatanClient({
   sakanList,
   kegiatanList,
+  kelasList,
+  defaultSakan,
 }: {
   sakanList: string[];
   kegiatanList: KategoriKegiatan[];
+  kelasList: { id: string, nama: string }[];
+  defaultSakan?: string;
 }) {
   const [tanggal, setTanggal] = useState("");
   const [kategoriId, setKategoriId] = useState("");
-  const [sakan, setSakan] = useState("ALL");
+  const [sakan, setSakan] = useState(defaultSakan || "ALL");
+  const [kelasId, setKelasId] = useState("ALL");
   const [santriList, setSantriList] = useState<SantriAbsenTarget[]>([]);
   const [absenMap, setAbsenMap] = useState<Record<string, { status: AbsenStatus; keterangan: string }>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +61,7 @@ export function AbsensiKegiatanClient({
       setIsLoading(true);
       try {
         const res = await fetch(
-          `/api/admin/absensi/kegiatan-harian?tanggal=${tanggal}&kategoriId=${kategoriId}&sakan=${sakan}`
+          `/api/admin/absensi/kegiatan-harian?tanggal=${tanggal}&kategoriId=${kategoriId}&sakan=${sakan}&kelasId=${kelasId}`
         );
         const data = await res.json();
         if (data.santriList) setSantriList(data.santriList);
@@ -72,7 +80,7 @@ export function AbsensiKegiatanClient({
       }
     };
     fetchData();
-  }, [tanggal, kategoriId, sakan]);
+  }, [tanggal, kategoriId, sakan, kelasId]);
 
   const handleStatusChange = (riwayatId: string, status: AbsenStatus) => {
     setAbsenMap((prev) => ({
@@ -188,6 +196,24 @@ export function AbsensiKegiatanClient({
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Filter Kelas
+                </label>
+                <select
+                  value={kelasId}
+                  onChange={(e) => {
+                    setKelasId(e.target.value);
+                    if (e.target.value !== "ALL") setSakan("ALL");
+                  }}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-amber-500"
+                >
+                  <option value="ALL">Semua Kelas</option>
+                  {kelasList.map((k) => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -251,9 +277,27 @@ export function AbsensiKegiatanClient({
                         <td className="px-4 py-4 text-center font-bold text-slate-400">{index + 1}</td>
                         <td className="px-6 py-4">
                           <p className="font-bold text-slate-900">{santri.nama}</p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {santri.kelasNama ?? santri.programNama ?? "Tanpa Kelas"}
-                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                              {santri.sakan ?? "-"}
+                            </span>
+                            {santri.gender === "BANIN" ? (
+                              <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">BANIN</span>
+                            ) : santri.gender === "BANAT" ? (
+                              <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">BANAT</span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">{santri.gender}</span>
+                            )}
+                            {santri.kategori === "BARU" ? (
+                              <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 capitalize">Baru</span>
+                            ) : santri.kategori === "LAMA" ? (
+                              <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 capitalize">Lama</span>
+                            ) : santri.kategori === "KSU" ? (
+                              <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 uppercase">KSU</span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 capitalize">{santri.kategori ?? "-"}</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">

@@ -19,11 +19,14 @@ model Program {
 }
 
 model Kelas {
-  id             String          @id @default(cuid())
-  nama           String          @unique
-  programId      String
-  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
-  riwayatRecords RiwayatSantri[]
+  id                String          @id @default(cuid())
+  nama              String          @unique
+  programId         String
+  program           Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  riwayatRecords    RiwayatSantri[]
+  waliKelas         User?           @relation("WaliKelas")
+  pengajarSesiList  PengajarSesi[]
+  absenPengajarList AbsenPengajar[]
 }
 
 model Mapel {
@@ -237,4 +240,69 @@ model InstagramPost {
   author       String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
+}
+
+model User {
+  id           String   @id @default(cuid())
+  nama         String
+  username     String   @unique
+  passwordHash String
+  role         String
+  kelasId      String?  @unique
+  sakan        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  kelas             Kelas?          @relation("WaliKelas", fields: [kelasId], references: [id], onDelete: SetNull)
+  pengajarSesiList  PengajarSesi[]
+  absenPengajarList AbsenPengajar[]
+}
+
+model RolePermission {
+  id         String   @id @default(cuid())
+  role       String
+  permission String
+
+  @@unique([role, permission])
+}
+
+model PengajarSesi {
+  id      String    @id @default(cuid())
+  userId  String
+  kelasId String
+  sesi    SesiKelas
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kelasId, sesi])
+}
+
+model JadwalSesi {
+  id             String    @id @default(cuid())
+  sesi           SesiKelas @unique
+  label          String
+  jamBuka        String
+  jamTutup       String
+  toleransiMenit Int       @default(15)
+  isActive       Boolean   @default(true)
+}
+
+model AbsenPengajar {
+  id             String    @id @default(cuid())
+  userId         String
+  kelasId        String
+  sesi           SesiKelas
+  tanggal        DateTime  @db.Date
+  waktuMulai     String
+  waktuSelesai   String
+  materi         String
+  atributNametag Boolean   @default(false)
+  atributKopiah  Boolean   @default(false)
+  atributBros    Boolean   @default(false)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tanggal, sesi])
 }

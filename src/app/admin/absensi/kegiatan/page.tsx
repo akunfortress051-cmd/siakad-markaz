@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { getMasterSantriList } from "@/lib/santri-api";
 import { AbsensiKegiatanClient } from "@/components/admin/absensi-kegiatan-client";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,13 @@ export const metadata: Metadata = {
 
 
 export default async function AbsensiKegiatanPage() {
-  const [masterSantri, kegiatanList] = await Promise.all([
+  const session = await getSession();
+  const userSakan = session?.sakan || undefined;
+
+  const [masterSantri, kegiatanList, kelasList] = await Promise.all([
     getMasterSantriList(),
     prisma.kategoriKegiatan.findMany({ orderBy: { nama: "asc" } }),
+    prisma.kelas.findMany({ orderBy: { nama: "asc" }, select: { id: true, nama: true } }),
   ]);
 
   const sakanSet = new Set<string>();
@@ -32,7 +37,12 @@ export default async function AbsensiKegiatanPage() {
           Pendataan kehadiran santri untuk kegiatan dinamis seperti Halaqoh dan Tahajud.
         </p>
       </div>
-      <AbsensiKegiatanClient sakanList={sakanList} kegiatanList={kegiatanList} />
+      <AbsensiKegiatanClient 
+        sakanList={sakanList} 
+        kegiatanList={kegiatanList} 
+        kelasList={kelasList}
+        defaultSakan={userSakan}
+      />
     </div>
   );
 }

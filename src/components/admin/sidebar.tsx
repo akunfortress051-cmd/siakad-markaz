@@ -1,63 +1,82 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette, UserCog, LogOut, ShieldCheck, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const navigationGroups = [
   {
     title: "Utama",
     items: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permissionId: "dashboard" },
+      { href: "/admin/jadwal-saya", label: "Jadwal Saya", icon: Calendar, requiredRoles: ["PENGAJAR", "WALI_KELAS"] },
     ]
   },
   {
     title: "Divisi Angkatan (Duf'ah)",
     items: [
-      { href: "/admin/dufah", label: "Manajemen Angkatan & Usbu'", icon: CalendarCheck },
+      { href: "/admin/dufah", label: "Manajemen Angkatan & Usbu'", icon: CalendarCheck, permissionId: "manajemen_dufah" },
     ]
   },
   {
     title: "Divisi Absensi",
     items: [
-      { href: "/admin/absensi/sakan", label: "Absen", icon: Bed },
-      { href: "/admin/absensi/kelas", label: "Absen Kelas", icon: BookOpen },
-      { href: "/admin/absensi/kegiatan", label: "Absen Kegiatan", icon: Activity },
-      { href: "/admin/absensi/rekap", label: "Rekapitulasi", icon: BarChart3 },
-      { href: "/admin/absensi/pengaturan", label: "Pengaturan Kegiatan", icon: Settings },
+      { href: "/admin/absensi/sakan", label: "Absen Sakan", icon: Bed, permissionId: "absen_sakan" },
+      { href: "/admin/absensi/kelas", label: "Absen Kelas", icon: BookOpen, permissionId: "absen_kelas" },
+      { href: "/admin/jadwal-sesi", label: "Jadwal Buka/Tutup Sesi", icon: CalendarCheck, permissionId: "manajemen_kelas" },
+      { href: "/admin/absensi/kegiatan", label: "Absen Kegiatan", icon: Activity, permissionId: "absen_kegiatan" },
+      { href: "/admin/absensi/rekap/sakan", label: "Rekap Sakan", icon: Bed, permissionId: "rekap_sakan" },
+      { href: "/admin/absensi/rekap/kegiatan", label: "Rekap Kegiatan", icon: Activity, permissionId: "rekap_sakan" },
+      { href: "/admin/absensi/rekap/kelas", label: "Rekap Kelas", icon: BookOpen, permissionId: "rekap_sakan" },
+      { href: "/admin/absensi/rekap/pengajar", label: "Rekap Pengajar", icon: UserCog, permissionId: "rekap_sakan" },
+      { href: "/admin/absensi/pengaturan", label: "Pengaturan Kegiatan", icon: Settings, permissionId: "manajemen_dufah" },
     ]
   },
   {
     title: "Divisi Kelas",
     items: [
-      { href: "/admin/manajemen-kelas", label: "Alokasi Kelas", icon: Users },
-      { href: "/admin/kelas", label: "Manajemen Ruang Kelas", icon: DoorOpen },
+      { href: "/admin/manajemen-kelas", label: "Alokasi Kelas", icon: Users, permissionId: "manajemen_kelas" },
+      { href: "/admin/kelas", label: "Manajemen Ruang Kelas", icon: DoorOpen, permissionId: "manajemen_kelas" },
+      { href: "/admin/jadwal-mengajar", label: "Jadwal Mengajar", icon: Calendar, permissionId: "manajemen_kelas" },
     ]
   },
   {
     title: "Divisi Syahadah",
     items: [
-      { href: "/admin/syahadah", label: "Data Syahadah", icon: GraduationCap },
-      { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer },
-      { href: "/layout-editor", label: "Layout Syahadah", icon: Palette },
-      { href: "/admin/riwayat", label: "Riwayat Santri", icon: History },
-      { href: "/admin/master-data", label: "Pengaturan Syahadah", icon: Settings },
+      { href: "/admin/syahadah", label: "Data Syahadah", icon: GraduationCap, permissionId: "syahadah" },
+      { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer, permissionId: "syahadah" },
+      { href: "/layout-editor", label: "Layout Syahadah", icon: Palette, permissionId: "syahadah" },
+      { href: "/admin/riwayat", label: "Riwayat Santri", icon: History, permissionId: "syahadah" },
+      { href: "/admin/master-data", label: "Pengaturan Syahadah", icon: Settings, permissionId: "syahadah" },
     ]
   },
   {
     title: "Manajemen Aplikasi",
     items: [
-      { href: "/admin/manajemen-konten/agenda", label: "Agenda Rutinan", icon: CalendarDays },
-      { href: "/admin/manajemen-konten/instagram", label: "Konten Instagram", icon: Instagram },
+      { href: "/admin/manajemen-user", label: "Manajemen User", icon: UserCog, requiredRole: "ADMIN", permissionId: "manajemen_user" },
+      { href: "/admin/manajemen-role", label: "Hak Akses (Role)", icon: ShieldCheck, requiredRole: "ADMIN", permissionId: "manajemen_user" },
+      { href: "/admin/manajemen-konten/agenda", label: "Agenda Rutinan", icon: CalendarDays, permissionId: "manajemen_dufah" },
+      { href: "/admin/manajemen-konten/instagram", label: "Konten Instagram", icon: Instagram, permissionId: "manajemen_dufah" },
     ]
   }
 ];
 
-export function Sidebar() {
+export function Sidebar({ user, permissions = [] }: { user: any, permissions?: string[] }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [activeCtx, setActiveCtx] = useState<{ activeDufah: string | null; usbuLabel: string } | null>(null);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/admin/active-context")
@@ -116,40 +135,63 @@ export function Sidebar() {
             </div>
           )}
 
-          {navigationGroups.map((group) => (
-            <div key={group.title}>
-              <p className="px-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
-                {group.title}
-              </p>
-              <ul className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setIsOpen(false)}
-                        className={`group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${isActive
-                          ? "bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                          }`}
-                      >
-                        <Icon className={`h-5 w-5 transition-colors ${isActive ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-600"}`} />
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+          {navigationGroups.map((group) => {
+            const filteredItems = group.items.filter((item: any) => {
+              if (item.requiredRole && user?.role !== item.requiredRole) return false;
+              if (item.requiredRoles && !item.requiredRoles.includes(user?.role)) return false;
+
+              // Filter permission
+              if (item.permissionId && !permissions.includes("*") && !permissions.includes(item.permissionId)) {
+                return false;
+              }
+
+              return true;
+            });
+
+            if (filteredItems.length === 0) return null;
+
+            return (
+              <div key={group.title}>
+                <p className="px-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
+                  {group.title}
+                </p>
+                <ul className="space-y-1">
+                  {filteredItems.map((item) => {
+                    const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={`group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${isActive
+                            ? "bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            }`}
+                        >
+                          <Icon className={`h-5 w-5 transition-colors ${isActive ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-600"}`} />
+                          {item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-6 border-t border-slate-100">
           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-            <p className="text-xs font-bold text-slate-800">Admin Mode</p>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Kelola semua entitas santri, nilai, kelas, dan proses print syahadah secara terpusat.</p>
+            <p className="text-sm font-bold text-slate-800">{user?.nama}</p>
+            <p className="text-xs text-slate-500 mt-1 mb-3">{user?.role}</p>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold py-2 px-3 rounded-xl transition-colors text-sm"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
           </div>
         </div>
       </aside>

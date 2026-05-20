@@ -1,51 +1,44 @@
 import prisma from "@/lib/prisma";
 import { getMasterSantriList } from "@/lib/santri-api";
 
-const TIMEZONE = "Asia/Jakarta";
-
-/**
- * Parses a YYYY-MM-DD string into a UTC Midnight Date object.
- * Karena schema Prisma menggunakan @db.Date, semua waktu (jam) akan dipotong oleh PostgreSQL.
- * Jika kita gunakan +07:00, 27 Maret 00:00 WIB akan dieksekusi sebagai 26 Maret 17:00 UTC,
- * dan PostgreSQL akan menyimpan 26 Maret. Oleh karena itu kita paksa simpan sebagai UTC.
- */
-export function parseWibDateString(dateString: string): Date {
-  return new Date(`${dateString}T00:00:00Z`);
-}
-
-/**
- * Returns today's date formatted as "YYYY-MM-DD" in WIB
- */
-export function getTodayWibString(): string {
-  // To get current WIB time: Get current UTC time, add 7 hours, then format.
-  const now = new Date();
-  const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-  return wibTime.toISOString().split("T")[0];
-}
+export { getTodayWibString, parseWibDateString } from "./jadwal-sesi";
 
 export async function syncDufahTable() {
   const masterList = await getMasterSantriList();
-  const dufahSet = new Set<string>();
+  
+  // 1. Kumpulkan semua dufah valid dari PPDB
+  const validDufahNames = new Set<string>();
   masterList.forEach(m => {
     if (m.dufahNama && m.dufahNama !== "-") {
-      dufahSet.add(m.dufahNama);
+      validDufahNames.add(m.dufahNama);
     }
   });
 
-  if (dufahSet.size > 0) {
-    const existingDufahs = await prisma.dufah.findMany({
-      where: { nama: { in: Array.from(dufahSet) } },
-      select: { nama: true }
+  // 2. Ambil dufah yang ada di DB lokal
+  const existingDufahs = await prisma.dufah.findMany({ select: { nama: true } });
+  const existingNames = new Set(existingDufahs.map(d => d.nama));
+
+  // 3. Hapus dufah (dan riwayat) yang tidak ada di PPDB
+  const invalidDufahNames = Array.from(existingNames).filter(name => !validDufahNames.has(name));
+  
+  if (invalidDufahNames.length > 0) {
+    // Cascade-like manual delete karena 'Restrict'
+    await prisma.riwayatSantri.deleteMany({
+      where: { dufahNama: { in: invalidDufahNames } }
     });
-    const existingNames = new Set(existingDufahs.map(d => d.nama));
     
-    const missingDufahs = Array.from(dufahSet).filter(name => !existingNames.has(name));
-    if (missingDufahs.length > 0) {
-      await prisma.dufah.createMany({
-        data: missingDufahs.map(nama => ({ nama })),
-        skipDuplicates: true
-      });
-    }
+    await prisma.dufah.deleteMany({
+      where: { nama: { in: invalidDufahNames } }
+    });
+  }
+
+  // 4. Tambahkan dufah baru dari PPDB yang belum ada di DB
+  const missingDufahs = Array.from(validDufahNames).filter(name => !existingNames.has(name));
+  if (missingDufahs.length > 0) {
+    await prisma.dufah.createMany({
+      data: missingDufahs.map(nama => ({ nama })),
+      skipDuplicates: true
+    });
   }
 }
 
@@ -78,6 +71,8 @@ export type SantriAbsenTarget = {
   nama: string;
   sakan: string;
   kamar: string;
+  gender: string;
+  kategori: string;
   kelasId: string | null;
   kelasNama: string | null;
   programId: string | null;
@@ -181,6 +176,8 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
       nama: ms ? ms.nama : (r.santri?.nama ?? "Tanpa Nama"),
       sakan: ms ? ms.sakan : "-",
       kamar: ms ? ms.kamar : "-",
+      gender: ms ? ms.gender : "-",
+      kategori: ms ? ms.kategori : "-",
       kelasId: r.kelasId,
       kelasNama: r.kelas?.nama ?? null,
       programId: r.programId,
