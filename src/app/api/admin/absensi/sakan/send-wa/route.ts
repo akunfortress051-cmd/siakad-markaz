@@ -1,0 +1,111 @@
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getMasterSantriList } from "@/lib/santri-api";
+import { sendWhatsAppMessage, formatSakanStatusReport } from "@/lib/fonnte";
+
+export async function POST(request: Request) {
+  try {
+    const { tanggal } = await request.json();
+
+    if (!tanggal) {
+      return NextResponse.json({ error: "Tanggal harus diisi" }, { status: 400 });
+    }
+
+    const groupId = process.env.FONNTE_WA_GROUP_ID;
+    if (!groupId) {
+      return NextResponse.json(
+        { error: "FONNTE_WA_GROUP_ID belum dikonfigurasi" },
+        { status: 500 }
+      );
+    }
+
+    const parsedDate = new Date(`${tanggal}T00:00:00Z`);
+
+    // Ambil semua santri aktif
+    const masterSantriList = await getMasterSantriList();
+
+    // Kumpulkan semua sakan unik dari santri aktif
+    const allSakan = new Set<string>();
+    for (const ms of masterSantriList) {
+      if (ms.isAktif && ms.sakan && ms.sakan !== "-") {
+        allSakan.add(ms.sakan);
+      }
+    }
+
+    // Map santriId -> dufahNama untuk filter riwayat aktif
+    const activeSantriMap = new Map<string, string>();
+    for (const ms of masterSantriList) {
+      if (ms.isAktif) {
+        activeSantriMap.set(ms.id, ms.dufahNama);
+      }
+    }
+
+    // Ambil semua absen sakan untuk tanggal tersebut (termasuk keterangan)
+    const absenRecords = await prisma.absenSakan.findMany({
+      where: { tanggal: parsedDate },
+      select: {
+        status: true,
+        keterangan: true,
+        riwayat: {
+          select: {
+            santriId: true,
+            dufahNama: true,
+          },
+        },
+      },
+    });
+
+    // Tentukan sakan mana yang sudah absen + kumpulkan keterangan per sakan
+    const sakanSudahAbsen = new Set<string>();
+    const keteranganPerSakan = new Map<string, { nama: string; keterangan: string }[]>();
+
+    for (const record of absenRecords) {
+      const activeDufah = activeSantriMap.get(record.riwayat.santriId);
+      if (activeDufah && activeDufah === record.riwayat.dufahNama) {
+        const ms = masterSantriList.find(m => m.id === record.riwayat.santriId);
+        if (ms && ms.sakan && ms.sakan !== "-") {
+          sakanSudahAbsen.add(ms.sakan);
+
+          // Kumpulkan keterangan jika ada
+          if (record.keterangan && record.keterangan.trim()) {
+            if (!keteranganPerSakan.has(ms.sakan)) {
+              keteranganPerSakan.set(ms.sakan, []);
+            }
+            keteranganPerSakan.get(ms.sakan)!.push({
+              nama: ms.nama,
+              keterangan: record.keterangan.trim(),
+            });
+          }
+        }
+      }
+    }
+
+    // Format & kirim pesan
+    const sakanList = Array.from(allSakan).sort();
+    const sudahAbsen = Array.from(sakanSudahAbsen);
+
+    const message = formatSakanStatusReport(
+      tanggal,
+      sakanList,
+      sudahAbsen,
+      keteranganPerSakan,
+    );
+
+    const result = await sendWhatsAppMessage(groupId, message);
+
+    if (result.success) {
+      return NextResponse.json({ success: true, detail: result.detail });
+    } else {
+      return NextResponse.json(
+        { success: false, error: result.detail || "Gagal mengirim pesan WA" },
+        { status: 502 }
+      );
+    }
+  } catch (error: any) {
+    console.error("Error send-wa:", error);
+    return NextResponse.json(
+      { error: "Terjadi kesalahan sistem", detail: error.message },
+      { status: 500 }
+    );
+  }
+}

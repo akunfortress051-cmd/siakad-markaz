@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
 import { toast } from "react-hot-toast";
+import { Send } from "lucide-react";
 
 type SantriAbsenTarget = {
   riwayatId: string;
@@ -27,6 +27,8 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
   const [absenMap, setAbsenMap] = useState<Record<string, { status: AbsenStatus; keterangan: string }>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [sendToWa, setSendToWa] = useState(true);
+  const [isSendingWa, setIsSendingWa] = useState(false);
 
   useEffect(() => {
     // Set default tanggal to today WIB
@@ -86,6 +88,27 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
     setAbsenMap(newMap);
   };
 
+  const handleSendWa = async () => {
+    setIsSendingWa(true);
+    try {
+      const res = await fetch("/api/admin/absensi/sakan/send-wa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tanggal }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("📱 Laporan berhasil dikirim ke WhatsApp!");
+      } else {
+        toast.error(result.error || "Gagal mengirim ke WhatsApp");
+      }
+    } catch {
+      toast.error("Gagal mengirim ke WhatsApp");
+    } finally {
+      setIsSendingWa(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -104,6 +127,10 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
       const result = await res.json();
       if (result.success) {
         toast.success(`Berhasil menyimpan ${result.count} data absensi`);
+        // Kirim ke WA jika toggle aktif
+        if (sendToWa) {
+          await handleSendWa();
+        }
       } else {
         toast.error(result.error || "Gagal menyimpan absensi");
       }
@@ -161,20 +188,41 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => setAllStatus("HADIR")}
-              className="rounded-full bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-300"
-            >
-              Hadirkan Semua
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving || isLoading || !tanggal}
-              className="rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isSaving ? "Menyimpan..." : "Simpan Absensi"}
-            </button>
+          <div className="flex flex-col gap-3 items-end">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAllStatus("HADIR")}
+                className="rounded-full bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-300"
+              >
+                Hadirkan Semua
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving || isSendingWa || isLoading || !tanggal}
+                className="rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSaving ? (isSendingWa ? "Mengirim WA..." : "Menyimpan...") : "Simpan Absensi"}
+              </button>
+            </div>
+            {/* Toggle Kirim ke WhatsApp */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={sendToWa}
+                  onChange={(e) => setSendToWa(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="h-6 w-11 rounded-full bg-slate-200 transition-colors peer-checked:bg-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-300"></div>
+                <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Send className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="text-xs font-bold text-slate-600 group-hover:text-slate-800 transition">
+                  Kirim ke WhatsApp
+                </span>
+              </div>
+            </label>
           </div>
         </div>
 
