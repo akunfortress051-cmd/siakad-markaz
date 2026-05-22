@@ -40,34 +40,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const { username, password, turnstileToken } = await request.json();
+    const { username, password } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username dan password harus diisi' }, { status: 400 });
-    }
-
-    if (!turnstileToken) {
-      return NextResponse.json({ error: 'Verifikasi Captcha diperlukan' }, { status: 400 });
-    }
-
-    // Validasi token Turnstile
-    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
-    if (turnstileSecret) {
-      const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          secret: turnstileSecret,
-          response: turnstileToken,
-          remoteip: ip,
-        }),
-      });
-      const verifyData = await verifyRes.json();
-      if (!verifyData.success) {
-        return NextResponse.json({ error: 'Verifikasi Captcha gagal atau kadaluarsa' }, { status: 400 });
-      }
     }
 
     const user = await prisma.user.findUnique({

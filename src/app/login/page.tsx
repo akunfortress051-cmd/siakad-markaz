@@ -4,13 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User } from "lucide-react";
 import toast from "react-hot-toast";
-import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [turnstileToken, setTurnstileToken] = useState("");
   const [formData, setFormData] = useState({ username: "", password: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,17 +16,11 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMsg("");
 
-    if (!turnstileToken) {
-      setErrorMsg("Mohon selesaikan verifikasi Captcha terlebih dahulu");
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, turnstileToken }),
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
@@ -108,14 +100,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex justify-center pt-2 pb-2">
-              <Turnstile 
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""} 
-                onSuccess={(token) => setTurnstileToken(token)}
-                onError={() => setErrorMsg("Gagal memuat Captcha")}
-                options={{ theme: 'light' }}
-              />
-            </div>
+
 
             <button
               type="submit"
