@@ -7,7 +7,7 @@ export async function syncDufahTable() {
   let validDufahNames = new Set<string>();
 
   try {
-    const response = await fetch("http://ppdb.markazarabiyah.site/api/dufah", { cache: "no-store" });
+    const response = await fetch("https://ppdb-markaz.vercel.app/api/dufah", { cache: "no-store" });
     if (response.ok) {
       const data = await response.json();
       data.forEach((d: any) => {
@@ -19,6 +19,10 @@ export async function syncDufahTable() {
   } catch (err) {
     // Fallback to reading from master santri
     const masterList = await getMasterSantriList();
+    if (masterList.length === 0) {
+      console.error("[CRITICAL] API Master Santri kosong/gagal! Membatalkan sinkronisasi Dufah untuk mencegah terhapusnya data nilai & absen secara permanen.");
+      return;
+    }
     masterList.forEach(m => {
       if (m.dufahNama && m.dufahNama !== "-") {
         validDufahNames.add(m.dufahNama);
@@ -30,21 +34,7 @@ export async function syncDufahTable() {
   const existingDufahs = await prisma.dufah.findMany({ select: { nama: true } });
   const existingNames = new Set(existingDufahs.map(d => d.nama));
 
-  // 3. Hapus dufah (dan riwayat) yang tidak ada di PPDB
-  const invalidDufahNames = Array.from(existingNames).filter(name => !validDufahNames.has(name));
-
-  if (invalidDufahNames.length > 0) {
-    // Cascade-like manual delete karena 'Restrict'
-    await prisma.riwayatSantri.deleteMany({
-      where: { dufahNama: { in: invalidDufahNames } }
-    });
-
-    await prisma.dufah.deleteMany({
-      where: { nama: { in: invalidDufahNames } }
-    });
-  }
-
-  // 4. Tambahkan dufah baru dari PPDB yang belum ada di DB
+  // 3. Tambahkan dufah baru dari PPDB yang belum ada di DB (Hanya MENAMBAH, pantang MENGHAPUS)
   const missingDufahs = Array.from(validDufahNames).filter(name => !existingNames.has(name));
   if (missingDufahs.length > 0) {
     await prisma.dufah.createMany({
