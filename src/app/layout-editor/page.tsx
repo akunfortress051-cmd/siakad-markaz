@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LayoutEditorIndexPage() {
-  await requirePermission("syahadah");
+  await requirePermission("layout_syahadah");
   const programs = await prisma.program.findMany({
     orderBy: { nama_indo: "asc" },
   });

@@ -87,7 +87,10 @@ export async function getMasterSantriList(): Promise<MasterSantri[]> {
 
     const validSantri = dataArray.filter((s: ApiSantriResponse) => s.nis && s.nis.trim() !== "");
 
-    return validSantri.map(normalizeSantri);
+    const normalizedSantri = validSantri.map(normalizeSantri);
+
+    // Filter: Hanya masukkan santri yang sudah punya sakan (aktif bulan ini)
+    return normalizedSantri.filter((s) => s.sakan && s.sakan !== "-");
   } catch (error) {
     console.error("Fetch failed for master data santri:", error);
     return [];

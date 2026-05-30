@@ -27,6 +27,7 @@ model Kelas {
   waliKelas         User?           @relation("WaliKelas")
   pengajarSesiList  PengajarSesi[]
   absenPengajarList AbsenPengajar[]
+  is_akbarnas_b2    Boolean         @default(false)
 }
 
 model Mapel {

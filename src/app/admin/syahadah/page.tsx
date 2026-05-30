@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SyahadahPage() {
-  await requirePermission("syahadah");
+  await requirePermission("data_syahadah");
   const allRows = await getDashboardSantriRows();
   const santriRows = allRows.filter((santri: any) => santri.isAktif);
   const programList = await getProgramCatalog();

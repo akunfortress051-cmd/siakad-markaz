@@ -44,11 +44,12 @@ const navigationGroups = [
   {
     title: "Divisi Syahadah",
     items: [
-      { href: "/admin/syahadah", label: "Data Syahadah", icon: GraduationCap, permissionId: "syahadah" },
-      { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer, permissionId: "syahadah" },
-      { href: "/layout-editor", label: "Layout Syahadah", icon: Palette, permissionId: "syahadah" },
-      { href: "/admin/riwayat", label: "Riwayat Santri", icon: History, permissionId: "syahadah" },
-      { href: "/admin/master-data", label: "Pengaturan Syahadah", icon: Settings, permissionId: "syahadah" },
+      { href: "/admin/syahadah", label: "Data Syahadah", icon: GraduationCap, permissionId: "data_syahadah" },
+      { href: "/admin/input-nilai-kelas", label: "Input Nilai", icon: BookOpen, permissionId: "input_nilai" },
+      { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer, permissionId: "cetak_nilai_pekanan" },
+      { href: "/layout-editor", label: "Layout Syahadah", icon: Palette, permissionId: "layout_syahadah" },
+      { href: "/admin/riwayat", label: "Riwayat Santri", icon: History, permissionId: "riwayat_santri" },
+      { href: "/admin/master-data", label: "Pengaturan Syahadah", icon: Settings, permissionId: "pengaturan_syahadah" },
     ]
   },
   {

@@ -4,7 +4,7 @@ import { CetakUsbuSelector } from "@/components/admin/cetak-usbu-selector";
 import { requirePermission } from "@/lib/permission";
 
 export default async function CetakUsbuPage() {
-  await requirePermission("syahadah");
+  await requirePermission("cetak_nilai_pekanan");
   const kelasList = await prisma.kelas.findMany({
     include: {
       program: true,

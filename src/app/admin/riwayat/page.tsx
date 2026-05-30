@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RiwayatPage() {
-  await requirePermission("syahadah");
+  await requirePermission("riwayat_santri");
   const santriGroups = await getRiwayatSantriRows();
 
   return (

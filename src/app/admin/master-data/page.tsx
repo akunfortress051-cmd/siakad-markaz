@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/permission";
 export const dynamic = "force-dynamic";
 
 export default async function MasterDataPage() {
-  await requirePermission("syahadah");
+  await requirePermission("pengaturan_syahadah");
   const [programList, template, programsWithCount] = await Promise.all([
     getProgramCatalog(),
     getTemplateData(),

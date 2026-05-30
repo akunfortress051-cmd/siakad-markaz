@@ -111,6 +111,12 @@ export function SyahadahClient({
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
             <Link
+              href="/admin/input-nilai-kelas"
+              className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 shadow-sm"
+            >
+              Input Nilai Masal
+            </Link>
+            <Link
               href="/admin/manajemen-kelas"
               className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-white hover:text-emerald-700"
             >

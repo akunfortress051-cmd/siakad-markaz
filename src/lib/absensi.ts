@@ -41,6 +41,34 @@ export async function syncDufahTable(): Promise<Set<string>> {
       data: missingDufahs.map(nama => ({ nama })),
       skipDuplicates: true
     });
+
+    // Otomatis ubah status Bulan 1 -> Bulan 2 -> Bulan 1 untuk kelas Akbarnas setiap ada Dufah baru
+    try {
+      const akbarnasPrograms = await prisma.program.findMany({
+        where: { nama_indo: { contains: "akbarnas", mode: "insensitive" } },
+        select: { id: true }
+      });
+      const akbarnasIds = akbarnasPrograms.map(p => p.id);
+
+      if (akbarnasIds.length > 0) {
+        // Toggle is_akbarnas_b2 field
+        // Prisma tidak memiliki dukungan native untuk toggle boolean di updateMany (seperti SET field = NOT field)
+        // Jadi kita harus melakukan ini secara manual atau query terpisah
+        const classes = await prisma.kelas.findMany({
+          where: { programId: { in: akbarnasIds } },
+          select: { id: true, is_akbarnas_b2: true }
+        });
+
+        for (const cls of classes) {
+          await prisma.kelas.update({
+            where: { id: cls.id },
+            data: { is_akbarnas_b2: !cls.is_akbarnas_b2 }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Gagal auto-toggle kelas Akbarnas saat sync Dufah", err);
+    }
   }
 
   return validDufahNames;

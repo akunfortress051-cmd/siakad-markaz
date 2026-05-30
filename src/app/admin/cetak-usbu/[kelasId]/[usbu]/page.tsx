@@ -6,7 +6,7 @@ import { CetakUsbuDocument } from "@/components/admin/cetak-usbu-document";
 import { getActiveDufahName } from "@/lib/absensi";
 
 export default async function CetakUsbuPrintPage({ params }: { params: Promise<{ kelasId: string, usbu: string }> }) {
-  await requirePermission("syahadah");
+  await requirePermission("cetak_nilai_pekanan");
   const { kelasId, usbu } = await params;
   const targetUsbu = parseInt(usbu);
 

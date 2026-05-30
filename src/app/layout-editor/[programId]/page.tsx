@@ -18,7 +18,7 @@ export default async function ProgramLayoutEditorPage({
 }: {
   params: Promise<{ programId: string }>;
 }) {
-  await requirePermission("syahadah");
+  await requirePermission("layout_syahadah");
   const { programId } = await params;
   const isGlobal = programId === "global";
 
