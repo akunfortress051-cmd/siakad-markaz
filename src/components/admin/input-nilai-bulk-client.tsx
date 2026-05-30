@@ -10,6 +10,8 @@ type MapelOption = {
   jumlah_tes: number;
   bulan_aktif?: number;
   jumlah_tes_b2?: number | null;
+  bobot?: number;
+  bobot_usbu?: number;
 };
 
 type KelasOption = {
@@ -285,18 +287,29 @@ export function InputNilaiBulkClient({
                   <th className="px-4 py-3 font-semibold text-center border-b border-r border-slate-200 md:sticky md:left-[300px] bg-slate-50 md:z-20 min-w-[80px] w-[80px]" rowSpan={2}>Tasmi'</th>
                   {mapels.map(m => (
                     <th key={m.id} className="px-2 py-2 font-bold text-center border-b border-r border-slate-200 bg-slate-100" colSpan={m.jumlah_tes === 3 ? 3 : 1}>
-                      {m.nama_indo}
+                      <div>{m.nama_indo}</div>
                     </th>
                   ))}
                 </tr>
                 <tr>
                   {mapels.map(m => {
                     if (m.jumlah_tes === 3) {
+                      const wUsbu = m.bobot_usbu ?? 0;
+                      const wNihai = m.bobot ?? 0;
                       return (
                         <Fragment key={`sub_${m.id}`}>
-                          <th className="px-2 py-2 font-semibold text-center border-b border-slate-200 bg-slate-50 w-20 text-[10px]">U1</th>
-                          <th className="px-2 py-2 font-semibold text-center border-b border-slate-200 bg-slate-50 w-20 text-[10px]">U2</th>
-                          <th className="px-2 py-2 font-semibold text-center border-b border-r border-slate-200 bg-slate-50 w-20 text-[10px]">Nihai</th>
+                          <th className="px-2 py-2 font-semibold text-center border-b border-slate-200 bg-slate-50 w-20 text-[10px]">
+                            <div>U1</div>
+                            <div className="text-[9px] text-slate-400 font-medium">({wUsbu}%)</div>
+                          </th>
+                          <th className="px-2 py-2 font-semibold text-center border-b border-slate-200 bg-slate-50 w-20 text-[10px]">
+                            <div>U2</div>
+                            <div className="text-[9px] text-slate-400 font-medium">({wUsbu}%)</div>
+                          </th>
+                          <th className="px-2 py-2 font-semibold text-center border-b border-r border-slate-200 bg-slate-50 w-20 text-[10px]">
+                            <div>Nihai</div>
+                            <div className="text-[9px] text-emerald-600 font-bold">({wNihai}%)</div>
+                          </th>
                         </Fragment>
                       );
                     }

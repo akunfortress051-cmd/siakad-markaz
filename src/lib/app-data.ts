@@ -52,6 +52,7 @@ function serializeProgram(program: {
       tampil_di_syahadah: boolean;
       masuk_akumulasi: boolean;
       bobot: number;
+      bobot_usbu: number;
       bulan_aktif: number;
       jumlah_tes_b2: number | null;
     };
@@ -66,17 +67,18 @@ function serializeProgram(program: {
     nama_indo: program.nama_indo,
     nama_arab: program.nama_arab,
     kkm: program.kkm,
-    mapelList: program.programMapels.map((programMapel) => ({
-      id: programMapel.mapel.id,
-      nama_indo: programMapel.mapel.nama_indo,
-      nama_arab: programMapel.mapel.nama_arab,
-      urutan: programMapel.urutan,
-      jumlah_tes: programMapel.mapel.jumlah_tes,
-      tampil_di_syahadah: programMapel.mapel.tampil_di_syahadah,
-      masuk_akumulasi: programMapel.mapel.masuk_akumulasi,
-      bobot: programMapel.mapel.bobot,
-      bulan_aktif: programMapel.mapel.bulan_aktif,
-      jumlah_tes_b2: programMapel.mapel.jumlah_tes_b2,
+    mapelList: program.programMapels.map((pm) => ({
+      id: pm.mapel.id,
+      nama_indo: pm.mapel.nama_indo,
+      nama_arab: pm.mapel.nama_arab,
+      urutan: pm.urutan,
+      jumlah_tes: pm.mapel.jumlah_tes,
+      tampil_di_syahadah: pm.mapel.tampil_di_syahadah,
+      masuk_akumulasi: pm.mapel.masuk_akumulasi,
+      bobot: pm.mapel.bobot,
+      bobot_usbu: pm.mapel.bobot_usbu,
+      bulan_aktif: pm.mapel.bulan_aktif,
+      jumlah_tes_b2: pm.mapel.jumlah_tes_b2,
     })),
     kelasList: program.kelasList ?? [],
   };

@@ -176,7 +176,7 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
       // Fetch previous riwayats to auto-assign Akbarnas
       const previousRiwayats = await prisma.riwayatSantri.findMany({
         where: { santriId: { in: missingRiwayat.map(ms => ms.id) } },
-        include: { program: true },
+        include: { program: true, kelas: true },
         orderBy: { id: 'desc' }
       });
 
@@ -184,7 +184,10 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
 
       for (const pr of previousRiwayats) {
         if (!santriToAkbarnasClass.has(pr.santriId) && pr.program && pr.program.nama_indo.toLowerCase().includes("akbarnas")) {
-          if (pr.kelasId && pr.programId) {
+          // HANYA auto-carryover jika sebelumnya mereka di Bulan 1
+          // Jika sebelumnya mereka di Bulan 2 (is_akbarnas_b2 === true), berarti mereka sudah lulus Akbarnas
+          const wasBulan2 = pr.kelas?.is_akbarnas_b2;
+          if (pr.kelasId && pr.programId && !wasBulan2) {
             santriToAkbarnasClass.set(pr.santriId, { programId: pr.programId, kelasId: pr.kelasId });
           }
         }
