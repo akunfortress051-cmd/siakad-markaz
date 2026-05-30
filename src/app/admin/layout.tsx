@@ -28,7 +28,7 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       <Sidebar user={session} permissions={permissions} />
       <main className="flex-1 min-w-0 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
           <div className="mx-auto max-w-6xl w-full">
             {children}
           </div>

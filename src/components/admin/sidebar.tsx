@@ -69,6 +69,21 @@ export function Sidebar({ user, permissions = [] }: { user: any, permissions?: s
   const [isOpen, setIsOpen] = useState(false);
   const [activeCtx, setActiveCtx] = useState<{ activeDufah: string | null; usbuLabel: string } | null>(null);
 
+  // Kumpulkan semua menu yang diizinkan untuk user ini
+  const allowedItems: any[] = [];
+  navigationGroups.forEach((group) => {
+    group.items.forEach((item: any) => {
+      let allowed = true;
+      if (item.requiredRole && user?.role !== item.requiredRole) allowed = false;
+      if (item.requiredRoles && !item.requiredRoles.includes(user?.role)) allowed = false;
+      if (item.permissionId && !permissions.includes("*") && !permissions.includes(item.permissionId)) allowed = false;
+      if (allowed) allowedItems.push(item);
+    });
+  });
+
+  const showMenuInBottomNav = allowedItems.length > 5;
+  const bottomNavItems = showMenuInBottomNav ? allowedItems.slice(0, 4) : allowedItems;
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -100,6 +115,26 @@ export function Sidebar({ user, permissions = [] }: { user: any, permissions?: s
         >
           {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
+      </div>
+
+      {/* Bottom Navigation for Mobile */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] pb-safe">
+        {bottomNavItems.map(item => {
+          const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          const Icon = item.icon;
+          return (
+            <Link key={item.href} href={item.href} onClick={() => setIsOpen(false)} className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-colors ${isActive ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
+              <Icon className={`h-[22px] w-[22px] ${isActive ? "text-emerald-600" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[9px] font-bold text-center leading-tight truncate w-full px-1">{item.label}</span>
+            </Link>
+          )
+        })}
+        {showMenuInBottomNav && (
+          <button onClick={() => setIsOpen(true)} className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-colors ${isOpen ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
+            <Menu className="h-[22px] w-[22px]" strokeWidth={isOpen ? 2.5 : 2} />
+            <span className="text-[9px] font-bold text-center leading-tight">Lainnya</span>
+          </button>
+        )}
       </div>
 
       {/* Backdrop */}
