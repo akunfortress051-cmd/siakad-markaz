@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getMasterSantriById } from "@/lib/santri-api";
+import { getActiveDufahName } from "@/lib/absensi";
 
 export async function POST(request: Request) {
   try {
@@ -32,6 +33,18 @@ export async function POST(request: Request) {
       payload.santriIds.map((id) => getMasterSantriById(id))
     );
 
+    const activeDufahName = await getActiveDufahName();
+    let activeDufahRiwayats: any[] = [];
+    if (activeDufahName) {
+      activeDufahRiwayats = await prisma.riwayatSantri.findMany({
+        where: {
+          santriId: { in: payload.santriIds },
+          dufahNama: activeDufahName
+        },
+        select: { santriId: true }
+      });
+    }
+
     const operations: any[] = [];
     const uniqueDufahs = new Set<string>();
     
@@ -40,13 +53,18 @@ export async function POST(request: Request) {
         const ms = masterDataResults[i];
         if (!ms) continue;
 
-        if (!uniqueDufahs.has(ms.dufahNama)) {
-          uniqueDufahs.add(ms.dufahNama);
+        let targetDufah = ms.dufahNama;
+        if (activeDufahName && activeDufahRiwayats.some(r => r.santriId === id)) {
+          targetDufah = activeDufahName;
+        }
+
+        if (!uniqueDufahs.has(targetDufah)) {
+          uniqueDufahs.add(targetDufah);
           operations.push(
             prisma.dufah.upsert({
-               where: { nama: ms.dufahNama },
+               where: { nama: targetDufah },
                update: {},
-               create: { nama: ms.dufahNama }
+               create: { nama: targetDufah }
             })
           );
         }
@@ -64,7 +82,7 @@ export async function POST(request: Request) {
         operations.push(
           prisma.riwayatSantri.upsert({
             where: {
-              santriId_dufahNama: { santriId: id, dufahNama: ms.dufahNama }
+              santriId_dufahNama: { santriId: id, dufahNama: targetDufah }
             },
             update: {
               programId: kelas.programId,
@@ -72,7 +90,7 @@ export async function POST(request: Request) {
             },
             create: {
               santriId: id,
-              dufahNama: ms.dufahNama,
+              dufahNama: targetDufah,
               programId: kelas.programId,
               kelasId: kelas.id
             }
