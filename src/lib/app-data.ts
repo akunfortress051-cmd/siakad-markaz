@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { calculateStatus } from "@/lib/kelulusan";
 import { formatDateIndo, getPredikat, translateDateToArabic } from "@/lib/formatters";
 import { getMasterSantriById, getMasterSantriList } from "@/lib/santri-api";
+import { getActiveDufahName } from "@/lib/absensi";
 
 const programInclude = {
   programMapels: {
@@ -128,7 +129,7 @@ export async function getTemplateData() {
 }
 
 export async function getDashboardSantriRows() {
-  const [masterSantriList, initialRiwayatList] = await Promise.all([
+  const [masterSantriList, initialRiwayatList, activeDufahName] = await Promise.all([
     getMasterSantriList(),
     prisma.riwayatSantri.findMany({
       include: {
@@ -139,6 +140,7 @@ export async function getDashboardSantriRows() {
         nilaiList: true,
       },
     }),
+    getActiveDufahName(),
   ]);
 
   let riwayatList = [...initialRiwayatList];
@@ -190,8 +192,17 @@ export async function getDashboardSantriRows() {
 
   return masterSantriList
     .map((masterSantri) => {
-      // Find riwayat for the current active Dufah from API
-      const riwayat = riwayatMap.get(`${masterSantri.id}_${masterSantri.dufahNama}`);
+      let targetDufah = masterSantri.dufahNama;
+      
+      // Jika sistem sedang aktif di Duf'ah X, dan santri ini punya riwayat di Duf'ah X, 
+      // prioritaskan riwayat Duf'ah X agar mereka tidak hilang dari kelas saat ini
+      // meskipun mereka sudah daftar ulang ke Duf'ah selanjutnya (sehingga masterSantri.dufahNama = Duf'ah selanjutnya).
+      if (activeDufahName && riwayatMap.has(`${masterSantri.id}_${activeDufahName}`)) {
+        targetDufah = activeDufahName;
+      }
+
+      // Find riwayat for the resolved target Dufah
+      const riwayat = riwayatMap.get(`${masterSantri.id}_${targetDufah}`);
       const program = riwayat?.program ?? null;
       const kelas = riwayat?.kelas ?? null;
       let nilaiList = riwayat?.nilaiList ?? [];
