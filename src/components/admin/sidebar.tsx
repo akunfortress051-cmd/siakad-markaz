@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette, UserCog, LogOut, ShieldCheck, Calendar, Medal } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette, UserCog, LogOut, ShieldCheck, Calendar, Medal, Armchair } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const navigationGroups = [
@@ -46,6 +46,7 @@ const navigationGroups = [
     items: [
       { href: "/admin/syahadah", label: "Data Syahadah", icon: GraduationCap, permissionId: "data_syahadah" },
       { href: "/admin/martabah-ula", label: "Martabah Ula", icon: Medal, permissionId: "data_syahadah" },
+      { href: "/admin/haflah-wada", label: "Haflah Wada'", icon: Armchair, permissionId: "data_syahadah" },
       { href: "/admin/input-nilai-kelas", label: "Input Nilai", icon: BookOpen, permissionId: "input_nilai" },
       { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer, permissionId: "cetak_nilai_pekanan" },
       { href: "/layout-editor", label: "Layout Syahadah", icon: Palette, permissionId: "layout_syahadah" },
