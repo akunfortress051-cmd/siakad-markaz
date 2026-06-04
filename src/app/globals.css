@@ -277,7 +277,7 @@ a {
    HEADING FONT (Display)
    ───────────────────────────────────────────────────────── */
 .font-display {
-  font-family: var(--font-space-mono), "Space Mono", monospace;
+  font-family: var(--font-sans), "Inter", sans-serif;
 }
 
 /* ─────────────────────────────────────────────────────────

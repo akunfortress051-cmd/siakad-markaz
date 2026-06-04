@@ -29,24 +29,24 @@ type PengajarAssignment = {
 
 const SESI_OPTIONS = [
   { value: "SESI_1", label: "Hissoh Ula (Sesi 1)" },
-  { value: "SESI_2", label: "Hissoh Tsani (Sesi 2)" },
-  { value: "SESI_3", label: "Hissoh Tsalis (Sesi 3)" },
-  { value: "SESI_4", label: "Hissoh Robi' (Sesi 4)" },
-  { value: "SESI_5", label: "Hissoh Khomis (Sesi 5)" },
-  { value: "SESI_6", label: "Hissoh Sodis (Sesi 6)" }
+  { value: "SESI_2", label: "Hissoh Tsaniah (Sesi 2)" },
+  { value: "SESI_3", label: "Hissoh Tsalisah (Sesi 3)" },
+  { value: "SESI_4", label: "Hissoh Robi'ah (Sesi 4)" },
+  { value: "SESI_5", label: "Hissoh Khomisah (Sesi 5)" },
+  { value: "SESI_6", label: "Hissoh Sadisah (Sesi 6)" }
 ];
 
 export default function ManajemenUserPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<string[]>(["ADMIN", "WALI_KELAS", "PENGAJAR", "KSU"]);
-  const [rolePermissions, setRolePermissions] = useState<{role: string, permission: string}[]>([]);
+  const [rolePermissions, setRolePermissions] = useState<{ role: string, permission: string }[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [sakanList, setSakanList] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Plotting Sesi State
   const [isPlottingModalOpen, setIsPlottingModalOpen] = useState(false);
   const [activePlottingUser, setActivePlottingUser] = useState<User | null>(null);
@@ -88,11 +88,11 @@ export default function ManajemenUserPage() {
         fetch("/api/admin/roles"),
         fetch("/api/admin/sakan-list")
       ]);
-      
+
       if (usersRes.ok) setUsers(await usersRes.json());
       if (kelasRes.ok) setKelasList(await kelasRes.json());
       if (sakanRes.ok) setSakanList(await sakanRes.json());
-      
+
       if (rolesRes.ok) {
         const { roles: apiRoles, permissions: apiPerms } = await rolesRes.json();
         setRoles(apiRoles);
@@ -135,25 +135,25 @@ export default function ManajemenUserPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       const url = isEditing ? `/api/admin/users/${formData.id}` : "/api/admin/users";
       const method = isEditing ? "PUT" : "POST";
-      
+
       const payload: any = { ...formData };
       if (!payload.kelasId) payload.kelasId = null;
       if (!payload.sakan) payload.sakan = null;
-      
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan data");
-      
+
       toast.success(`User berhasil ${isEditing ? "diperbarui" : "ditambahkan"}`);
       setIsModalOpen(false);
       fetchData();
@@ -166,11 +166,11 @@ export default function ManajemenUserPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Apakah Anda yakin ingin menghapus user ini?")) return;
-    
+
     try {
       const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus user");
-      
+
       toast.success("User berhasil dihapus");
       fetchData();
     } catch (error: any) {
@@ -185,7 +185,7 @@ export default function ManajemenUserPage() {
     setTempKelasId("");
     setTempSesi("");
     setIsPlottingModalOpen(true);
-    
+
     try {
       const res = await fetch(`/api/admin/pengajar-sesi/${user.id}`);
       if (res.ok) {
@@ -232,7 +232,7 @@ export default function ManajemenUserPage() {
       });
 
       if (!res.ok) throw new Error("Gagal menyimpan alokasi mengajar");
-      
+
       toast.success("Jadwal mengajar berhasil diperbarui!");
       setIsPlottingModalOpen(false);
     } catch (error: any) {
@@ -257,16 +257,16 @@ export default function ManajemenUserPage() {
         sakan: tempSakan || null,
         password: "" // Don't update password
       };
-      
+
       const res = await fetch(`/api/admin/users/${activeSakanUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan Sakan");
-      
+
       toast.success("Sakan berhasil dihubungkan!");
       setIsSakanModalOpen(false);
       fetchData();
@@ -277,14 +277,14 @@ export default function ManajemenUserPage() {
     }
   };
 
-  const filteredUsers = users.filter((u) => 
+  const filteredUsers = users.filter((u) =>
     u.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getRoleBadgeColor = (role: string) => {
-    switch(role) {
+    switch (role) {
       case "ADMIN": return "bg-rose-100 text-rose-700 border-rose-200";
       case "WALI_KELAS": return "bg-blue-100 text-blue-700 border-blue-200";
       case "PENGAJAR": return "bg-amber-100 text-amber-700 border-amber-200";
@@ -465,7 +465,7 @@ export default function ManajemenUserPage() {
                 <XCircle size={24} />
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-[var(--color-text)] mb-1">Nama Lengkap</label>
@@ -712,7 +712,7 @@ export default function ManajemenUserPage() {
                 <XCircle size={24} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div className="bg-[var(--color-secondary)] p-3 rounded-xl border border-[var(--color-surface-dark)]">
                 <p className="text-xs text-[var(--color-text-muted)]">Nama User</p>
