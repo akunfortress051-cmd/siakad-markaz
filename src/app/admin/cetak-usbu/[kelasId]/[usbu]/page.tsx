@@ -92,31 +92,34 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
       for (const pm of allMapels) {
         const nilaiEntries = combinedNilaiMap.get(pm.mapelId) || [];
 
-        // Collect all weekly scores across both months (same logic as app-data.ts)
-        const allWeeklyScores: number[] = [];
-        const directScores: number[] = [];
-
+        // Use nilaiAkhir from DB (consistent with transkrip/input-nilai)
+        const dbScores: number[] = [];
         for (const n of nilaiEntries) {
-          if (n.nilaiUsbu1 !== null && n.nilaiUsbu1 !== undefined) allWeeklyScores.push(n.nilaiUsbu1);
-          if (n.nilaiUsbu2 !== null && n.nilaiUsbu2 !== undefined) allWeeklyScores.push(n.nilaiUsbu2);
-          if (n.nilaiNihai !== null && n.nilaiNihai !== undefined) allWeeklyScores.push(n.nilaiNihai);
-          if (n.nilaiUsbu1 === null && n.nilaiUsbu2 === null && n.nilaiNihai === null && n.nilaiAkhir !== null) {
-            directScores.push(n.nilaiAkhir);
-          }
+          if (n.nilaiAkhir !== null && n.nilaiAkhir !== undefined) dbScores.push(n.nilaiAkhir);
         }
 
         let grandScore: number | null = null;
-        const allScores = [...allWeeklyScores, ...directScores];
-        if (allScores.length > 0) {
-          grandScore = Number((allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(2));
+        if (dbScores.length > 0) {
+          grandScore = Number((dbScores.reduce((a, b) => a + b, 0) / dbScores.length).toFixed(2));
+        } else {
+          // Fallback: recalculate from raw scores if nilaiAkhir not set
+          const allWeeklyScores: number[] = [];
+          for (const n of nilaiEntries) {
+            if (n.nilaiUsbu1 !== null && n.nilaiUsbu1 !== undefined) allWeeklyScores.push(n.nilaiUsbu1);
+            if (n.nilaiUsbu2 !== null && n.nilaiUsbu2 !== undefined) allWeeklyScores.push(n.nilaiUsbu2);
+            if (n.nilaiNihai !== null && n.nilaiNihai !== undefined) allWeeklyScores.push(n.nilaiNihai);
+          }
+          if (allWeeklyScores.length > 0) {
+            grandScore = Number((allWeeklyScores.reduce((a, b) => a + b, 0) / allWeeklyScores.length).toFixed(2));
+          }
         }
 
-        // Add nilaiTambahan from the latest riwayat entry
+        // Add nilaiTambahan from the latest riwayat entry (capped at 100)
         let tambahan = 0;
         for (const n of nilaiEntries) {
           if (n.nilaiTambahan && n.nilaiTambahan > 0) tambahan = n.nilaiTambahan;
         }
-        if (grandScore !== null && tambahan > 0) grandScore += tambahan;
+        if (grandScore !== null && tambahan > 0) grandScore = Math.min(100, grandScore + tambahan);
 
         if (grandScore !== null) {
           mapelScores.push(grandScore);
@@ -221,7 +224,7 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
         if (targetUsbu === 1) score = match.nilaiUsbu1 ?? match.nilaiAkhir;
         if (targetUsbu === 2) score = match.nilaiUsbu2 ?? match.nilaiAkhir;
         if (targetUsbu === 3) score = match.nilaiNihai ?? match.nilaiAkhir;
-        if (targetUsbu === 4) score = (match.nilaiAkhir ?? 0) + (match.nilaiTambahan ?? 0) || null;
+        if (targetUsbu === 4) { const base = match.nilaiAkhir; const tmb = match.nilaiTambahan ?? 0; score = base !== null && base !== undefined ? Math.min(100, base + tmb) : null; }
       }
 
       if (score !== null && score !== undefined) {
