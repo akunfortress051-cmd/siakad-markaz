@@ -161,14 +161,16 @@ export function HaflahWadaClient({
       const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
 
-      // F4 paper: 215.9mm × 330.2mm, landscape
-      const f4Width = 330.2;
-      const f4Height = 215.9;
+      const isLandscape = activeTab === "denah";
+      const f4Width = isLandscape ? 330.2 : 215.9;
+      const f4Height = isLandscape ? 215.9 : 330.2;
+      const orientation = isLandscape ? "landscape" : "portrait";
+      const winWidth = isLandscape ? 1200 : 800; // Narrower window for portrait brings columns closer
       const margin = 10;
       const usableWidth = f4Width - margin * 2;
       const usableHeight = f4Height - margin * 2;
 
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: [215.9, 330.2] });
+      const pdf = new jsPDF({ orientation: orientation as "landscape" | "portrait", unit: "mm", format: [215.9, 330.2] });
 
       const oncloneHandler = (clonedDoc: Document) => {
         clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove());
@@ -182,7 +184,7 @@ export function HaflahWadaClient({
 
       if (sections.length === 0) {
         // Fallback: render the whole thing
-        const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff", windowWidth: 1200, onclone: oncloneHandler });
+        const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff", windowWidth: winWidth, onclone: oncloneHandler });
         const ratio = usableWidth / canvas.width;
         const scaledH = canvas.height * ratio;
         if (scaledH <= usableHeight) {
@@ -190,7 +192,7 @@ export function HaflahWadaClient({
         } else {
           let srcY = 0; let remaining = canvas.height; let page = 0;
           while (remaining > 0) {
-            if (page > 0) pdf.addPage([215.9, 330.2], "landscape");
+            if (page > 0) pdf.addPage([215.9, 330.2], orientation as "landscape" | "portrait");
             const slice = Math.min(remaining, usableHeight / ratio);
             const sc = document.createElement("canvas"); sc.width = canvas.width; sc.height = slice;
             sc.getContext("2d")!.drawImage(canvas, 0, srcY, canvas.width, slice, 0, 0, canvas.width, slice);
@@ -206,7 +208,7 @@ export function HaflahWadaClient({
         for (let i = 0; i < sections.length; i++) {
           const section = sections[i] as HTMLElement;
           const canvas = await html2canvas(section, {
-            scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff", windowWidth: 1200, onclone: oncloneHandler
+            scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff", windowWidth: winWidth, onclone: oncloneHandler
           });
 
           const ratio = usableWidth / canvas.width;
@@ -214,7 +216,7 @@ export function HaflahWadaClient({
 
           // If this section doesn't fit on the current page, start a new page
           if (currentY + scaledH > f4Height - margin && currentY > margin + 1) {
-            pdf.addPage([215.9, 330.2], "landscape");
+            pdf.addPage([215.9, 330.2], orientation as "landscape" | "portrait");
             pageNum++;
             currentY = margin;
           }
@@ -241,7 +243,7 @@ export function HaflahWadaClient({
             let srcY = 0;
 
             while (srcY < canvas.height - 2) {
-              if (srcY > 0) { pdf.addPage([215.9, 330.2], "landscape"); pageNum++; currentY = margin; }
+              if (srcY > 0) { pdf.addPage([215.9, 330.2], orientation as "landscape" | "portrait"); pageNum++; currentY = margin; }
 
               let cutY = Math.min(srcY + maxSliceHeight, canvas.height);
 
@@ -299,7 +301,7 @@ export function HaflahWadaClient({
       verticalAlign: "middle",
       height: 90,
       width: "10%",
-      backgroundColor: !student ? "#fafafa" : (student.statusKelulusan === "MUSYAROKAH" ? "#e2e8f0" : (student.isMartabahUla ? "#dcfce7" : "#ffffff")),
+      backgroundColor: !student ? "#fafafa" : "#ffffff",
       position: "relative",
     }}>
       {student && (
@@ -308,13 +310,9 @@ export function HaflahWadaClient({
             <div style={{ position: "absolute", top: 2, left: 4, fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>{seatNo}</div>
           )}
           <div style={{ fontSize: 14, fontWeight: 700 }}>
-            {student.isMartabahUla && <span style={{ color: "#15803d" }}>★ </span>}
             {student.nama}
           </div>
           <div style={{ fontSize: 11, color: "#475569", marginTop: 3, fontWeight: 500 }}>({student.kelasNama})</div>
-          {student.statusKelulusan === "MUSYAROKAH" && (
-            <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2, textTransform: "uppercase", color: "#64748b" }}>Musyarokah</div>
-          )}
         </div>
       )}
     </td>
@@ -515,22 +513,17 @@ export function HaflahWadaClient({
                       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                         <tbody>
                           {group.banin.length > 0 ? group.banin.map((s, idx) => (
-                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: s.isMartabahUla ? "#dcfce7" : "white" }}>
+                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: "white" }}>
                               <td style={{ width: 28, textAlign: "center", borderRight: "1px solid #cbd5e1", padding: "6px 2px", fontWeight: 700, color: "#94a3b8", fontSize: 11 }}>{idx + 1}</td>
                               <td style={{ padding: "6px 8px", borderRight: "1px solid #e2e8f0", fontSize: 13 }}>
-                                <span style={{ fontWeight: s.isMartabahUla ? 800 : 500, color: "#1e293b" }}>
-                                  {s.isMartabahUla && "★ "}{s.nama}
+                                <span style={{ fontWeight: 500, color: "#1e293b" }}>
+                                  {s.nama}
                                 </span>
                               </td>
                               <td style={{ padding: "6px 8px", textAlign: "right", direction: "rtl", fontSize: 13 }}>
-                                {s.isMartabahUla ? (
-                                  <span style={{ backgroundColor: "#bbf7d0", border: "1px solid #86efac", color: "#166534", padding: "2px 8px", borderRadius: 3, fontWeight: 700, fontSize: 11, display: "inline-block" }}>الامتياز مع مرتبة الشرف الأولى</span>
-                                ) : (
-                                  <span>
-                                    <span style={{ fontWeight: 600, fontSize: 13 }}>{s.averagePredikat.arab}</span>
-                                    {s.statusKelulusan === "MUSYAROKAH" && <span style={{ fontSize: 9, color: "#94a3b8", marginRight: 6, background: "#f1f5f9", padding: "1px 5px", borderRadius: 3, border: "1px solid #e2e8f0" }}>Musyarokah</span>}
-                                  </span>
-                                )}
+                                <span>
+                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{s.averagePredikat.arab}</span>
+                                </span>
                               </td>
                             </tr>
                           )) : (
@@ -548,22 +541,17 @@ export function HaflahWadaClient({
                       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                         <tbody>
                           {group.banat.length > 0 ? group.banat.map((s, idx) => (
-                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: s.isMartabahUla ? "#dcfce7" : "white" }}>
+                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: "white" }}>
                               <td style={{ width: 28, textAlign: "center", borderRight: "1px solid #cbd5e1", padding: "6px 2px", fontWeight: 700, color: "#94a3b8", fontSize: 11 }}>{idx + 1}</td>
                               <td style={{ padding: "6px 8px", borderRight: "1px solid #e2e8f0", fontSize: 13 }}>
-                                <span style={{ fontWeight: s.isMartabahUla ? 800 : 500, color: "#1e293b" }}>
-                                  {s.isMartabahUla && "★ "}{s.nama}
+                                <span style={{ fontWeight: 500, color: "#1e293b" }}>
+                                  {s.nama}
                                 </span>
                               </td>
                               <td style={{ padding: "6px 8px", textAlign: "right", direction: "rtl", fontSize: 13 }}>
-                                {s.isMartabahUla ? (
-                                  <span style={{ backgroundColor: "#bbf7d0", border: "1px solid #86efac", color: "#166534", padding: "2px 8px", borderRadius: 3, fontWeight: 700, fontSize: 11, display: "inline-block" }}>الامتياز مع مرتبة الشرف الأولى</span>
-                                ) : (
-                                  <span>
-                                    <span style={{ fontWeight: 600, fontSize: 13 }}>{s.averagePredikat.arab}</span>
-                                    {s.statusKelulusan === "MUSYAROKAH" && <span style={{ fontSize: 9, color: "#94a3b8", marginRight: 6, background: "#f1f5f9", padding: "1px 5px", borderRadius: 3, border: "1px solid #e2e8f0" }}>Musyarokah</span>}
-                                  </span>
-                                )}
+                                <span>
+                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{s.averagePredikat.arab}</span>
+                                </span>
                               </td>
                             </tr>
                           )) : (
