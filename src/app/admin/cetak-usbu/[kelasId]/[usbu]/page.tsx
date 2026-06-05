@@ -133,7 +133,7 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
         }
       }
 
-      const nilaiAkumulatif = totalBobotCalculated > 0 ? Number((totalSkorBobot / totalBobotCalculated).toFixed(2)) : 0;
+      const nilaiAkumulatif = totalSkorBobot > 0 ? Number((totalSkorBobot / 100).toFixed(2)) : 0;
 
       return { nama: ms.nama, gender: ms.gender || "-", mapelScores, nilaiAkumulatif };
     }).filter(Boolean) as any[];
@@ -239,7 +239,7 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
       }
     }
 
-    const nilaiAkumulatif = totalBobotCalculated > 0 ? Number((totalSkorBobot / totalBobotCalculated).toFixed(2)) : 0;
+    const nilaiAkumulatif = totalSkorBobot > 0 ? Number((totalSkorBobot / 100).toFixed(2)) : 0;
 
     return { nama, gender, mapelScores, nilaiAkumulatif };
   }).filter(Boolean) as any[];

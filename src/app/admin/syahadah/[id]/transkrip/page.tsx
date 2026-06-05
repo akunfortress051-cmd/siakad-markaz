@@ -152,7 +152,7 @@ export default async function TranskripPage({ params }: { params: Promise<{ id: 
     }
   }
 
-  const rataRataAkhir = totalBobot > 0 ? Number((totalSkorBobot / totalBobot).toFixed(2)) : 0;
+  const rataRataAkhir = totalSkorBobot > 0 ? Number((totalSkorBobot / 100).toFixed(2)) : 0;
 
   return (
     <div className="min-h-screen bg-slate-200 p-4 md:p-8">
