@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { TranskripDocument } from "@/components/admin/transkrip-document";
 import { getMasterSantriById } from "@/lib/santri-api";
-import { calcAkumulatif } from "@/lib/grade-calculator";
+import { calcAkumulatif, calcAkbarnasMapelAverage, calcMapelNilaiAkhir, applyNilaiTambahan } from "@/lib/grade-calculator";
 
 export default async function TranskripPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("cetak_transkrip");
@@ -81,43 +81,22 @@ export default async function TranskripPage({ params }: { params: Promise<{ id: 
       n: b2_n,
     };
 
-    // Calculate Nilai Akhir Mapel - prioritize DB stored nilaiAkhir for consistency
-    const allWeeklyB1: number[] = [];
-    if (b1.u1 !== null && b1.u1 !== undefined) allWeeklyB1.push(b1.u1);
-    if (b1.u2 !== null && b1.u2 !== undefined) allWeeklyB1.push(b1.u2);
-    if (b1.n !== null && b1.n !== undefined) allWeeklyB1.push(b1.n);
-    const b1Avg = allWeeklyB1.length > 0 ? Number((allWeeklyB1.reduce((a, b) => a + b, 0) / allWeeklyB1.length).toFixed(2)) : null;
+    const b1Avg = calcMapelNilaiAkhir({ u1: b1.u1, u2: b1.u2, n: b1.n }, isAkbarnas);
+    const b2Avg = calcMapelNilaiAkhir({ u1: b2.u1, u2: b2.u2, n: b2.n }, isAkbarnas);
 
-    const allWeeklyB2: number[] = [];
-    if (b2.u1 !== null && b2.u1 !== undefined) allWeeklyB2.push(b2.u1);
-    if (b2.u2 !== null && b2.u2 !== undefined) allWeeklyB2.push(b2.u2);
-    if (b2.n !== null && b2.n !== undefined) allWeeklyB2.push(b2.n);
-    const b2Avg = allWeeklyB2.length > 0 ? Number((allWeeklyB2.reduce((a, b) => a + b, 0) / allWeeklyB2.length).toFixed(2)) : null;
-
-    // Use stored nilaiAkhir from DB when available (same as input-nilai page)
-    // This ensures consistency between pages
+    // Calculate Nilai Akhir Mapel using Centralized Source of Truth
     let nilaiAkhir: number | null = null;
+    const records = [n1, n2].filter(Boolean) as any[];
 
     if (isAkbarnas) {
-      // Akbarnas: average nilaiAkhir from both B1 and B2 riwayats
-      const dbScores: number[] = [];
-      if (n1 && n1.nilaiAkhir !== null && n1.nilaiAkhir !== undefined) dbScores.push(n1.nilaiAkhir);
-      if (n2 && n2.nilaiAkhir !== null && n2.nilaiAkhir !== undefined) dbScores.push(n2.nilaiAkhir);
-      if (dbScores.length > 0) {
-        nilaiAkhir = Number((dbScores.reduce((a, b) => a + b, 0) / dbScores.length).toFixed(2));
-      }
+      nilaiAkhir = calcAkbarnasMapelAverage(records);
     } else {
-      // Non-Akbarnas: use the single riwayat's nilaiAkhir
-      if (n1 && n1.nilaiAkhir !== null && n1.nilaiAkhir !== undefined) {
-        nilaiAkhir = n1.nilaiAkhir;
-      }
-    }
-
-    // Fallback: recalculate from raw scores if DB nilaiAkhir is not set
-    if (nilaiAkhir === null) {
-      const allWeekly = [...allWeeklyB1, ...allWeeklyB2];
-      if (allWeekly.length > 0) {
-        nilaiAkhir = Number((allWeekly.reduce((a, b) => a + b, 0) / allWeekly.length).toFixed(2));
+      if (n1) {
+        if (n1.nilaiAkhir !== null && n1.nilaiAkhir !== undefined) {
+          nilaiAkhir = n1.nilaiAkhir;
+        } else {
+          nilaiAkhir = calcMapelNilaiAkhir({ u1: b1.u1, u2: b1.u2, n: b1.n }, false);
+        }
       }
     }
 
@@ -129,7 +108,7 @@ export default async function TranskripPage({ params }: { params: Promise<{ id: 
       tambahan = (n1 as any).nilaiTambahan;
     }
     if (nilaiAkhir !== null && tambahan > 0) {
-      nilaiAkhir = Math.min(100, nilaiAkhir + tambahan);
+      nilaiAkhir = applyNilaiTambahan(nilaiAkhir, tambahan);
     }
 
     items.push({
