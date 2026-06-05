@@ -71,6 +71,7 @@ export function CetakUsbuSelector({ kelasList }: { kelasList: { id: string, nama
           >
             <option value="1">Bulan 1</option>
             <option value="2">Bulan 2</option>
+            <option value="gabungan">Gabungan Bulan 1 & 2</option>
           </select>
         </label>
       )}

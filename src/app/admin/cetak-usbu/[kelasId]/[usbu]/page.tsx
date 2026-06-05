@@ -44,8 +44,109 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
   });
 
   const isAkbarnas = kelas.program.nama_indo.toLowerCase().includes("akbarnas");
+  const isGabungan = isAkbarnas && bulan === "gabungan";
   const isMonth2 = isAkbarnas && bulan === "2";
-  
+
+  // ===== GABUNGAN MODE: merge all Akbarnas riwayat for both months =====
+  if (isGabungan) {
+    const santriIds = validActiveRiwayats.map(r => r.santriId);
+
+    // Get ALL Akbarnas riwayat for these students (both months/dufah)
+    const allAkbarnasRiwayat = await prisma.riwayatSantri.findMany({
+      where: {
+        santriId: { in: santriIds },
+        program: { nama_indo: { contains: "akbarnas", mode: "insensitive" } },
+      },
+      include: { santri: true, nilaiList: true },
+    });
+
+    // Include ALL mapels (same as Syahadah) — no bulan_aktif or bobot_usbu filter
+    const allMapels = kelas.program.programMapels.filter(pm => pm.mapel.masuk_akumulasi !== false);
+
+    // Group riwayat by santriId
+    const riwayatBySantri = new Map<string, typeof allAkbarnasRiwayat>();
+    for (const r of allAkbarnasRiwayat) {
+      if (!riwayatBySantri.has(r.santriId)) riwayatBySantri.set(r.santriId, []);
+      riwayatBySantri.get(r.santriId)!.push(r);
+    }
+
+    const rows = santriIds.map(santriId => {
+      const ms = masterMap.get(santriId);
+      if (!ms) return null;
+
+      const allRiwayats = riwayatBySantri.get(santriId) || [];
+
+      // Merge nilaiList from all riwayat, grouped by mapelId
+      const combinedNilaiMap = new Map<string, any[]>();
+      for (const r of allRiwayats) {
+        for (const n of r.nilaiList) {
+          if (!combinedNilaiMap.has(n.mapelId)) combinedNilaiMap.set(n.mapelId, []);
+          combinedNilaiMap.get(n.mapelId)!.push(n);
+        }
+      }
+
+      const mapelScores: (number | "-")[] = [];
+      let totalSkorBobot = 0;
+      let totalBobotCalculated = 0;
+
+      for (const pm of allMapels) {
+        const nilaiEntries = combinedNilaiMap.get(pm.mapelId) || [];
+
+        // Collect all weekly scores across both months (same logic as app-data.ts)
+        const allWeeklyScores: number[] = [];
+        const directScores: number[] = [];
+
+        for (const n of nilaiEntries) {
+          if (n.nilaiUsbu1 !== null && n.nilaiUsbu1 !== undefined) allWeeklyScores.push(n.nilaiUsbu1);
+          if (n.nilaiUsbu2 !== null && n.nilaiUsbu2 !== undefined) allWeeklyScores.push(n.nilaiUsbu2);
+          if (n.nilaiNihai !== null && n.nilaiNihai !== undefined) allWeeklyScores.push(n.nilaiNihai);
+          if (n.nilaiUsbu1 === null && n.nilaiUsbu2 === null && n.nilaiNihai === null && n.nilaiAkhir !== null) {
+            directScores.push(n.nilaiAkhir);
+          }
+        }
+
+        let grandScore: number | null = null;
+        if (allWeeklyScores.length > 0) {
+          grandScore = Number((allWeeklyScores.reduce((a, b) => a + b, 0) / allWeeklyScores.length).toFixed(2));
+        } else if (directScores.length > 0) {
+          grandScore = Number((directScores.reduce((a, b) => a + b, 0) / directScores.length).toFixed(2));
+        }
+
+        if (grandScore !== null) {
+          mapelScores.push(grandScore);
+          if (pm.mapel.masuk_akumulasi !== false) {
+            const weight = pm.mapel.bobot ?? 1;
+            totalSkorBobot += grandScore * weight;
+            totalBobotCalculated += weight;
+          }
+        } else {
+          mapelScores.push("-");
+        }
+      }
+
+      const nilaiAkumulatif = totalBobotCalculated > 0 ? Number((totalSkorBobot / totalBobotCalculated).toFixed(2)) : 0;
+
+      return { nama: ms.nama, gender: ms.gender || "-", mapelScores, nilaiAkumulatif };
+    }).filter(Boolean) as any[];
+
+    rows.sort((a: any, b: any) => b.nilaiAkumulatif - a.nilaiAkumulatif);
+    rows.forEach((r: any, idx: number) => { r.peringkat = idx + 1; });
+    rows.sort((a: any, b: any) => a.nama.localeCompare(b.nama, "id"));
+
+    return (
+      <div className="min-h-screen bg-slate-200 p-4 md:p-8">
+        <CetakUsbuDocument
+          kelasNama={kelas.nama + " (Gabungan B1+B2)"}
+          waliKelas={kelas.waliKelas?.nama || "Belum dihubungkan"}
+          usbuLabel="Gabungan"
+          mapelHeaders={allMapels.map(pm => pm.mapel.nama_indo.toUpperCase() as string)}
+          rows={rows}
+        />
+      </div>
+    );
+  }
+
+  // ===== NORMAL MODE (Bulan 1 / Bulan 2 / Non-Akbarnas) =====
   let targetRiwayatIds: string[] = [];
 
   if (isAkbarnas) {
@@ -102,11 +203,7 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
     const nama = ms?.nama || riwayat.santri.nama || "Tanpa Nama";
     const gender = ms?.gender || "-";
 
-    // Compute Nilai
-    // Because mapels are dynamic, we need an array of values matching the program's sorted mapels
     const mapelScores: (number | "-")[] = [];
-    let sum = 0;
-
     let totalSkorBobot = 0;
     let totalBobotCalculated = 0;
 
@@ -135,23 +232,11 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
 
     const nilaiAkumulatif = totalBobotCalculated > 0 ? Number((totalSkorBobot / totalBobotCalculated).toFixed(2)) : 0;
 
-    return {
-      nama,
-      gender,
-      mapelScores,
-      nilaiAkumulatif
-    };
+    return { nama, gender, mapelScores, nilaiAkumulatif };
   }).filter(Boolean) as any[];
 
-  // Sort by akumulatif descending to get ranking
   rows.sort((a, b) => b.nilaiAkumulatif - a.nilaiAkumulatif);
-
-  // Assign ranking
-  rows.forEach((r, idx) => {
-    r.peringkat = idx + 1;
-  });
-
-  // Then sort back by name alphabetically
+  rows.forEach((r, idx) => { r.peringkat = idx + 1; });
   rows.sort((a, b) => a.nama.localeCompare(b.nama, "id"));
 
   return (
