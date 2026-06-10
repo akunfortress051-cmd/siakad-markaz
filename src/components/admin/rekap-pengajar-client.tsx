@@ -23,6 +23,7 @@ type PengajarRecord = {
     kopiah: boolean;
     bros: boolean;
   };
+  terlambatMenit?: number;
 };
 
 const HARI_OPTIONS = [
@@ -104,6 +105,116 @@ export function RekapPengajarClient() {
     }));
   }, [data, searchQuery, filterHari, filterKelas, filterPengajar]);
 
+  const exportToExcel = () => {
+    if (!dari || !data.length) return;
+
+    // Menentukan rentang tanggal 12 sampai 5 bulan depan
+    const dDate = new Date(dari);
+    let startYear = dDate.getFullYear();
+    let startMonth = dDate.getMonth();
+    if (dDate.getDate() < 12) {
+      startMonth -= 1;
+    }
+    const exportStart = new Date(startYear, startMonth, 12);
+    const exportEnd = new Date(startYear, startMonth + 1, 5);
+
+    const datesArray: Date[] = [];
+    let curr = new Date(exportStart);
+    while (curr <= exportEnd) {
+      datesArray.push(new Date(curr));
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    // Grouping data for Excel: teacher -> kelas||sesi -> date -> record
+    const grouped: Record<string, Record<string, Record<string, PengajarRecord>>> = {};
+    
+    data.forEach(r => {
+      if (!grouped[r.pengajar]) grouped[r.pengajar] = {};
+      const rowKey = `${r.kelas}||${r.sesi}`;
+      if (!grouped[r.pengajar][rowKey]) grouped[r.pengajar][rowKey] = {};
+      grouped[r.pengajar][rowKey][r.tanggal] = r;
+    });
+
+    const SESI_ROMAN: Record<string, string> = {
+      "SESI_1": "I", "SESI_2": "II", "SESI_3": "III",
+      "SESI_4": "IV", "SESI_5": "V", "SESI_6": "VI"
+    };
+
+    let html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; font-family: sans-serif; font-size: 12px; }
+          th, td { border: 1px solid #000; padding: 5px; text-align: center; vertical-align: middle; }
+          th { background-color: #f2f2f2; font-weight: bold; }
+          .blue { background-color: #4f81bd; color: #4f81bd; } /* Biru tulisan biru biar ga kelihatan textnya kalo kosong */
+          .red { background-color: #ff4c4c; color: #fff; font-weight: bold; }
+          .gray { background-color: #d9d9d9; }
+          .white-red { background-color: #fff; color: #ff0000; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Kelas</th>
+              <th>Sesi</th>
+              ${datesArray.map(d => `<th>${format(d, "d")} <br/> ${format(d, "EEE", { locale: id })}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>`;
+
+    Object.keys(grouped).sort().forEach(teacher => {
+      const rows = grouped[teacher];
+      let firstRow = true;
+      const rowKeys = Object.keys(rows).sort();
+      
+      rowKeys.forEach(rowKey => {
+        const [kelas, sesi] = rowKey.split("||");
+        html += `<tr>`;
+        if (firstRow) {
+          html += `<td rowspan="${rowKeys.length}"><b>${teacher}</b></td>`;
+          firstRow = false;
+        }
+        html += `<td>${kelas}</td>`;
+        html += `<td>${SESI_ROMAN[sesi] || sesi}</td>`;
+        
+        datesArray.forEach(dateObj => {
+          const dateStr = format(dateObj, "yyyy-MM-dd");
+          const record = rows[rowKey][dateStr];
+          
+          if (!record) {
+            html += `<td class="gray"></td>`;
+          } else if (record.status === "ALPHA") {
+            html += `<td class="red">A</td>`;
+          } else if (record.status === "HADIR") {
+            if (record.terlambatMenit && record.terlambatMenit > 0) {
+              html += `<td class="white-red">-${record.terlambatMenit}</td>`;
+            } else {
+              html += `<td class="blue">Y</td>`;
+            }
+          } else {
+            html += `<td></td>`;
+          }
+        });
+        html += `</tr>`;
+      });
+      // Empty row separation
+      html += `<tr><td colspan="${3 + datesArray.length}" style="border:none; height: 20px;"></td></tr>`;
+    });
+
+    html += `</tbody></table></body></html>`;
+
+    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Rekap_Pengajar_${format(exportStart, "MMM_yyyy")}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!dari || !sampai) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-[var(--color-surface-dark)]">
@@ -132,6 +243,14 @@ export function RekapPengajarClient() {
                 className="w-full pl-9 pr-4 py-2 text-sm bg-[var(--color-secondary)] border border-[var(--color-surface-dark)] rounded-xl outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all font-semibold"
               />
             </div>
+            <button
+              onClick={exportToExcel}
+              disabled={isLoading || data.length === 0}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Export Excel</span>
+            </button>
           </div>
 
           {/* Filter Row */}
@@ -257,6 +376,9 @@ export function RekapPengajarClient() {
                               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-muted)] text-xs font-bold font-mono">
                                 <Clock className="w-3.5 h-3.5" />
                                 {r.waktuMulai} - {r.waktuSelesai}
+                                {r.terlambatMenit ? (
+                                  <span className="ml-1 text-red-500 font-bold text-[10px]">(-{r.terlambatMenit}m)</span>
+                                ) : null}
                               </div>
                             )}
                           </td>

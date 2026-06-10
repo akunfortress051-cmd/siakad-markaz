@@ -19,30 +19,55 @@ export async function GET(request: Request) {
         }
       },
       include: {
-        user: { select: { id: true, nama: true } },
+        user: { select: { id: true, nama: true, username: true } },
         kelas: { select: { id: true, nama: true } },
         pengajarDigantikan: { select: { id: true, nama: true } },
       }
     });
 
-    const formatted = records.map(r => ({
-      id: r.id,
-      pengajar: r.user.nama,
-      kelas: r.kelas.nama,
-      tanggal: r.tanggal.toISOString().split("T")[0],
-      sesi: r.sesi,
-      materi: r.materi || "-",
-      waktuMulai: r.waktuMulai,
-      waktuSelesai: r.waktuSelesai,
-      status: "HADIR",
-      isBadal: r.isBadal,
-      pengajarDigantikan: r.pengajarDigantikan?.nama || null,
-      atribut: {
-        nametag: r.atributNametag,
-        kopiah: r.atributKopiah,
-        bros: r.atributBros,
+    const jadwalSesiList = await prisma.jadwalSesi.findMany();
+    const jadwalMap = new Map(jadwalSesiList.map(j => [j.sesi, j]));
+
+    const formatted = records.map(r => {
+      const jadwal = jadwalMap.get(r.sesi);
+      let terlambatMenit = 0;
+      if (jadwal && r.waktuMulai && r.waktuMulai !== "-") {
+        const [hM, mM] = r.waktuMulai.split(":").map(Number);
+        const [hB, mB] = jadwal.jamBuka.split(":").map(Number);
+        const totalMinutesMulai = (hM * 60) + mM;
+        let totalMinutesBuka = (hB * 60) + mB;
+
+        // Handle cross-midnight (e.g. jamBuka 23:59, waktuMulai 00:03)
+        if (totalMinutesBuka > 1200 && totalMinutesMulai < 120) {
+          totalMinutesBuka -= 24 * 60;
+        }
+
+        const diff = totalMinutesMulai - totalMinutesBuka;
+        if (diff > 0) {
+          terlambatMenit = diff;
+        }
       }
-    }));
+
+      return {
+        id: r.id,
+        pengajar: r.user.username,
+        kelas: r.kelas.nama,
+        tanggal: r.tanggal.toISOString().split("T")[0],
+        sesi: r.sesi,
+        materi: r.materi || "-",
+        waktuMulai: r.waktuMulai,
+        waktuSelesai: r.waktuSelesai,
+        status: "HADIR",
+        isBadal: r.isBadal,
+        pengajarDigantikan: r.pengajarDigantikan?.nama || null,
+        atribut: {
+          nametag: r.atributNametag,
+          kopiah: r.atributKopiah,
+          bros: r.atributBros,
+        },
+        terlambatMenit,
+      };
+    });
 
     const absenKelas = await prisma.absenKelas.findMany({
       where: {
@@ -69,7 +94,7 @@ export async function GET(request: Request) {
 
     const pengajarSesi = await prisma.pengajarSesi.findMany({
       include: { 
-        user: { select: { id: true, nama: true } },
+        user: { select: { id: true, nama: true, username: true } },
         kelas: { select: { nama: true } }
       }
     });
@@ -81,7 +106,7 @@ export async function GET(request: Request) {
         if (!classWasTaught) {
           formatted.push({
             id: `alpha_${teacher.userId}_${teacher.kelasId}_${teacher.sesi}_${tgl}`,
-            pengajar: teacher.user.nama,
+            pengajar: teacher.user.username,
             kelas: teacher.kelas.nama,
             tanggal: tgl,
             sesi: teacher.sesi,
@@ -91,7 +116,8 @@ export async function GET(request: Request) {
             status: "ALPHA",
             isBadal: false,
             pengajarDigantikan: null,
-            atribut: { nametag: false, kopiah: false, bros: false }
+            atribut: { nametag: false, kopiah: false, bros: false },
+            terlambatMenit: 0,
           });
         }
       }

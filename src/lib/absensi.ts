@@ -7,7 +7,7 @@ export async function syncDufahTable(): Promise<Set<string>> {
   let validDufahNames = new Set<string>();
 
   try {
-    const response = await fetch("https://ppdb-markaz.vercel.app/api/dufah", { next: { revalidate: 86400, tags: ["santri-data"] } });
+    const response = await fetch("https://ppdb.markazarabiyah.site/api/dufah", { next: { revalidate: 86400, tags: ["santri-data"] } });
     if (response.ok) {
       const data = await response.json();
       data.forEach((d: any) => {
@@ -77,7 +77,7 @@ export async function syncDufahTable(): Promise<Set<string>> {
 export async function getActiveDufahName(): Promise<string | null> {
   // 1. Mencoba mengambil dari API PPDB langsung untuk Single Source of Truth
   try {
-    const response = await fetch("https://ppdb-markaz.vercel.app/api/dufah", { next: { revalidate: 86400, tags: ["santri-data"] } });
+    const response = await fetch("https://ppdb.markazarabiyah.site/api/dufah", { next: { revalidate: 86400, tags: ["santri-data"] } });
     if (response.ok) {
       const data = await response.json();
       const activeDufah = data.find((d: any) => d.isActive === true);

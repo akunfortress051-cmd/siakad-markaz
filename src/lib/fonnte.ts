@@ -3,36 +3,57 @@
  * Utility untuk mengirim laporan absensi ke grup WhatsApp via Fonnte.
  */
 
-const FONNTE_API_URL = "https://api.fonnte.com/send";
+const WA_API_URL = "https://wa-multi-session.amtsilatipusat.com/api/v1";
 
 /**
- * Mengirim pesan WhatsApp via Fonnte API.
+ * Mengirim pesan WhatsApp via WA Multi Session API.
  */
 export async function sendWhatsAppMessage(target: string, message: string): Promise<{ success: boolean; detail?: string }> {
-  const token = process.env.FONNTE_API_TOKEN;
-  if (!token) {
-    return { success: false, detail: "FONNTE_API_TOKEN belum dikonfigurasi di .env" };
+  const apiKey = process.env.WA_API_KEY || "024a3190-cfd8-4da6-8e82-7ac0f6c568d0";
+  const sessionId = process.env.WA_SESSION_ID || "default";
+
+  if (!apiKey) {
+    return { success: false, detail: "WA_API_KEY belum dikonfigurasi" };
+  }
+
+  // Handle multiple targets if Fonnte passed comma-separated targets
+  const targets = target.split(",").map(t => t.trim()).filter(t => t.length > 0);
+  
+  if (targets.length === 0) {
+    return { success: false, detail: "Target penerima kosong" };
   }
 
   try {
-    const res = await fetch(FONNTE_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: token,
-      },
-      body: new URLSearchParams({
-        target,
-        message,
-      }),
-    });
+    let lastError = null;
+    let successCount = 0;
 
-    const data = await res.json();
+    for (const t of targets) {
+      const res = await fetch(`${WA_API_URL}/sessions/${sessionId}/send`, {
+        method: "POST",
+        headers: {
+          "X-API-Key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: t,
+          message: message,
+        }),
+      });
 
-    if (data.status === true || data.status === "true") {
-      return { success: true, detail: data.detail || "Pesan terkirim" };
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        successCount++;
+      } else {
+        lastError = data.message || data.error || `HTTP Error ${res.status}`;
+      }
     }
 
-    return { success: false, detail: data.detail || data.reason || "Gagal mengirim pesan" };
+    if (successCount > 0) {
+      return { success: true, detail: "Pesan terkirim" };
+    }
+
+    return { success: false, detail: lastError || "Gagal mengirim pesan" };
   } catch (error: any) {
     return { success: false, detail: error.message || "Network error" };
   }
