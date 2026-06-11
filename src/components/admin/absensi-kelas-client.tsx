@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle } from "lucide-react";
 
-// Helper: Hitung sesi aktif dari jadwal list dan waktu WIB saat ini
-function computeActiveSessions(jadwalSesiList: any[]): string[] {
+// Helper: Hitung sesi aktif, sesi berikutnya, dan status libur
+function computeSessionState(jadwalSesiList: any[]) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Jakarta',
     hour: '2-digit', minute: '2-digit', hour12: false
@@ -15,7 +15,10 @@ function computeActiveSessions(jadwalSesiList: any[]): string[] {
   const curMin = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
   const curVal = curHour * 60 + curMin;
 
-  const active: string[] = [];
+  const activeSesis: string[] = [];
+  let nextSession = null;
+  let minDiff = Infinity;
+
   for (const jadwal of jadwalSesiList) {
     if (!jadwal.isActive) continue;
     const [bukaH, bukaM] = jadwal.jamBuka.split(':').map(Number);
@@ -30,9 +33,19 @@ function computeActiveSessions(jadwalSesiList: any[]): string[] {
     } else {
       isActive = curVal >= bukaVal && curVal <= tutupVal;
     }
-    if (isActive) active.push(jadwal.sesi);
+    
+    if (isActive) {
+      activeSesis.push(jadwal.sesi);
+    } else {
+      // Cek apakah ini sesi berikutnya di hari ini
+      if (bukaVal > curVal && bukaVal - curVal < minDiff) {
+        minDiff = bukaVal - curVal;
+        nextSession = jadwal;
+      }
+    }
   }
-  return active;
+  
+  return { activeSesis, nextSession, isResting: activeSesis.length === 0 && !nextSession };
 }
 
 // Helper: Cache key untuk form pengajar
@@ -106,6 +119,10 @@ export function AbsensiKelasClient({
   const [showBadalModal, setShowBadalModal] = useState(false);
   const [badalTargetKelasId, setBadalTargetKelasId] = useState("");
   const [isSaved, setIsSaved] = useState(false); // Indikator apakah absen sudah tersimpan
+  
+  const [activeSessionsList, setActiveSessionsList] = useState<string[]>([]);
+  const [nextSessionInfo, setNextSessionInfo] = useState<any | null>(null);
+  const [isResting, setIsResting] = useState(false);
 
   // Sync ref dengan state
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
@@ -128,7 +145,11 @@ export function AbsensiKelasClient({
       .then(res => res.json())
       .then(data => {
         setJadwalSesiList(data);
-        const activeSesis = computeActiveSessions(data);
+        const { activeSesis, nextSession, isResting } = computeSessionState(data);
+        setActiveSessionsList(activeSesis);
+        setNextSessionInfo(nextSession);
+        setIsResting(isResting);
+        
         const currentActive = activeSesis.length > 0 ? activeSesis[0] : null;
         
         if (isTeacher) {
@@ -165,7 +186,11 @@ export function AbsensiKelasClient({
     if (!isTeacher || jadwalSesiList.length === 0) return;
 
     const intervalId = setInterval(() => {
-      const activeSesis = computeActiveSessions(jadwalSesiList);
+      const { activeSesis, nextSession, isResting } = computeSessionState(jadwalSesiList);
+      setActiveSessionsList(activeSesis);
+      setNextSessionInfo(nextSession);
+      setIsResting(isResting);
+      
       const prevSession = activeSessionRef.current;
 
       let currentActive: string | null = null;
@@ -527,12 +552,43 @@ export function AbsensiKelasClient({
         </div>
 
         {isTeacher && hasCheckedSession && !activeSession ? (
-          <div className="flex flex-col items-center justify-center p-12 bg-white">
-            <div className="h-20 w-20 bg-[var(--color-surface)] rounded-full flex items-center justify-center mb-4">
-              <Clock className="h-10 w-10 text-[var(--color-text-subtle)]" />
-            </div>
-            <h2 className="text-xl font-bold text-[var(--color-text)]">Tidak ada sesi aktif saat ini</h2>
-            <p className="text-[var(--color-text-muted)] mt-2 text-center max-w-sm">Jadwal absensi dikunci karena saat ini tidak ada sesi kelas yang sedang berjalan sesuai jadwal buka/tutup.</p>
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-[var(--color-surface-dark)] px-6 text-center shadow-sm max-w-4xl mx-auto my-8">
+            {isResting ? (
+              <>
+                <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 ring-8 ring-emerald-50/50">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                </div>
+                <h3 className="text-2xl font-black text-[var(--color-text)] mb-3">Selamat Beristirahat</h3>
+                <p className="text-base text-[var(--color-text-muted)] max-w-md font-medium leading-relaxed">
+                  Semua sesi untuk hari ini telah selesai atau sedang hari libur. Terima kasih atas dedikasi Anda.
+                </p>
+              </>
+            ) : nextSessionInfo ? (
+              <>
+                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6 ring-8 ring-amber-50/50">
+                  <Clock className="w-10 h-10 text-amber-500" />
+                </div>
+                <h3 className="text-2xl font-black text-[var(--color-text)] mb-3">Sesi Belum Dimulai</h3>
+                <p className="text-base text-[var(--color-text-muted)] max-w-md mb-8 font-medium leading-relaxed">
+                  Sesi berikutnya adalah <strong className="text-[var(--color-text)] px-1">{nextSessionInfo.label}</strong> yang akan dimulai pada jam <strong className="text-[var(--color-text)] px-1">{nextSessionInfo.jamBuka} WIB</strong>.
+                </p>
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-[var(--color-surface-light)] rounded-full text-sm font-bold text-[var(--color-text-muted)] border border-[var(--color-surface-dark)]">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                  </span>
+                  Sistem akan otomatis berpindah...
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-[var(--color-surface)] rounded-full flex items-center justify-center mb-6">
+                  <Lock className="w-10 h-10 text-[var(--color-text-subtle)]" />
+                </div>
+                <h3 className="text-2xl font-black text-[var(--color-text)] mb-3">Sesi Telah Ditutup</h3>
+                <p className="text-base text-[var(--color-text-muted)] mt-2 font-medium">Absensi hanya bisa dilakukan saat sesi sedang aktif.</p>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -739,14 +795,47 @@ export function AbsensiKelasClient({
                             ? "✅ Data sudah tersimpan. Anda bisa mengubah dan menyimpan ulang."
                             : "📝 Siap disimpan ke server"}
                     </p>
-                    <button
-                      onClick={handleSave}
-                      disabled={isSaving || !tanggal || !sesi || belumDiabsen > 0 || !materi || !waktuMulai || !waktuSelesai}
-                      className="w-full sm:w-auto rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-dark)] hover:shadow-md hover:shadow-[var(--color-primary-100)] disabled:opacity-50"
-                    >
-                      {isSaving ? "Menyimpan Data..." : isSaved ? "Simpan Ulang" : "Simpan Absensi Final"}
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                      {isSaved && activeSessionsList.length > 1 && activeSessionsList.indexOf(activeSession || "") + 1 < activeSessionsList.length && (
+                        <button
+                          onClick={() => {
+                            const nextSesi = activeSessionsList[activeSessionsList.indexOf(activeSession || "") + 1];
+                            setActiveSession(nextSesi);
+                            setIsBadalMode(false);
+                            setIsSaved(false);
+                            const teachingNext = teacherSessions.find(ts => ts.sesi === nextSesi);
+                            setSesi(nextSesi as SesiKelas);
+                            if (teachingNext) {
+                              setKelasId(teachingNext.kelasId);
+                              setActiveClassId(teachingNext.kelasId);
+                            }
+                            toast.success("Berpindah ke " + nextSesi.replace('_', ' '));
+                          }}
+                          className="w-full sm:w-auto rounded-full bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 shadow-md shadow-emerald-200"
+                        >
+                          Lanjut Sesi {activeSessionsList[activeSessionsList.indexOf(activeSession || "") + 1].replace('SESI_', '')} 👉
+                        </button>
+                      )}
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving || !tanggal || !sesi || belumDiabsen > 0 || !materi || !waktuMulai || !waktuSelesai}
+                        className="w-full sm:w-auto rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-dark)] hover:shadow-md hover:shadow-[var(--color-primary-100)] disabled:opacity-50"
+                      >
+                        {isSaving ? "Menyimpan Data..." : isSaved ? "Simpan Ulang" : "Simpan Absensi Final"}
+                      </button>
+                    </div>
                  </div>
+              </div>
+
+              {/* Quotes Motivasi Mengajar Mobile Optimized */}
+              <div className="mt-12 mb-4 px-4 text-center max-w-2xl mx-auto">
+                <div className="relative inline-block px-8 py-4 bg-violet-50/50 rounded-3xl border border-violet-100/50">
+                  <span className="text-4xl absolute top-2 left-3 text-violet-200 font-serif leading-none">"</span>
+                  <p className="text-sm md:text-base font-semibold text-violet-800/80 italic relative z-10 leading-relaxed px-2">
+                    Kejujuran adalah perhiasan bagi orang yang berilmu.
+                  </p>
+                  <span className="text-4xl absolute bottom-[-10px] right-3 text-violet-200 font-serif leading-none">"</span>
+                </div>
               </div>
           </div>
         )}
