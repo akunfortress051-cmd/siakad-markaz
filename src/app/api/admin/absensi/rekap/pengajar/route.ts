@@ -71,6 +71,14 @@ export async function GET(request: Request) {
 
     const dufahs = await prisma.dufah.findMany();
     
+    // Get today's date in WIB to prevent marking future days as ALPHA
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    const todayStr = formatter.format(new Date());
+    const todayDate = new Date(`${todayStr}T00:00:00Z`);
+
     const activeDates = new Set<string>();
     const startDate = new Date(`${dari}T00:00:00Z`);
     const endDate = new Date(`${sampai}T23:59:59Z`);
@@ -93,7 +101,8 @@ export async function GET(request: Request) {
         }
       }
       
-      if (isActive) {
+      // Only mark as active for ALPHA checking if the date has already passed or is today
+      if (isActive && dDate <= todayDate) {
         activeDates.add(dStr);
       }
       curr.setDate(curr.getDate() + 1);
