@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/wa-rekap-pengajar",
-      "schedule": "10 9 * * *"
+      "schedule": "20 16 * * *"
     },
     {
       "path": "/api/cron/wa-rekap-santri",
-      "schedule": "0 5 * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
