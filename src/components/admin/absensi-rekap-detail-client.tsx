@@ -543,7 +543,7 @@ export function AbsensiRekapDetailClient() {
                                   <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
                                     <thead className="bg-[var(--color-secondary)]">
                                       <tr>
-                                        <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] sticky left-0 bg-[var(--color-secondary)] z-20 min-w-[200px]">NAMA SANTRI</th>
+                                        <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] sticky left-0 bg-[var(--color-secondary)] z-20 min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none">NAMA SANTRI</th>
                                         {weeks.map((week, wIdx) => (
                                           <React.Fragment key={`wh1-${week.wk}`}>
                                             {week.dates.map(date => (
@@ -592,7 +592,7 @@ export function AbsensiRekapDetailClient() {
                                         let totalH = 0, totalI = 0, totalS = 0, totalA = 0;
                                         return (
                                           <tr key={santri} className="hover:bg-[var(--color-surface-light)] group">
-                                            <td className="px-4 py-2 text-sm font-semibold text-[var(--color-text)] border-b border-r-2 border-[var(--color-surface-dark)] sticky left-0 bg-white group-hover:bg-[var(--color-secondary)] z-10">
+                                            <td className="px-4 py-2 text-sm font-semibold text-[var(--color-text)] border-b border-r-2 border-[var(--color-surface-dark)] sticky left-0 bg-white group-hover:bg-[var(--color-secondary)] z-10 min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none truncate">
                                               <span className="text-[var(--color-text-subtle)] mr-2 text-xs w-4 inline-block">{idx + 1}</span>
                                               {santri}
                                             </td>
@@ -669,7 +669,7 @@ export function AbsensiRekapDetailClient() {
                                   <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
                                     <thead className="bg-[var(--color-secondary)]">
                                       <tr>
-                                        <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] sticky left-0 bg-[var(--color-secondary)] z-20 min-w-[200px] uppercase text-xs tracking-wider">NAMA SANTRI</th>
+                                        <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] sticky left-0 bg-[var(--color-secondary)] z-20 min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none uppercase text-xs tracking-wider">NAMA SANTRI</th>
                                         {datesInGroup.map(date => (
                                           <th key={`dh1-${date}`} rowSpan={2} className="px-1.5 py-2 text-center border-b border-r border-[var(--color-surface-dark)] font-semibold text-[var(--color-text-muted)] min-w-[36px] text-xs">
                                             <div className="flex flex-col items-center">
@@ -694,7 +694,7 @@ export function AbsensiRekapDetailClient() {
                                         let totalH = 0, totalI = 0, totalS = 0, totalA = 0;
                                         return (
                                           <tr key={santri} className="hover:bg-[var(--color-surface-light)] group">
-                                            <td className="px-4 py-2 text-[13px] font-semibold text-[var(--color-text)] border-b border-r-2 border-[var(--color-surface-dark)] sticky left-0 bg-white group-hover:bg-[var(--color-secondary)] z-10 transition-colors">
+                                            <td className="px-4 py-2 text-[13px] font-semibold text-[var(--color-text)] border-b border-r-2 border-[var(--color-surface-dark)] sticky left-0 bg-white group-hover:bg-[var(--color-secondary)] z-10 transition-colors min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none truncate">
                                               <span className="text-[var(--color-text-subtle)] mr-2 text-[11px] w-4 inline-block">{idx + 1}</span>
                                               {santri}
                                             </td>
@@ -751,7 +751,7 @@ export function AbsensiRekapDetailClient() {
                                   <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
                                     <thead className="bg-[var(--color-secondary)]">
                                       <tr>
-                                        <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] sticky left-0 bg-[var(--color-secondary)] z-20 min-w-[200px] uppercase text-xs tracking-wider">NAMA SANTRI</th>
+                                        <th rowSpan={2} className="px-4 py-3 border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] sticky left-0 bg-[var(--color-secondary)] z-20 min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none uppercase text-xs tracking-wider">NAMA SANTRI</th>
                                         {uniqueEvents.map((ev, i) => (
                                           <th key={`keg-${i}`} className="px-1 py-2 text-center border-b border-x border-[var(--color-surface-dark)] font-bold text-[var(--color-text)] bg-[var(--color-warning-light)]/50 text-[10px] leading-tight whitespace-normal break-words max-w-[80px]" title={ev.kegName || ""}>
                                             {ev.kegName || "-"}
@@ -781,7 +781,7 @@ export function AbsensiRekapDetailClient() {
                                         let totalH = 0, totalI = 0, totalS = 0, totalA = 0;
                                         return (
                                           <tr key={santri} className="hover:bg-[var(--color-surface-light)] group">
-                                            <td className="px-4 py-2 text-[13px] font-semibold text-[var(--color-text)] border-b border-r-2 border-[var(--color-surface-dark)] sticky left-0 bg-white group-hover:bg-[var(--color-secondary)] z-10 transition-colors">
+                                            <td className="px-4 py-2 text-[13px] font-semibold text-[var(--color-text)] border-b border-r-2 border-[var(--color-surface-dark)] sticky left-0 bg-white group-hover:bg-[var(--color-secondary)] z-10 transition-colors min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none truncate">
                                               <span className="text-[var(--color-text-subtle)] mr-2 text-[11px] w-4 inline-block">{idx + 1}</span>
                                               {santri}
                                             </td>

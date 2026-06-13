@@ -52,7 +52,7 @@ export function GabunganTable({
       <thead className="bg-[var(--color-secondary)] text-xs uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
         <tr>
           <th className="px-3 py-3 text-center border-b border-[var(--color-surface-dark)] sticky left-0 bg-[var(--color-secondary)] z-20 border-r w-[40px]" rowSpan={2}>No</th>
-          <th className="px-3 py-3 border-b border-[var(--color-surface-dark)] sticky left-[40px] bg-[var(--color-secondary)] z-20 border-r min-w-[200px]" rowSpan={2}>Nama</th>
+          <th className="px-3 py-3 border-b border-[var(--color-surface-dark)] sticky left-[40px] bg-[var(--color-secondary)] z-20 border-r min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none" rowSpan={2}>Nama</th>
           {mapels.map(m => (
             <th key={m.id} className="px-2 py-2 text-center border-b border-r border-[var(--color-surface-dark)] bg-[var(--color-surface)] min-w-[110px]" colSpan={2}>
               <div className="text-[10px] font-bold">{m.nama_indo}</div>
@@ -82,7 +82,7 @@ export function GabunganTable({
           return (
             <tr key={row.riwayatId} className={`transition hover:bg-[var(--color-secondary)]/80 ${hasChange ? 'bg-amber-50/30' : ''}`}>
               <td className="px-3 py-2 text-center font-medium sticky left-0 bg-white z-10 border-r text-[var(--color-text-subtle)]">{index + 1}</td>
-              <td className="px-3 py-2 font-bold text-[var(--color-text)] sticky left-[40px] bg-white z-10 border-r min-w-[200px] text-xs whitespace-normal leading-snug">{row.nama}</td>
+              <td className="px-3 py-2 font-bold text-[var(--color-text)] sticky left-[40px] bg-white z-10 border-r min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none text-[10px] md:text-xs whitespace-normal break-words leading-snug">{row.nama}</td>
               {mapels.map(m => {
                 const s = summary.mapelSummaries.find(x => x.mapelId === m.id);
                 const nilaiAkhir = s?.nilaiAkhir ?? 0;
