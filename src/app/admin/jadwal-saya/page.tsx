@@ -98,7 +98,7 @@ export default async function JadwalSayaPage() {
       if (isProgTaqwim || isWaliTaqwim) {
         isTaqwim = true;
         // Cari config Taqwim
-        const progId = isWaliTaqwim ? waliKelasData.programId : kelasTujuan!.programId;
+        const progId = isWaliTaqwim ? waliKelasData!.programId : kelasTujuan!.programId;
         const config = taqwimConfigs.find(c => c.programId === progId);
         
         if (config) {
