@@ -25,6 +25,15 @@ export default async function AbsensiKelasPage() {
   let teacherSessions: { sesi: string, kelasId: string }[] = [];
   let allPengajarSesi: any[] = []; // Untuk Admin Backup Mode
   
+  // Ambil data Taqwim hari ini
+  const { getTodayWibString, parseWibDateString } = await import("@/lib/absensi");
+  const todayWib = parseWibDateString(getTodayWibString());
+  const taqwimToday = await prisma.tanggalTaqwim.findMany({
+    where: { tanggal: todayWib },
+    select: { programId: true }
+  });
+  const taqwimProgramIds = taqwimToday.map((t: any) => t.programId);
+  
   if (session) {
     if (session.role !== "ADMIN") {
       const ps = await prisma.pengajarSesi.findMany({
@@ -32,7 +41,6 @@ export default async function AbsensiKelasPage() {
         select: { kelasId: true, sesi: true }
       });
       
-      // Jika user punya jadwal ngajar ATAU punya kelasId (Wali Kelas), batasi aksesnya
       if (ps.length > 0 || session.kelasId) {
         allowedClassIds = Array.from(new Set(ps.map(p => p.kelasId)));
         
@@ -41,25 +49,56 @@ export default async function AbsensiKelasPage() {
         }
         
         teacherSessions = ps.map(p => ({ sesi: p.sesi, kelasId: p.kelasId }));
+        
+        // Logika Override Taqwim
+        if (taqwimProgramIds.length > 0) {
+          // Cari programId dari kelas-kelas yang ada di teacherSessions dan wali kelas
+          for (const prog of programList) {
+            if (taqwimProgramIds.includes(prog.id)) {
+              const kelasIdsInProgram = prog.kelasList.map((k:any) => k.id);
+              
+              // 1. Hapus jadwal SESI_1 pengajar biasa di program ini
+              teacherSessions = teacherSessions.filter(ts => {
+                if (ts.sesi === "SESI_1" && kelasIdsInProgram.includes(ts.kelasId)) {
+                  // Jika dia BUKAN wali kelas dari kelas ini, hapus
+                  if (session.kelasId !== ts.kelasId) return false;
+                }
+                return true;
+              });
+              
+              // 2. Tambahkan SESI_1 untuk Wali Kelas jika kelasnya ada di program ini
+              if (session.kelasId && kelasIdsInProgram.includes(session.kelasId)) {
+                if (!teacherSessions.some(ts => ts.sesi === "SESI_1" && ts.kelasId === session.kelasId)) {
+                  teacherSessions.push({ sesi: "SESI_1", kelasId: session.kelasId });
+                }
+              }
+            }
+          }
+        }
+
       } else {
-        // Jika tidak punya jadwal dan bukan admin, apapun rolenya
-        // Set ke array kosong (akses ke 0 kelas), BUKAN null (akses ke semua kelas)
         allowedClassIds = [];
       }
     } else {
-      // Jika ADMIN, ambil seluruh data penugasan pengajar untuk fitur Backup
       allPengajarSesi = await prisma.pengajarSesi.findMany({
         select: {
           sesi: true,
           kelasId: true,
           user: {
-            select: {
-              id: true,
-              nama: true
-            }
+            select: { id: true, nama: true }
           }
         }
       });
+      
+      // Admin backup mode juga harus merefleksikan Taqwim
+      if (taqwimProgramIds.length > 0) {
+        for (const prog of programList) {
+          if (taqwimProgramIds.includes(prog.id)) {
+            const kelasIdsInProgram = prog.kelasList.map((k:any) => k.id);
+            allPengajarSesi = allPengajarSesi.filter(ps => !(ps.sesi === "SESI_1" && kelasIdsInProgram.includes(ps.kelasId)));
+          }
+        }
+      }
     }
   }
 

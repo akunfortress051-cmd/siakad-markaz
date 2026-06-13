@@ -102,7 +102,12 @@ export function RekapPengajarClient() {
 
     return Object.keys(groups).sort().map(tgl => ({
       tanggal: tgl,
-      records: groups[tgl].sort((a, b) => a.sesi.localeCompare(b.sesi) || a.pengajar.localeCompare(b.pengajar))
+      records: groups[tgl].sort((a, b) => {
+        const nA = parseInt(a.sesi.replace("SESI_", "")) || 0;
+        const nB = parseInt(b.sesi.replace("SESI_", "")) || 0;
+        if (nA !== nB) return nA - nB;
+        return a.pengajar.localeCompare(b.pengajar);
+      })
     }));
   }, [data, searchQuery, filterHari, filterKelas, filterPengajar]);
 
@@ -157,7 +162,8 @@ export function RekapPengajarClient() {
 
       const SESI_ROMAN: Record<string, string> = {
         "SESI_1": "I", "SESI_2": "II", "SESI_3": "III",
-        "SESI_4": "IV", "SESI_5": "V", "SESI_6": "VI"
+        "SESI_4": "IV", "SESI_5": "V", "SESI_6": "VI",
+        "SESI_7": "VII", "SESI_8": "VIII", "SESI_9": "IX", "SESI_10": "X"
       };
 
       let html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel">
@@ -168,6 +174,7 @@ export function RekapPengajarClient() {
             th, td { border: 1px solid #000; padding: 5px; text-align: center; vertical-align: middle; }
             th { background-color: #f2f2f2; font-weight: bold; }
             .blue { background-color: #4f81bd; color: #4f81bd; }
+            .blue-white { background-color: #4f81bd; color: #fff; font-weight: bold; }
             .red { background-color: #ff4c4c; color: #fff; font-weight: bold; }
             .gray { background-color: #d9d9d9; }
             .white-red { background-color: #fff; color: #ff0000; font-weight: bold; }
@@ -188,7 +195,14 @@ export function RekapPengajarClient() {
       Object.keys(grouped).sort().forEach(teacher => {
         const rows = grouped[teacher];
         let firstRow = true;
-        const rowKeys = Object.keys(rows).sort();
+        const rowKeys = Object.keys(rows).sort((a, b) => {
+          const [kelasA, sesiA] = a.split("||");
+          const [kelasB, sesiB] = b.split("||");
+          const nA = parseInt(sesiA.replace("SESI_", "")) || 0;
+          const nB = parseInt(sesiB.replace("SESI_", "")) || 0;
+          if (nA !== nB) return nA - nB;
+          return kelasA.localeCompare(kelasB);
+        });
         
         rowKeys.forEach(rowKey => {
           const [kelas, sesi] = rowKey.split("||");
@@ -207,10 +221,10 @@ export function RekapPengajarClient() {
             if (!record) {
               html += `<td class="gray"></td>`;
             } else if (record.status === "ALPHA") {
-              html += `<td class="red">A</td>`;
+              html += `<td class="gray"></td>`;
             } else if (record.status === "HADIR") {
               if (record.terlambatMenit && record.terlambatMenit > 0) {
-                html += `<td class="white-red">-${record.terlambatMenit}</td>`;
+                html += `<td class="blue-white">-${record.terlambatMenit}</td>`;
               } else {
                 html += `<td class="blue">Y</td>`;
               }
@@ -415,15 +429,15 @@ export function RekapPengajarClient() {
                           <td className="px-4 py-3 font-semibold text-[var(--color-primary)]">{r.kelas}</td>
                           <td className="px-4 py-3 max-w-[200px] truncate" title={r.materi}>
                             {r.status === "ALPHA" ? (
-                              <span className="text-[var(--color-danger)] font-bold bg-[var(--color-danger-light)] px-2 py-1 rounded">{r.materi}</span>
+                              <span className="text-[var(--color-text-muted)] font-medium px-2 py-1">-</span>
                             ) : (
                               r.materi
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {r.status === "ALPHA" ? (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-danger-light)] text-[var(--color-danger)] text-xs font-bold font-mono">
-                                ALPHA
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[var(--color-text-muted)] text-xs font-bold font-mono">
+                                -
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-muted)] text-xs font-bold font-mono">
@@ -437,7 +451,7 @@ export function RekapPengajarClient() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             {r.status === "ALPHA" ? (
-                               <span className="text-rose-400 font-bold text-lg">-</span>
+                               <span className="text-[var(--color-text-muted)] font-bold text-lg">-</span>
                             ) : (
                               <div className="flex items-center justify-center gap-1">
                                 {r.atribut.kopiah ? <span className="bg-[var(--color-primary-100)] text-[var(--color-primary)] text-[10px] font-bold px-1.5 py-0.5 rounded">Kopiah ✓</span> : <span className="bg-[var(--color-danger-light)] text-[var(--color-danger)] text-[10px] font-bold px-1.5 py-0.5 rounded">Kopiah X</span>}

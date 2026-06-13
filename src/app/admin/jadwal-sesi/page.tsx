@@ -1,33 +1,56 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Save, Loader2, Edit3, XCircle } from "lucide-react";
+import { Clock, Save, Loader2, Edit3, XCircle, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
-type JadwalSesi = {
-  id: string;
-  sesi: string;
-  label: string;
-  jamBuka: string;
-  jamTutup: string;
-  toleransiMenit: number;
-  isActive: boolean;
-};
+type JadwalSesi = { id: string; sesi: string; label: string; jamBuka: string; jamTutup: string; toleransiMenit: number; isActive: boolean; };
+type SesiTambahan = { id: string; programId: string; sesi: string; jamBuka: string; jamTutup: string; toleransiMenit: number; isActive: boolean; program?: { nama_indo: string } };
+type SesiTaqwim = { id: string; programId: string; jamBuka: string; jamTutup: string; toleransiMenit: number; isActive: boolean; program?: { nama_indo: string } };
 
 export default function JadwalSesiPage() {
+  const [activeTab, setActiveTab] = useState("GLOBAL");
+  
   const [jadwalList, setJadwalList] = useState<JadwalSesi[]>([]);
+  const [tambahanList, setTambahanList] = useState<SesiTambahan[]>([]);
+  const [taqwimList, setTaqwimList] = useState<SesiTaqwim[]>([]);
+  const [tanggalTaqwimList, setTanggalTaqwimList] = useState<any[]>([]);
+  const [programList, setProgramList] = useState<any[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
+
+  // Edit states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingJadwal, setEditingJadwal] = useState<JadwalSesi | null>(null);
 
-  const fetchJadwal = async () => {
+  const [isModalTambahanOpen, setIsModalTambahanOpen] = useState(false);
+  const [editingTambahan, setEditingTambahan] = useState<Partial<SesiTambahan> | null>(null);
+
+  const [isModalTaqwimOpen, setIsModalTaqwimOpen] = useState(false);
+  const [editingTaqwim, setEditingTaqwim] = useState<Partial<SesiTaqwim> | null>(null);
+
+  const [newTanggal, setNewTanggal] = useState("");
+
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/jadwal-sesi");
-      if (!res.ok) throw new Error("Gagal mengambil data jadwal");
-      const data = await res.json();
-      setJadwalList(data);
+      const [res1, res2, res3, resProg] = await Promise.all([
+        fetch("/api/admin/jadwal-sesi"),
+        fetch("/api/admin/sesi-tambahan"),
+        fetch("/api/admin/sesi-taqwim"),
+        fetch("/api/admin/program")
+      ]);
+      const data1 = await res1.json();
+      const data2 = await res2.json();
+      const data3 = await res3.json();
+      const prog = await resProg.json();
+      
+      setJadwalList(data1);
+      setTambahanList(data2);
+      setTaqwimList(data3.taqwimList || []);
+      setTanggalTaqwimList(data3.tanggalList || []);
+      setProgramList(prog);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -36,18 +59,12 @@ export default function JadwalSesiPage() {
   };
 
   useEffect(() => {
-    fetchJadwal();
+    fetchData();
   }, []);
 
-  const handleEdit = (jadwal: JadwalSesi) => {
-    setEditingJadwal({ ...jadwal });
-    setIsModalOpen(true);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveGlobal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingJadwal) return;
-    
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/admin/jadwal-sesi/${editingJadwal.id}`, {
@@ -55,15 +72,82 @@ export default function JadwalSesiPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingJadwal)
       });
-      if (!res.ok) throw new Error("Gagal menyimpan jadwal");
-      toast.success("Jadwal sesi berhasil diperbarui!");
+      if (!res.ok) throw new Error("Gagal menyimpan");
+      toast.success("Tersimpan!");
       setIsModalOpen(false);
-      fetchJadwal();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+      fetchData();
+    } catch (e: any) { toast.error(e.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleSaveTambahan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTambahan?.programId || !editingTambahan.sesi || !editingTambahan.jamBuka || !editingTambahan.jamTutup) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/sesi-tambahan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingTambahan)
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan");
+      toast.success("Tersimpan!");
+      setIsModalTambahanOpen(false);
+      fetchData();
+    } catch (e: any) { toast.error(e.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleDeleteTambahan = async (id: string) => {
+    if (!confirm("Hapus sesi tambahan ini?")) return;
+    try {
+      await fetch(`/api/admin/sesi-tambahan?id=${id}`, { method: "DELETE" });
+      toast.success("Terhapus");
+      fetchData();
+    } catch (e) { toast.error("Gagal menghapus"); }
+  }
+
+  const handleSaveTaqwim = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTaqwim?.programId || !editingTaqwim.jamBuka || !editingTaqwim.jamTutup) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/sesi-taqwim", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingTaqwim)
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan");
+      toast.success("Tersimpan!");
+      setIsModalTaqwimOpen(false);
+      fetchData();
+    } catch (e: any) { toast.error(e.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleDeleteTaqwim = async (id: string) => {
+    if (!confirm("Hapus konfigurasi taqwim ini?")) return;
+    try {
+      await fetch(`/api/admin/sesi-taqwim?id=${id}`, { method: "DELETE" });
+      toast.success("Terhapus");
+      fetchData();
+    } catch (e) { toast.error("Gagal menghapus"); }
+  }
+
+  const handleAddTanggal = async (programId: string) => {
+    if (!newTanggal) return;
+    try {
+      await fetch("/api/admin/sesi-taqwim/tanggal", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ programId, tanggal: newTanggal })
+      });
+      toast.success("Tanggal ditambahkan");
+      setNewTanggal("");
+      fetchData();
+    } catch (e) { toast.error("Gagal menambah tanggal"); }
+  };
+
+  const handleDeleteTanggal = async (id: string) => {
+    try {
+      await fetch(`/api/admin/sesi-taqwim/tanggal?id=${id}`, { method: "DELETE" });
+      toast.success("Tanggal dihapus");
+      fetchData();
+    } catch (e) { toast.error("Gagal menghapus tanggal"); }
   };
 
   return (
@@ -72,176 +156,193 @@ export default function JadwalSesiPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text)] flex items-center gap-2">
             <Clock className="h-6 w-6 text-[var(--color-primary)]" />
-            Jadwal Buka/Tutup Sesi
+            Pengaturan Sesi Absensi
           </h1>
           <p className="text-[var(--color-text-muted)] text-sm mt-1">
-            Atur jam buka, jam tutup, dan waktu toleransi absensi untuk tiap sesi kelas.
+            Atur jam sesi global, sesi dinamis, dan jadwal khusus Taqwim.
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-surface-dark)] overflow-hidden">
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="flex justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-            </div>
-          ) : (
+      <div className="flex space-x-2 border-b border-gray-200">
+        <button onClick={() => setActiveTab("GLOBAL")} className={`px-4 py-2 font-bold ${activeTab === "GLOBAL" ? "border-b-2 border-emerald-500 text-emerald-600" : "text-gray-500"}`}>Sesi Global (1-6)</button>
+        <button onClick={() => setActiveTab("TAMBAHAN")} className={`px-4 py-2 font-bold ${activeTab === "TAMBAHAN" ? "border-b-2 border-emerald-500 text-emerald-600" : "text-gray-500"}`}>Sesi Tambahan (7-10)</button>
+        <button onClick={() => setActiveTab("TAQWIM")} className={`px-4 py-2 font-bold ${activeTab === "TAQWIM" ? "border-b-2 border-emerald-500 text-emerald-600" : "text-gray-500"}`}>Sesi Taqwim</button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></div>
+      ) : activeTab === "GLOBAL" ? (
+        <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-[var(--color-text-muted)] uppercase bg-[var(--color-secondary)]/50 border-b border-[var(--color-surface-dark)]">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-4 font-semibold">Sesi</th>
-                  <th className="px-6 py-4 font-semibold">Label</th>
-                  <th className="px-6 py-4 font-semibold">Jam Buka</th>
-                  <th className="px-6 py-4 font-semibold">Jam Tutup</th>
-                  <th className="px-6 py-4 font-semibold">Toleransi</th>
-                  <th className="px-6 py-4 font-semibold text-center">Status</th>
-                  <th className="px-6 py-4 font-semibold text-center">Aksi</th>
+                  <th className="px-6 py-4">Sesi</th><th className="px-6 py-4">Jam Buka</th><th className="px-6 py-4">Jam Tutup</th><th className="px-6 py-4">Toleransi</th><th className="px-6 py-4">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {jadwalList.map((jadwal) => (
-                  <tr key={jadwal.id} className="hover:bg-[var(--color-secondary)]/50 transition-colors">
-                    <td className="px-6 py-4 font-bold text-[var(--color-text)]">{jadwal.sesi}</td>
-                    <td className="px-6 py-4 text-[var(--color-text-muted)]">{jadwal.label}</td>
-                    <td className="px-6 py-4 font-mono font-semibold text-[var(--color-primary)] bg-[var(--color-primary-50)]/30">{jadwal.jamBuka}</td>
-                    <td className="px-6 py-4 font-mono font-semibold text-rose-700 bg-rose-50/30">{jadwal.jamTutup}</td>
-                    <td className="px-6 py-4">{jadwal.toleransiMenit} Menit</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${jadwal.isActive ? 'bg-[var(--color-primary-100)] text-[var(--color-primary)]' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'}`}>
-                        {jadwal.isActive ? 'AKTIF' : 'NONAKTIF'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleEdit(jadwal)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit3 size={18} />
-                      </button>
+                {jadwalList.map((j) => (
+                  <tr key={j.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-bold">{j.sesi}</td>
+                    <td className="px-6 py-4">{j.jamBuka}</td>
+                    <td className="px-6 py-4">{j.jamTutup}</td>
+                    <td className="px-6 py-4">{j.toleransiMenit}m</td>
+                    <td className="px-6 py-4"><button onClick={() => {setEditingJadwal(j); setIsModalOpen(true)}} className="text-blue-600"><Edit3 size={18} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+        </div>
+      ) : activeTab === "TAMBAHAN" ? (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => {setEditingTambahan({ isActive: true, toleransiMenit: 15, jamBuka: '16:00', jamTutup: '17:30' }); setIsModalTambahanOpen(true)}} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex gap-2"><Plus size={18}/> Tambah Sesi Dinamis</button>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-4">Program</th><th className="px-6 py-4">Sesi</th><th className="px-6 py-4">Waktu</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {tambahanList.map((t) => (
+                  <tr key={t.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-bold text-indigo-600">{t.program?.nama_indo}</td>
+                    <td className="px-6 py-4 font-bold">{t.sesi}</td>
+                    <td className="px-6 py-4">{t.jamBuka} - {t.jamTutup} ({t.toleransiMenit}m)</td>
+                    <td className="px-6 py-4">{t.isActive ? "Aktif" : "Nonaktif"}</td>
+                    <td className="px-6 py-4 flex gap-2">
+                      <button onClick={() => {setEditingTambahan(t); setIsModalTambahanOpen(true)}} className="text-blue-600"><Edit3 size={18} /></button>
+                      <button onClick={() => handleDeleteTambahan(t.id)} className="text-red-600"><Trash2 size={18} /></button>
                     </td>
                   </tr>
                 ))}
-                {jadwalList.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-[var(--color-text-muted)]">Belum ada data jadwal sesi</td>
-                  </tr>
-                )}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
-      </div>
-
-      {isModalOpen && editingJadwal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-[var(--color-surface)] flex justify-between items-center bg-[var(--color-secondary)]/50">
-              <h2 className="text-lg font-bold text-[var(--color-text)] flex items-center gap-2">
-                <Clock className="h-5 w-5 text-[var(--color-primary)]" />
-                Edit Jadwal {editingJadwal.label}
-              </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-[var(--color-text-subtle)] hover:text-[var(--color-text-muted)]">
-                <XCircle size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[var(--color-text)] mb-1">Jam Buka</label>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={editingJadwal.jamBuka.split(':')[0]}
-                      onChange={(e) => setEditingJadwal({ ...editingJadwal, jamBuka: `${e.target.value}:${editingJadwal.jamBuka.split(':')[1] || '00'}` })}
-                      className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-center font-mono"
-                    >
-                      {Array.from({length: 24}).map((_, i) => (
-                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                      ))}
-                    </select>
-                    <span className="font-bold text-[var(--color-text-subtle)]">:</span>
-                    <select
-                      value={editingJadwal.jamBuka.split(':')[1] || '00'}
-                      onChange={(e) => setEditingJadwal({ ...editingJadwal, jamBuka: `${editingJadwal.jamBuka.split(':')[0] || '00'}:${e.target.value}` })}
-                      className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-center font-mono"
-                    >
-                      {Array.from({length: 60}).map((_, i) => (
-                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                      ))}
-                    </select>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => {setEditingTaqwim({ isActive: true, toleransiMenit: 15, jamBuka: '08:00', jamTutup: '09:30' }); setIsModalTaqwimOpen(true)}} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex gap-2"><Plus size={18}/> Tambah Konfigurasi Taqwim</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {taqwimList.map((t) => (
+              <div key={t.id} className="bg-white rounded-2xl shadow-sm border p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-indigo-600">{t.program?.nama_indo}</h3>
+                  <div className="flex gap-2">
+                     <button onClick={() => {setEditingTaqwim(t); setIsModalTaqwimOpen(true)}} className="text-blue-600"><Edit3 size={16} /></button>
+                     <button onClick={() => handleDeleteTaqwim(t.id)} className="text-red-600"><Trash2 size={16} /></button>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-[var(--color-text)] mb-1">Jam Tutup</label>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={editingJadwal.jamTutup.split(':')[0]}
-                      onChange={(e) => setEditingJadwal({ ...editingJadwal, jamTutup: `${e.target.value}:${editingJadwal.jamTutup.split(':')[1] || '00'}` })}
-                      className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-center font-mono"
-                    >
-                      {Array.from({length: 24}).map((_, i) => (
-                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                      ))}
-                    </select>
-                    <span className="font-bold text-[var(--color-text-subtle)]">:</span>
-                    <select
-                      value={editingJadwal.jamTutup.split(':')[1] || '00'}
-                      onChange={(e) => setEditingJadwal({ ...editingJadwal, jamTutup: `${editingJadwal.jamTutup.split(':')[0] || '00'}:${e.target.value}` })}
-                      className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 text-center font-mono"
-                    >
-                      {Array.from({length: 60}).map((_, i) => (
-                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                      ))}
-                    </select>
+                <p className="text-sm"><strong>Override Sesi 1:</strong> {t.jamBuka} - {t.jamTutup} (Dispensasi {t.toleransiMenit}m)</p>
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm font-bold mb-2">Tanggal Berlakunya Taqwim:</p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                     {tanggalTaqwimList.filter(d => d.programId === t.programId).map(d => (
+                       <span key={d.id} className="bg-gray-100 px-2 py-1 rounded text-xs flex items-center gap-1">
+                         {new Date(d.tanggal).toISOString().split('T')[0]} 
+                         <button onClick={() => handleDeleteTanggal(d.id)} className="text-red-500"><XCircle size={12}/></button>
+                       </span>
+                     ))}
+                  </div>
+                  <div className="flex gap-2">
+                     <input type="date" value={newTanggal} onChange={e => setNewTanggal(e.target.value)} className="border px-2 py-1 text-sm rounded w-full" />
+                     <button onClick={() => handleAddTanggal(t.programId)} className="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold whitespace-nowrap">Tambah</button>
                   </div>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[var(--color-text)] mb-1">Toleransi Terlambat (Menit)</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  value={editingJadwal.toleransiMenit}
-                  onChange={(e) => setEditingJadwal({ ...editingJadwal, toleransiMenit: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={editingJadwal.isActive}
-                  onChange={(e) => setEditingJadwal({ ...editingJadwal, isActive: e.target.checked })}
-                  className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-emerald-500"
-                />
-                <label htmlFor="isActive" className="text-sm font-semibold text-[var(--color-text)]">Sesi Aktif</label>
-              </div>
-
-              <div className="pt-4 border-t border-[var(--color-surface)] flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-semibold text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] rounded-lg transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Simpan Perubahan
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
         </div>
       )}
+
+      {/* MODALS */}
+      {isModalOpen && editingJadwal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="font-bold text-lg">Edit {editingJadwal.sesi}</h2>
+            <div><label className="text-xs font-bold">Jam Buka</label><input type="text" placeholder="15:30" maxLength={5} value={editingJadwal.jamBuka} onChange={e => {
+              let val = e.target.value.replace(/[^0-9:]/g, '');
+              if (val.length === 2 && !val.includes(':') && e.target.value.length > (editingJadwal.jamBuka || '').length) val += ':';
+              setEditingJadwal({...editingJadwal, jamBuka: val})
+            }} className="w-full border p-2 rounded" /></div>
+            <div><label className="text-xs font-bold">Jam Tutup</label><input type="text" placeholder="15:30" maxLength={5} value={editingJadwal.jamTutup} onChange={e => {
+              let val = e.target.value.replace(/[^0-9:]/g, '');
+              if (val.length === 2 && !val.includes(':') && e.target.value.length > (editingJadwal.jamTutup || '').length) val += ':';
+              setEditingJadwal({...editingJadwal, jamTutup: val})
+            }} className="w-full border p-2 rounded" /></div>
+            <div><label className="text-xs font-bold">Toleransi (m)</label><input type="number" value={editingJadwal.toleransiMenit} onChange={e => setEditingJadwal({...editingJadwal, toleransiMenit: +e.target.value})} className="w-full border p-2 rounded" /></div>
+            <div className="flex justify-end gap-2 pt-2"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Batal</button><button onClick={handleSaveGlobal} disabled={isSubmitting} className="px-4 py-2 bg-emerald-600 text-white rounded">Simpan</button></div>
+          </div>
+        </div>
+      )}
+
+      {isModalTambahanOpen && editingTambahan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="font-bold text-lg">{editingTambahan.id ? "Edit" : "Tambah"} Sesi Dinamis</h2>
+            <div><label className="text-xs font-bold">Program</label>
+              <select value={editingTambahan.programId || ""} onChange={e => setEditingTambahan({...editingTambahan, programId: e.target.value})} className="w-full border p-2 rounded">
+                <option value="">-- Pilih Program --</option>
+                {programList.map(p => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
+              </select>
+            </div>
+            <div><label className="text-xs font-bold">Sesi</label>
+              <select value={editingTambahan.sesi || ""} onChange={e => setEditingTambahan({...editingTambahan, sesi: e.target.value})} className="w-full border p-2 rounded">
+                <option value="">-- Pilih Sesi --</option>
+                <option value="SESI_7">Sesi 7</option>
+                <option value="SESI_8">Sesi 8</option>
+                <option value="SESI_9">Sesi 9</option>
+                <option value="SESI_10">Sesi 10</option>
+              </select>
+            </div>
+            <div><label className="text-xs font-bold">Jam Buka</label><input type="text" placeholder="15:30" maxLength={5} value={editingTambahan.jamBuka || ""} onChange={e => {
+              let val = e.target.value.replace(/[^0-9:]/g, '');
+              if (val.length === 2 && !val.includes(':') && e.target.value.length > (editingTambahan.jamBuka || "" || '').length) val += ':';
+              setEditingTambahan({...editingTambahan, jamBuka: val})
+            }} className="w-full border p-2 rounded" /></div>
+            <div><label className="text-xs font-bold">Jam Tutup</label><input type="text" placeholder="15:30" maxLength={5} value={editingTambahan.jamTutup || ""} onChange={e => {
+              let val = e.target.value.replace(/[^0-9:]/g, '');
+              if (val.length === 2 && !val.includes(':') && e.target.value.length > (editingTambahan.jamTutup || "" || '').length) val += ':';
+              setEditingTambahan({...editingTambahan, jamTutup: val})
+            }} className="w-full border p-2 rounded" /></div>
+            <div><label className="text-xs font-bold">Toleransi (m)</label><input type="number" value={editingTambahan.toleransiMenit || 15} onChange={e => setEditingTambahan({...editingTambahan, toleransiMenit: +e.target.value})} className="w-full border p-2 rounded" /></div>
+            <div className="flex items-center gap-2 mt-2"><input type="checkbox" checked={editingTambahan.isActive} onChange={e => setEditingTambahan({...editingTambahan, isActive: e.target.checked})} /> Aktif</div>
+            <div className="flex justify-end gap-2 pt-2"><button onClick={() => setIsModalTambahanOpen(false)} className="px-4 py-2 border rounded">Batal</button><button onClick={handleSaveTambahan} disabled={isSubmitting} className="px-4 py-2 bg-emerald-600 text-white rounded">Simpan</button></div>
+          </div>
+        </div>
+      )}
+
+      {isModalTaqwimOpen && editingTaqwim && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="font-bold text-lg">{editingTaqwim.id ? "Edit" : "Tambah"} Konfigurasi Taqwim</h2>
+            <div><label className="text-xs font-bold">Program</label>
+              <select value={editingTaqwim.programId || ""} onChange={e => setEditingTaqwim({...editingTaqwim, programId: e.target.value})} className="w-full border p-2 rounded" disabled={!!editingTaqwim.id}>
+                <option value="">-- Pilih Program --</option>
+                {programList.map(p => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
+              </select>
+            </div>
+            <div><label className="text-xs font-bold">Jam Buka Sesi Taqwim</label><input type="text" placeholder="15:30" maxLength={5} value={editingTaqwim.jamBuka || ""} onChange={e => {
+              let val = e.target.value.replace(/[^0-9:]/g, '');
+              if (val.length === 2 && !val.includes(':') && e.target.value.length > (editingTaqwim.jamBuka || "" || '').length) val += ':';
+              setEditingTaqwim({...editingTaqwim, jamBuka: val})
+            }} className="w-full border p-2 rounded" /></div>
+            <div><label className="text-xs font-bold">Jam Tutup Sesi Taqwim</label><input type="text" placeholder="15:30" maxLength={5} value={editingTaqwim.jamTutup || ""} onChange={e => {
+              let val = e.target.value.replace(/[^0-9:]/g, '');
+              if (val.length === 2 && !val.includes(':') && e.target.value.length > (editingTaqwim.jamTutup || "" || '').length) val += ':';
+              setEditingTaqwim({...editingTaqwim, jamTutup: val})
+            }} className="w-full border p-2 rounded" /></div>
+            <div><label className="text-xs font-bold">Toleransi (m)</label><input type="number" value={editingTaqwim.toleransiMenit || 15} onChange={e => setEditingTaqwim({...editingTaqwim, toleransiMenit: +e.target.value})} className="w-full border p-2 rounded" /></div>
+            <div className="flex items-center gap-2 mt-2"><input type="checkbox" checked={editingTaqwim.isActive} onChange={e => setEditingTaqwim({...editingTaqwim, isActive: e.target.checked})} /> Aktif</div>
+            <div className="flex justify-end gap-2 pt-2"><button onClick={() => setIsModalTaqwimOpen(false)} className="px-4 py-2 border rounded">Batal</button><button onClick={handleSaveTaqwim} disabled={isSubmitting} className="px-4 py-2 bg-emerald-600 text-white rounded">Simpan</button></div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

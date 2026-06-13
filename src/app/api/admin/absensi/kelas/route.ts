@@ -58,6 +58,15 @@ export async function POST(request: Request) {
     const parsedDate = parseWibDateString(tanggal);
     const userSession = (await getSession()) as any;
 
+    // GUARD: Jika frontend mengirim data absenPengajar tapi session null/expired,
+    // kembalikan 401 agar frontend bisa mengarahkan ke login (mencegah silent failure)
+    if (absenPengajar && !userSession) {
+      return NextResponse.json(
+        { error: "Sesi login telah berakhir. Silakan login ulang untuk menyimpan data pengajar." },
+        { status: 401 }
+      );
+    }
+
     const operations: any[] = absenList.map((absen) =>
       prisma.absenKelas.upsert({
         where: {

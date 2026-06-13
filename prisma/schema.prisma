@@ -8,14 +8,17 @@ datasource db {
 }
 
 model Program {
-  id             String          @id @default(cuid())
-  nama_indo      String          @unique
-  nama_arab      String
-  kkm            Int
-  programMapels  ProgramMapel[]
-  riwayatRecords RiwayatSantri[]
-  kelasList      Kelas[]
-  syahadahLayout SyahadahLayout?
+  id                String                @id @default(cuid())
+  nama_indo         String                @unique
+  nama_arab         String
+  kkm               Int
+  programMapels     ProgramMapel[]
+  riwayatRecords    RiwayatSantri[]
+  kelasList         Kelas[]
+  syahadahLayout    SyahadahLayout?
+  sesiTambahanList  SesiTambahanProgram[]
+  sesiTaqwim        SesiTaqwim?
+  tanggalTaqwimList TanggalTaqwim[]
 }
 
 model Kelas {
@@ -40,7 +43,7 @@ model Mapel {
   bobot              Int            @default(1)
   bobot_usbu         Int            @default(1)
   bulan_aktif        Int            @default(0) // 0=Semua Bulan, 1=Hanya Bulan 1, 2=Hanya Bulan 2
-  jumlah_tes_b2      Int?           // Override jumlah tes jika berada di bulan ke-2 (Contoh: Qowaid = 1)
+  jumlah_tes_b2      Int? // Override jumlah tes jika berada di bulan ke-2 (Contoh: Qowaid = 1)
   programMapels      ProgramMapel[]
   nilaiList          Nilai[]
 }
@@ -66,7 +69,7 @@ model SantriInternal {
 }
 
 model Dufah {
-  nama String @id
+  nama     String  @id
   namaArab String?
 
   usbu1StartDate DateTime? @db.Date
@@ -107,16 +110,16 @@ model RiwayatSantri {
 }
 
 model Nilai {
-  id         String        @id @default(cuid())
-  riwayatId  String
-  mapelId    String
-  nilaiUsbu1 Float?
-  nilaiUsbu2 Float?
-  nilaiNihai Float?
+  id            String        @id @default(cuid())
+  riwayatId     String
+  mapelId       String
+  nilaiUsbu1    Float?
+  nilaiUsbu2    Float?
+  nilaiNihai    Float?
   nilaiAkhir    Float?
   nilaiTambahan Float         @default(0)
   riwayat       RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
-  mapel      Mapel         @relation(fields: [mapelId], references: [id], onDelete: Restrict)
+  mapel         Mapel         @relation(fields: [mapelId], references: [id], onDelete: Restrict)
 
   @@unique([riwayatId, mapelId])
 }
@@ -137,29 +140,29 @@ model RiwayatUsbu {
 }
 
 model SyahadahTemplate {
-  id                 Int     @id @default(autoincrement())
-  tgl_cetak_indo     String
-  tgl_cetak_arab     String
-  tgl_mulai_indo     String?
-  tgl_mulai_arab     String?
-  tgl_selesai_indo   String?
-  tgl_selesai_arab   String?
-  nama_mudir_indo    String
-  nama_mudir_arab    String
-  jabatan_mudir_indo String
+  id                       Int     @id @default(autoincrement())
+  tgl_cetak_indo           String
+  tgl_cetak_arab           String
+  tgl_mulai_indo           String?
+  tgl_mulai_arab           String?
+  tgl_selesai_indo         String?
+  tgl_selesai_arab         String?
+  nama_mudir_indo          String
+  nama_mudir_arab          String
+  jabatan_mudir_indo       String
   jabatan_mudir_arab       String
   teks_dufah_akbarnas_arab String?
   teks_dufah_arab          String?
 }
 
 model SyahadahLayout {
-  id                    String         @id @default(cuid())
-  riwayatId             String?        @unique
-  programId             String?        @unique
-  layoutData            Json
-  musyarokahLayoutData  Json?
-  riwayat               RiwayatSantri? @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
-  program               Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  id                   String         @id @default(cuid())
+  riwayatId            String?        @unique
+  programId            String?        @unique
+  layoutData           Json
+  musyarokahLayoutData Json?
+  riwayat              RiwayatSantri? @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  program              Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
 }
 
 enum StatusAbsen {
@@ -176,6 +179,10 @@ enum SesiKelas {
   SESI_4
   SESI_5
   SESI_6
+  SESI_7
+  SESI_8
+  SESI_9
+  SESI_10
 }
 
 model AbsenSakan {
@@ -261,14 +268,14 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  kelas             Kelas?          @relation("WaliKelas", fields: [kelasId], references: [id], onDelete: SetNull)
-  pengajarSesiList  PengajarSesi[]
-  absenPengajarList AbsenPengajar[]
+  kelas               Kelas?          @relation("WaliKelas", fields: [kelasId], references: [id], onDelete: SetNull)
+  pengajarSesiList    PengajarSesi[]
+  absenPengajarList   AbsenPengajar[]
   absenDigantikanList AbsenPengajar[] @relation("PengajarDigantikan")
 }
 
 model RolePermission {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   role       String
   permission String
 
@@ -298,24 +305,56 @@ model JadwalSesi {
 }
 
 model AbsenPengajar {
-  id             String    @id @default(cuid())
-  userId         String
-  kelasId        String
-  sesi           SesiKelas
-  tanggal        DateTime  @db.Date
-  waktuMulai     String
-  waktuSelesai   String
-  materi         String
-  atributNametag Boolean   @default(false)
-  atributKopiah  Boolean   @default(false)
-  atributBros    Boolean   @default(false)
-  kecerdasan     String?
-  isBadal              Boolean @default(false)
+  id                   String    @id @default(cuid())
+  userId               String
+  kelasId              String
+  sesi                 SesiKelas
+  tanggal              DateTime  @db.Date
+  waktuMulai           String
+  waktuSelesai         String
+  materi               String
+  atributNametag       Boolean   @default(false)
+  atributKopiah        Boolean   @default(false)
+  atributBros          Boolean   @default(false)
+  kecerdasan           String?
+  isBadal              Boolean   @default(false)
   pengajarDigantikanId String?
-  pengajarDigantikan   User?   @relation("PengajarDigantikan", fields: [pengajarDigantikanId], references: [id], onDelete: SetNull)
+  pengajarDigantikan   User?     @relation("PengajarDigantikan", fields: [pengajarDigantikanId], references: [id], onDelete: SetNull)
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tanggal, sesi])
+}
+
+model SesiTambahanProgram {
+  id             String    @id @default(cuid())
+  programId      String
+  sesi           SesiKelas
+  jamBuka        String
+  jamTutup       String
+  toleransiMenit Int       @default(15)
+  isActive       Boolean   @default(true)
+  program        Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, sesi])
+}
+
+model SesiTaqwim {
+  id             String  @id @default(cuid())
+  programId      String  @unique
+  jamBuka        String
+  jamTutup       String
+  toleransiMenit Int     @default(15)
+  isActive       Boolean @default(true)
+  program        Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+}
+
+model TanggalTaqwim {
+  id        String   @id @default(cuid())
+  programId String
+  tanggal   DateTime @db.Date
+  program   Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, tanggal])
 }

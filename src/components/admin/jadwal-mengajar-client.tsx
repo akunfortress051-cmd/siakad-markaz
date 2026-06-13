@@ -31,11 +31,13 @@ type PengajarSesi = {
 export function JadwalMengajarClient({
   programs,
   initialPengajarSesi,
-  teachers
+  teachers,
+  sesiTambahan = []
 }: {
   programs: Program[];
   initialPengajarSesi: PengajarSesi[];
   teachers: Teacher[];
+  sesiTambahan?: { programId: string; sesi: string }[];
 }) {
   const [dataSesi, setDataSesi] = useState<PengajarSesi[]>(initialPengajarSesi);
   const [selectedSlot, setSelectedSlot] = useState<{
@@ -51,7 +53,11 @@ export function JadwalMengajarClient({
   // State for search inside modal
   const [searchQuery, setSearchQuery] = useState("");
 
-  const SESI_LIST = ["SESI_1", "SESI_2", "SESI_3", "SESI_4", "SESI_5", "SESI_6"];
+  const GLOBAL_SESI_LIST = ["SESI_1", "SESI_2", "SESI_3", "SESI_4", "SESI_5", "SESI_6"];
+  const getSesiListForProgram = (programId: string) => {
+    const activeTambahan = sesiTambahan.filter(s => s.programId === programId).map(s => s.sesi);
+    return [...GLOBAL_SESI_LIST, ...activeTambahan].sort((a,b) => parseInt(a.replace('SESI_', '')) - parseInt(b.replace('SESI_', '')));
+  };
 
   const getPengajarForSlot = (kelasId: string, sesi: string) => {
     return dataSesi.find(d => d.kelasId === kelasId && d.sesi === sesi);
@@ -158,7 +164,7 @@ export function JadwalMengajarClient({
                     </div>
                     
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
-                      {SESI_LIST.map(sesi => {
+                      {getSesiListForProgram(program.id).map(sesi => {
                         const pengajar = getPengajarForSlot(kelas.id, sesi);
                         return (
                           <div 

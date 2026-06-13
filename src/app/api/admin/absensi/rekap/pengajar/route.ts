@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
       return {
         id: r.id,
-        pengajar: r.user.username,
+        pengajar: r.user.nama,
         kelas: r.kelas.nama,
         tanggal: r.tanggal.toISOString().split("T")[0],
         sesi: r.sesi,
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
         if (!classWasTaught) {
           formatted.push({
             id: `alpha_${teacher.userId}_${teacher.kelasId}_${teacher.sesi}_${tgl}`,
-            pengajar: teacher.user.username,
+            pengajar: teacher.user.nama,
             kelas: teacher.kelas.nama,
             tanggal: tgl,
             sesi: teacher.sesi,

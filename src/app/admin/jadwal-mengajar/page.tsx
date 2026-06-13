@@ -27,6 +27,11 @@ export default async function JadwalMengajarPage() {
     }
   });
 
+  const sesiTambahan = await prisma.sesiTambahanProgram.findMany({
+    where: { isActive: true },
+    select: { programId: true, sesi: true }
+  });
+
   const plottingRolesPerm = await prisma.rolePermission.findMany({
     where: {
       permission: { in: ["absen_kelas", "manajemen_sesi", "rekap_kelas"] }
@@ -59,6 +64,7 @@ export default async function JadwalMengajarPage() {
         programs={programs} 
         initialPengajarSesi={pengajarSesi} 
         teachers={availableTeachers} 
+        sesiTambahan={sesiTambahan}
       />
     </div>
   );
