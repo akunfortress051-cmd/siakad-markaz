@@ -4,7 +4,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { FileText, Search, User, Clock, Calendar } from "lucide-react";
+import { FileText, Search, User, Clock, Calendar, Send } from "lucide-react";
+import toast from "react-hot-toast";
 
 type PengajarRecord = {
   id: string;
@@ -238,6 +239,24 @@ export function RekapPengajarClient() {
     }
   };
 
+  const sendWaLaporan = async () => {
+    const loaders = toast.loading("Mengirim Laporan WA Hari Ini...");
+    try {
+      // Panggil tanpa parameter agar otomatis mengambil hari ini (hari yang sedang aktif)
+      const res = await fetch(`/api/cron/wa-rekap-pengajar`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal mengirim");
+      
+      if (data.success) {
+        toast.success(data.message, { id: loaders });
+      } else {
+        toast.error(data.message || "Gagal mengirim pesan", { id: loaders });
+      }
+    } catch (err: any) {
+      toast.error(err.message, { id: loaders });
+    }
+  };
+
   if (!dari || !sampai) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-[var(--color-surface-dark)]">
@@ -266,14 +285,25 @@ export function RekapPengajarClient() {
                 className="w-full pl-9 pr-4 py-2 text-sm bg-[var(--color-secondary)] border border-[var(--color-surface-dark)] rounded-xl outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all font-semibold"
               />
             </div>
-            <button
-              onClick={exportToExcel}
-              disabled={isLoading || data.length === 0}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              <span>Export Excel</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={sendWaLaporan}
+                disabled={isLoading || data.length === 0}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                title="Kirim ke 081227225453"
+              >
+                <Send className="h-4 w-4" />
+                <span>Kirim WA Laporan</span>
+              </button>
+              <button
+                onClick={exportToExcel}
+                disabled={isLoading || data.length === 0}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Export Excel</span>
+              </button>
+            </div>
           </div>
 
           {/* Filter Row */}

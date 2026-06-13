@@ -4,7 +4,8 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { ChevronLeft, FileText, ChevronDown, ChevronRight, Search, Copy, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { ChevronLeft, FileText, ChevronDown, ChevronRight, Search, Copy, ClipboardCheck, AlertTriangle, Send } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   BarChart,
   Bar,
@@ -167,6 +168,25 @@ export function AbsensiRekapDetailClient() {
     const footer = `\nسأنتظركم حتى الساعة الواحدة\nSaya tunggu sampai jam dari jam 11.45- 13.00\n\nNB : *tanda 1x menandakan tidak hadir pemanggilan 1x,tanda 2x menandakan tidak hadir pemanggilan 2x, tanda 3x tidak hadir pemanggilan 3x dan jika sudah sampai 3x maka akan berlaku SP 1 ,tambahan bagi yang telat ataupun tidak hadir*`;
     return `${header}\n${names}\n${footer}`;
   }, [data]);
+
+  const sendWaLaporanMingguan = async () => {
+    if (!dari || !sampai) return;
+    const loaders = toast.loading("Mengirim Laporan WA...");
+    try {
+      const params = new URLSearchParams({ dari, sampai });
+      const res = await fetch(`/api/cron/wa-rekap-santri?${params}`);
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal mengirim");
+      
+      if (result.success) {
+        toast.success(result.message, { id: loaders });
+      } else {
+        toast.error(result.message || "Gagal mengirim pesan", { id: loaders });
+      }
+    } catch (err: any) {
+      toast.error(err.message, { id: loaders });
+    }
+  };
 
   // --- Generate Rekap Alfa Mingguan (type=kelas) ---
   const generateRekapAlfaMingguan = useCallback(() => {
@@ -355,13 +375,23 @@ export function AbsensiRekapDetailClient() {
                       Salin daftar santri yang alfa per kelas per hari (format WhatsApp)
                     </p>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(generateRekapAlfaMingguan(), "alfaMingguan")}
-                    className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700 shrink-0"
-                  >
-                    {copiedKey === "alfaMingguan" ? <ClipboardCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copiedKey === "alfaMingguan" ? "Tersalin!" : "Salin Rekap Alfa"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={sendWaLaporanMingguan}
+                      className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 shrink-0"
+                      title="Kirim ke +62 821-3228-9500"
+                    >
+                      <Send className="h-4 w-4" />
+                      Kirim WA Laporan
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(generateRekapAlfaMingguan(), "alfaMingguan")}
+                      className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700 shrink-0"
+                    >
+                      {copiedKey === "alfaMingguan" ? <ClipboardCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copiedKey === "alfaMingguan" ? "Tersalin!" : "Salin Rekap Alfa"}
+                    </button>
+                  </div>
                 </div>
               )}
 
