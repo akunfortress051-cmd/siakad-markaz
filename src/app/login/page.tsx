@@ -42,8 +42,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--bg-app)" }}>
-      <div className="max-w-md w-full">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" 
+      style={{ 
+        backgroundColor: "var(--bg-app)",
+        backgroundImage: "linear-gradient(rgba(0, 102, 102, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 102, 102, 0.04) 1px, transparent 1px)",
+        backgroundSize: "32px 32px"
+      }}
+    >
+      {/* Glow effect behind the card */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] max-w-[600px] max-h-[600px] bg-[var(--color-primary-50)] rounded-full blur-[120px] opacity-70 pointer-events-none"></div>
+
+      <div className="max-w-md w-full relative z-10">
         {/* Card */}
         <div className="neu-card p-8 md:p-10">
           {/* Logo & Title */}
@@ -87,7 +97,7 @@ export default function LoginPage() {
                   required
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="neu-input w-full pl-11 pr-4 py-3"
+                  className="neu-input w-full !pl-11 !pr-4 !py-3"
                   placeholder="Masukkan username"
                 />
               </div>
@@ -106,7 +116,7 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="neu-input w-full pl-11 pr-4 py-3"
+                  className="neu-input w-full !pl-11 !pr-4 !py-3"
                   placeholder="Masukkan password"
                 />
               </div>

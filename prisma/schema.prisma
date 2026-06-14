@@ -19,6 +19,7 @@ model Program {
   sesiTambahanList  SesiTambahanProgram[]
   sesiTaqwim        SesiTaqwim?
   tanggalTaqwimList TanggalTaqwim[]
+  pengajarSesiProgramList PengajarSesiProgram[]
 }
 
 model Kelas {
@@ -270,6 +271,7 @@ model User {
 
   kelas               Kelas?          @relation("WaliKelas", fields: [kelasId], references: [id], onDelete: SetNull)
   pengajarSesiList    PengajarSesi[]
+  pengajarSesiProgramList PengajarSesiProgram[]
   absenPengajarList   AbsenPengajar[]
   absenDigantikanList AbsenPengajar[] @relation("PengajarDigantikan")
 }
@@ -357,4 +359,16 @@ model TanggalTaqwim {
   program   Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@unique([programId, tanggal])
+}
+
+model PengajarSesiProgram {
+  id        String    @id @default(cuid())
+  userId    String
+  programId String
+  sesi      SesiKelas
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId, sesi])
 }

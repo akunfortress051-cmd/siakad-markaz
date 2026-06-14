@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { toast } from "react-hot-toast";
-import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle, RefreshCw } from "lucide-react";
+import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle, RefreshCw, Copy } from "lucide-react";
 
 // Helper: Hitung sesi aktif, sesi berikutnya, dan status libur
 function computeSessionState(jadwalConfig: any, programList: any[], targetKelasIds: string[] | null, tanggal: string) {
@@ -153,7 +153,7 @@ export function AbsensiKelasClient({
   programList: any[];
   allowedClassIds?: string[] | null;
   userRole?: string;
-  teacherSessions?: { sesi: string; kelasId: string }[];
+  teacherSessions?: { sesi: string; kelasId: string; isProgramLevel?: boolean; programId?: string; programNama?: string }[];
   allPengajarSesi?: { sesi: string; kelasId: string; user: { id: string; nama: string } }[];
 }) {
   const [tanggal, setTanggal] = useState("");
@@ -532,6 +532,13 @@ export function AbsensiKelasClient({
     }
 
     programList.forEach((program) => {
+      // Cek apakah guru ini punya penugasan level program untuk program ini
+      const isProgramLevelAllowed = teacherSessions.some(ts => ts.isProgramLevel && ts.programId === program.id);
+      
+      if (isProgramLevelAllowed || !allowedClassIds) {
+        list.push({ id: `PROGRAM_${program.id}`, label: `Seluruh Program ${program.nama_indo}`, group: "Program Level" });
+      }
+
       if (program.kelasList.length > 0) {
         program.kelasList.forEach((k: any) => {
           // Jika dibatasi, hanya masukkan kelas yang diperbolehkan
@@ -540,8 +547,8 @@ export function AbsensiKelasClient({
           }
         });
       } else {
-        // Program tanpa kelas (jika tidak dibatasi)
-        if (!allowedClassIds) {
+        // Program tanpa kelas (jika tidak dibatasi dan belum masuk di atas)
+        if (!allowedClassIds && !isProgramLevelAllowed) {
           list.push({ id: `PROGRAM_${program.id}`, label: program.nama_indo, group: "Program" });
         }
       }
@@ -566,6 +573,29 @@ export function AbsensiKelasClient({
   const handleFloatingRefresh = () => {
     setIsRefreshing(true);
     setTimeout(() => window.location.reload(), 300);
+  };
+
+  const groupedSantri = useMemo(() => {
+    const groups: Record<string, SantriAbsenTarget[]> = {};
+    santriList.forEach(s => {
+      const key = s.kelasNama ?? s.programNama ?? "Tanpa Kelas";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    });
+    return groups;
+  }, [santriList]);
+
+  const handleCopyLaporan = (className: string, students: SantriAbsenTarget[]) => {
+    let text = `Kelas: ${className}\n\n`;
+    students.forEach((s, idx) => {
+      text += `${idx + 1}. ${s.nama}\n`;
+    });
+
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`Daftar santri kelas ${className} berhasil disalin`, { icon: '📋' });
+    }).catch(() => {
+      toast.error("Gagal menyalin teks");
+    });
   };
 
   return (
@@ -822,91 +852,135 @@ export function AbsensiKelasClient({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="flex flex-col">
               {isLoading ? (
                 <div className="p-8 text-center text-sm font-semibold text-[var(--color-text-muted)]">Memuat data santri...</div>
+              ) : santriList.length === 0 ? (
+                <div className="p-8 text-center text-[var(--color-text-muted)] font-medium">Tidak ada santri yang ditemukan pada filter ini.</div>
               ) : (
-                <table className="min-w-full divide-y divide-[var(--color-surface-dark)] text-left">
-                  <thead className="bg-[var(--color-secondary)] text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-                    <tr>
-                      <th className="px-4 py-4 text-center w-16">#</th>
-                      <th className="px-6 py-4">Santri</th>
-                      <th className="px-6 py-4 min-w-[300px]">Status Kehadiran</th>
-                      <th className="px-6 py-4">Keterangan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-surface)] text-sm text-[var(--color-text-muted)]">
-                    {santriList.map((santri, index) => {
-                      const currentStatus = absenMap[santri.riwayatId]?.status;
-                      const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
+                <>
+                  {/* Badges Kelas */}
+                  {Object.keys(groupedSantri).length > 1 && (
+                    <div className="flex flex-wrap gap-3 px-6 py-4 bg-white border-b border-[var(--color-surface-dark)]">
+                      {Object.entries(groupedSantri).map(([className, students]) => (
+                        <button
+                          key={className}
+                          onClick={() => {
+                            const el = document.getElementById(`kelas-group-${className}`);
+                            if (el) {
+                              const y = el.getBoundingClientRect().top + window.scrollY - 100;
+                              window.scrollTo({ top: y, behavior: 'smooth' });
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] hover:bg-[var(--color-surface-dark)] border border-[var(--color-surface-dark)] rounded-full text-sm font-bold text-[var(--color-text)] transition-colors shadow-sm"
+                        >
+                          {className}
+                          <span className="bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2 py-0.5 rounded-md text-xs border border-[var(--color-primary-100)]">
+                            {students.length} Santri
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                      return (
-                        <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)]">
-                          <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
-                          <td className="px-6 py-4">
-                            <p className="font-bold text-[var(--color-text)]">{santri.nama}</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-muted)]">
-                                {santri.kelasNama ?? santri.programNama ?? "Tanpa Kelas"}
-                              </span>
-                              {santri.gender === "BANIN" ? (
-                                <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">BANIN</span>
-                              ) : santri.gender === "BANAT" ? (
-                                <span className="inline-flex items-center rounded-md bg-[var(--color-danger-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-danger)]">BANAT</span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)]">{santri.gender}</span>
-                              )}
-                              {santri.kategori === "BARU" ? (
-                                <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)] capitalize">Baru</span>
-                              ) : santri.kategori === "LAMA" ? (
-                                <span className="inline-flex items-center rounded-md bg-[var(--color-warning-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning)] capitalize">Lama</span>
-                              ) : santri.kategori === "KSU" ? (
-                                <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 uppercase">KSU</span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)] capitalize">{santri.kategori ?? "-"}</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              {(["HADIR", "IZIN", "SAKIT", "ALPHA"] as AbsenStatus[]).map((st) => (
-                                <button
-                                  key={st}
-                                  onClick={() => handleStatusChange(santri.riwayatId, st)}
-                                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
-                                    ? st === "HADIR" ? "bg-emerald-500 text-white shadow-emerald-200 shadow-sm"
-                                      : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
-                                        : st === "SAKIT" ? "bg-amber-500 text-white shadow-amber-200 shadow-sm"
-                                          : "bg-rose-500 text-white shadow-rose-200 shadow-sm"
-                                    : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
-                                    }`}
-                                >
-                                  {st}
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <input
-                              type="text"
-                              placeholder="Catatan..."
-                              value={currentKet}
-                              onChange={(e) => handleKeteranganChange(santri.riwayatId, e.target.value)}
-                              className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)]"
-                            />
-                          </td>
-                        </tr>
-                      )
-                    })}
-                    {santriList.length === 0 && !isLoading && (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-[var(--color-text-muted)] font-medium">
-                          Tidak ada santri yang ditemukan pada filter ini.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                  {/* Grouped Tables */}
+                  <div className="flex flex-col">
+                    {Object.entries(groupedSantri).map(([className, students]) => (
+                      <div key={className} id={`kelas-group-${className}`} className="border-b border-[var(--color-surface-dark)] last:border-0 scroll-mt-24">
+                        {/* Header Kelas */}
+                        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--color-surface-light)]">
+                          <h3 className="text-lg font-bold text-[var(--color-text)] flex items-center gap-3">
+                            <span className="w-1.5 h-6 bg-[var(--color-primary)] rounded-full"></span>
+                            {className}
+                            <span className="text-sm font-semibold text-[var(--color-text-muted)]">({students.length})</span>
+                          </h3>
+                          <button
+                            onClick={() => handleCopyLaporan(className, students)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-[var(--color-surface)] border border-[var(--color-surface-dark)] rounded-xl text-xs font-bold text-[var(--color-text)] transition-colors shadow-sm"
+                          >
+                            <Copy className="w-4 h-4 text-[var(--color-primary)]" />
+                            Copy Daftar Nama
+                          </button>
+                        </div>
+                        
+                        {/* Table */}
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-[var(--color-surface-dark)] text-left">
+                            <thead className="bg-white text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-text-muted)] border-y border-[var(--color-surface-dark)]">
+                              <tr>
+                                <th className="px-4 py-4 text-center w-16">#</th>
+                                <th className="px-6 py-4">Santri</th>
+                                <th className="px-6 py-4 min-w-[300px]">Status Kehadiran</th>
+                                <th className="px-6 py-4">Keterangan</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--color-surface)] text-sm text-[var(--color-text-muted)] bg-white">
+                              {students.map((santri, index) => {
+                                const currentStatus = absenMap[santri.riwayatId]?.status;
+                                const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
+
+                                return (
+                                  <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)] transition-colors">
+                                    <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
+                                    <td className="px-6 py-4">
+                                      <p className="font-bold text-[var(--color-text)]">{santri.nama}</p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        {santri.gender === "BANIN" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">BANIN</span>
+                                        ) : santri.gender === "BANAT" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-danger-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-danger)]">BANAT</span>
+                                        ) : (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)]">{santri.gender}</span>
+                                        )}
+                                        {santri.kategori === "BARU" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)] capitalize">Baru</span>
+                                        ) : santri.kategori === "LAMA" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-warning-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning)] capitalize">Lama</span>
+                                        ) : santri.kategori === "KSU" ? (
+                                          <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 uppercase">KSU</span>
+                                        ) : (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)] capitalize">{santri.kategori ?? "-"}</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex gap-2">
+                                        {(["HADIR", "IZIN", "SAKIT", "ALPHA"] as AbsenStatus[]).map((st) => (
+                                          <button
+                                            key={st}
+                                            onClick={() => handleStatusChange(santri.riwayatId, st)}
+                                            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
+                                              ? st === "HADIR" ? "bg-emerald-500 text-white shadow-emerald-200 shadow-sm"
+                                                : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
+                                                  : st === "SAKIT" ? "bg-amber-500 text-white shadow-amber-200 shadow-sm"
+                                                    : "bg-rose-500 text-white shadow-rose-200 shadow-sm"
+                                              : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
+                                              }`}
+                                          >
+                                            {st}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <input
+                                        type="text"
+                                        placeholder="Catatan..."
+                                        value={currentKet}
+                                        onChange={(e) => handleKeteranganChange(santri.riwayatId, e.target.value)}
+                                        className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)]"
+                                      />
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 

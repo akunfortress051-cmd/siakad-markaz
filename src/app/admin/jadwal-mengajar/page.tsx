@@ -32,6 +32,13 @@ export default async function JadwalMengajarPage() {
     select: { programId: true, sesi: true }
   });
 
+  const pengajarSesiProgram = await prisma.pengajarSesiProgram.findMany({
+    include: {
+      user: { select: { id: true, nama: true, role: true } },
+      program: { select: { id: true, nama_indo: true } }
+    }
+  });
+
   const plottingRolesPerm = await prisma.rolePermission.findMany({
     where: {
       permission: { in: ["absen_kelas", "manajemen_sesi", "rekap_kelas"] }
@@ -65,6 +72,7 @@ export default async function JadwalMengajarPage() {
         initialPengajarSesi={pengajarSesi} 
         teachers={availableTeachers} 
         sesiTambahan={sesiTambahan}
+        initialPengajarSesiProgram={pengajarSesiProgram}
       />
     </div>
   );

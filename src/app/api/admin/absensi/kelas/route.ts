@@ -95,6 +95,19 @@ export async function POST(request: Request) {
 
     if ((isTeacherSubmit || isAdminBackupSubmit) && absenPengajar && kelasId) {
       const targetUserId = isTeacherSubmit ? userSession.userId : payload.targetUserId;
+      let actualKelasId = kelasId;
+
+      if (kelasId.startsWith("PROGRAM_")) {
+        const programId = kelasId.replace("PROGRAM_", "");
+        const firstClass = await prisma.kelas.findFirst({
+          where: { programId: programId }
+        });
+        if (firstClass) {
+          actualKelasId = firstClass.id;
+        } else {
+          return NextResponse.json({ error: "Program tidak memiliki kelas satupun" }, { status: 400 });
+        }
+      }
 
       operations.push(
         prisma.absenPengajar.upsert({
@@ -118,7 +131,7 @@ export async function POST(request: Request) {
           },
           create: {
             userId: targetUserId,
-            kelasId: kelasId,
+            kelasId: actualKelasId,
             tanggal: parsedDate,
             sesi: sesi,
             waktuMulai: absenPengajar.waktuMulai,

@@ -22,7 +22,7 @@ export default async function AbsensiKelasPage() {
   ]);
   
   let allowedClassIds: string[] | null = null; // null = all classes allowed
-  let teacherSessions: { sesi: string, kelasId: string }[] = [];
+  let teacherSessions: { sesi: string, kelasId: string, isProgramLevel?: boolean, programId?: string, programNama?: string }[] = [];
   let allPengajarSesi: any[] = []; // Untuk Admin Backup Mode
   
   // Ambil data Taqwim hari ini
@@ -41,14 +41,37 @@ export default async function AbsensiKelasPage() {
         select: { kelasId: true, sesi: true }
       });
       
-      if (ps.length > 0 || session.kelasId) {
+      const psp = await prisma.pengajarSesiProgram.findMany({
+        where: { userId: session.userId },
+        include: { program: { include: { kelasList: { select: { id: true } } } } }
+      });
+      
+      if (ps.length > 0 || session.kelasId || psp.length > 0) {
         allowedClassIds = Array.from(new Set(ps.map(p => p.kelasId)));
         
-        if (session.kelasId && !allowedClassIds.includes(session.kelasId)) {
-          allowedClassIds.push(session.kelasId);
+        if (session.kelasId && !allowedClassIds!.includes(session.kelasId)) {
+          allowedClassIds!.push(session.kelasId);
         }
         
+        psp.forEach((p: any) => {
+          // Add all classes in the program
+          p.program.kelasList.forEach((k: any) => {
+            if (!allowedClassIds!.includes(k.id)) {
+              allowedClassIds!.push(k.id);
+            }
+          });
+        });
+        
         teacherSessions = ps.map(p => ({ sesi: p.sesi, kelasId: p.kelasId }));
+        psp.forEach((p: any) => {
+          teacherSessions.push({
+            sesi: p.sesi,
+            kelasId: `PROGRAM_${p.programId}`,
+            isProgramLevel: true,
+            programId: p.programId,
+            programNama: p.program.nama_indo
+          });
+        });
         
         // Logika Override Taqwim
         if (taqwimProgramIds.length > 0) {

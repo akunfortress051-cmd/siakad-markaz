@@ -42,8 +42,16 @@ export async function GET(request: Request) {
       where: whereClause,
       include: {
         user: { select: { id: true, nama: true, username: true } },
-        kelas: { select: { id: true, nama: true } },
+        kelas: { select: { id: true, nama: true, program: { select: { id: true, nama_indo: true } } } },
         pengajarDigantikan: { select: { id: true, nama: true } },
+      }
+    });
+
+    const pengajarSesiProgramList = await prisma.pengajarSesiProgram.findMany({
+      where: isTeacher ? { userId: session.userId } : undefined,
+      include: { 
+        user: { select: { id: true, nama: true, username: true } },
+        program: { select: { id: true, nama_indo: true } }
       }
     });
 
@@ -70,10 +78,15 @@ export async function GET(request: Request) {
         }
       }
 
+      // Cek apakah guru ini di-assign via program level di sesi ini
+      const isProgramLevel = pengajarSesiProgramList.some(
+        psp => psp.userId === r.userId && psp.programId === r.kelas.program?.id && psp.sesi === r.sesi
+      );
+
       return {
         id: r.id,
         pengajar: r.user.nama,
-        kelas: r.kelas.nama,
+        kelas: isProgramLevel ? `Program ${r.kelas.program?.nama_indo}` : r.kelas.nama,
         tanggal: r.tanggal.toISOString().split("T")[0],
         sesi: r.sesi,
         materi: r.materi || "-",
@@ -147,6 +160,32 @@ export async function GET(request: Request) {
             id: `alpha_${teacher.userId}_${teacher.kelasId}_${teacher.sesi}_${tgl}`,
             pengajar: teacher.user.nama,
             kelas: teacher.kelas.nama,
+            tanggal: tgl,
+            sesi: teacher.sesi,
+            materi: "ALPHA (Belum Absen)",
+            waktuMulai: "-",
+            waktuSelesai: "-",
+            status: "ALPHA",
+            isBadal: false,
+            pengajarDigantikan: null,
+            atribut: { nametag: false, kopiah: false, bros: false },
+            terlambatMenit: 0,
+          });
+        }
+      }
+
+      // ALPHA detection for Program Level
+      for (const teacher of pengajarSesiProgramList) {
+        // Cek apakah ada record absen dari guru ini untuk sesi ini pada program ini
+        // Kita bandingkan via programId dari relasi kelas di record
+        const programWasTaught = records.some(
+          r => r.userId === teacher.userId && r.sesi === teacher.sesi && r.kelas.program?.id === teacher.programId && r.tanggal.toISOString().split("T")[0] === tgl
+        );
+        if (!programWasTaught) {
+          formatted.push({
+            id: `alpha_${teacher.userId}_PROGRAM_${teacher.programId}_${teacher.sesi}_${tgl}`,
+            pengajar: teacher.user.nama,
+            kelas: `Program ${teacher.program.nama_indo}`,
             tanggal: tgl,
             sesi: teacher.sesi,
             materi: "ALPHA (Belum Absen)",

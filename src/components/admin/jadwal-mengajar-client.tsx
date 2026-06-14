@@ -28,23 +28,44 @@ type PengajarSesi = {
   };
 };
 
+type PengajarSesiProgram = {
+  id: string;
+  programId: string;
+  sesi: string;
+  userId: string;
+  user: {
+    id: string;
+    nama: string;
+    role: string;
+  };
+  program: {
+    id: string;
+    nama_indo: string;
+  };
+};
+
 export function JadwalMengajarClient({
   programs,
   initialPengajarSesi,
   teachers,
-  sesiTambahan = []
+  sesiTambahan = [],
+  initialPengajarSesiProgram = []
 }: {
   programs: Program[];
   initialPengajarSesi: PengajarSesi[];
   teachers: Teacher[];
   sesiTambahan?: { programId: string; sesi: string }[];
+  initialPengajarSesiProgram?: PengajarSesiProgram[];
 }) {
   const [dataSesi, setDataSesi] = useState<PengajarSesi[]>(initialPengajarSesi);
+  const [dataSesiProgram, setDataSesiProgram] = useState<PengajarSesiProgram[]>(initialPengajarSesiProgram || []);
   const [selectedSlot, setSelectedSlot] = useState<{
     kelasId: string;
     kelasNama: string;
     sesi: string;
     currentUserId: string | null;
+    isProgramLevel?: boolean;
+    programId?: string;
   } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
@@ -71,48 +92,123 @@ export function JadwalMengajarClient({
     setModalOpen(true);
   };
 
+  const handleOpenProgramModal = (programId: string, programNama: string, sesi: string) => {
+    setSelectedSlot({
+      kelasId: `PROGRAM_${programId}`,
+      kelasNama: `Program ${programNama}`,
+      sesi,
+      currentUserId: null,
+      isProgramLevel: true,
+      programId
+    });
+    setSelectedTeacherId("");
+    setSearchQuery("");
+    setModalOpen(true);
+  };
+
+  const handleDeleteProgramSlot = async (id: string) => {
+    if (!confirm("Hapus pengajar ini dari sesi program?")) return;
+    try {
+      const res = await fetch(`/api/admin/pengajar-sesi-program?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setDataSesiProgram(prev => prev.filter(d => d.id !== id));
+        toast.success("Berhasil dihapus");
+      } else {
+        toast.error("Gagal menghapus");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem");
+    }
+  };
+
   const handleSaveSlot = async () => {
     if (!selectedSlot) return;
     setIsSaving(true);
     try {
-      const res = await fetch("/api/admin/jadwal-mengajar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kelasId: selectedSlot.kelasId,
-          sesi: selectedSlot.sesi,
-          userId: selectedTeacherId || null
-        })
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Jadwal berhasil diperbarui");
-        
-        let newData = dataSesi.filter(
-          d => !(d.kelasId === selectedSlot.kelasId && d.sesi === selectedSlot.sesi)
-        );
-        
-        if (selectedTeacherId) {
-          // Remove if this teacher teaches another class in the same session
-          newData = newData.filter(
-            d => !(d.userId === selectedTeacherId && d.sesi === selectedSlot.sesi)
-          );
-          
+      if (selectedSlot.isProgramLevel && selectedSlot.programId) {
+        // Save program level
+        if (!selectedTeacherId) {
+          toast.error("Pilih pengajar terlebih dahulu");
+          setIsSaving(false);
+          return;
+        }
+
+        // Cek jika sudah ada
+        const existing = dataSesiProgram.find(d => d.programId === selectedSlot.programId && d.sesi === selectedSlot.sesi && d.userId === selectedTeacherId);
+        if (existing) {
+          toast.error("Pengajar ini sudah di-plot di sesi program ini");
+          setIsSaving(false);
+          return;
+        }
+
+        const res = await fetch("/api/admin/pengajar-sesi-program", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            programId: selectedSlot.programId,
+            sesi: selectedSlot.sesi,
+            userId: selectedTeacherId
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast.success("Jadwal program berhasil ditambahkan");
           const teacherObj = teachers.find(t => t.id === selectedTeacherId);
           if (teacherObj) {
-            newData.push({
-              id: Math.random().toString(), // temp id
-              kelasId: selectedSlot.kelasId,
+            setDataSesiProgram([...dataSesiProgram, {
+              id: result.data?.id || Math.random().toString(),
+              programId: selectedSlot.programId!,
               userId: selectedTeacherId,
               sesi: selectedSlot.sesi,
-              user: teacherObj
-            });
+              user: teacherObj,
+              program: { id: selectedSlot.programId!, nama_indo: selectedSlot.kelasNama.replace('Program ', '') }
+            }]);
           }
+          setModalOpen(false);
+        } else {
+          toast.error(result.error || "Gagal menyimpan");
         }
-        setDataSesi(newData);
-        setModalOpen(false);
       } else {
-        toast.error(result.error || "Gagal menyimpan");
+        // Save class level
+        const res = await fetch("/api/admin/jadwal-mengajar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kelasId: selectedSlot.kelasId,
+            sesi: selectedSlot.sesi,
+            userId: selectedTeacherId || null
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast.success("Jadwal berhasil diperbarui");
+          
+          let newData = dataSesi.filter(
+            d => !(d.kelasId === selectedSlot.kelasId && d.sesi === selectedSlot.sesi)
+          );
+          
+          if (selectedTeacherId) {
+            // Remove if this teacher teaches another class in the same session
+            newData = newData.filter(
+              d => !(d.userId === selectedTeacherId && d.sesi === selectedSlot.sesi)
+            );
+            
+            const teacherObj = teachers.find(t => t.id === selectedTeacherId);
+            if (teacherObj) {
+              newData.push({
+                id: Math.random().toString(), // temp id
+                kelasId: selectedSlot.kelasId,
+                userId: selectedTeacherId,
+                sesi: selectedSlot.sesi,
+                user: teacherObj
+              });
+            }
+          }
+          setDataSesi(newData);
+          setModalOpen(false);
+        } else {
+          toast.error(result.error || "Gagal menyimpan");
+        }
       }
     } catch (e) {
       toast.error("Terjadi kesalahan sistem");
@@ -125,7 +221,7 @@ export function JadwalMengajarClient({
     t.nama.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const clashingAssignment = (selectedTeacherId && selectedSlot) 
+  const clashingAssignment = (selectedTeacherId && selectedSlot && !selectedSlot.isProgramLevel) 
     ? dataSesi.find(d => d.userId === selectedTeacherId && d.sesi === selectedSlot.sesi && d.kelasId !== selectedSlot.kelasId)
     : null;
     
@@ -199,6 +295,50 @@ export function JadwalMengajarClient({
                 ))}
               </div>
             )}
+            
+            {/* Sesi Tambahan / Sesi Program Level */}
+            {sesiTambahan.filter(s => s.programId === program.id).length > 0 && (
+              <div className="mt-8 border-t border-[var(--color-surface)] pt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-bold text-lg text-[var(--color-text)]">Sesi Gabungan (Seluruh Program)</h3>
+                  <span className="text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">Level Program</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {sesiTambahan.filter(s => s.programId === program.id).map(st => {
+                    const programTeachers = dataSesiProgram.filter(d => d.programId === program.id && d.sesi === st.sesi);
+                    return (
+                      <div key={st.sesi} className="bg-white border border-[var(--color-surface-dark)] rounded-2xl p-4">
+                        <div className="text-xs font-black tracking-wider text-emerald-600 uppercase mb-3 border-b pb-2">
+                          {st.sesi.replace('_', ' ')}
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          {programTeachers.map(pt => (
+                            <div key={pt.id} className="flex items-center justify-between bg-slate-50 border rounded-lg p-2 group">
+                              <div className="flex items-center gap-2">
+                                <User className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="text-sm font-bold text-slate-700">{pt.user.nama}</span>
+                              </div>
+                              <button onClick={() => handleDeleteProgramSlot(pt.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                          {programTeachers.length === 0 && (
+                            <div className="text-xs text-slate-400 text-center py-2 italic border border-dashed rounded-lg">Belum ada pengajar</div>
+                          )}
+                        </div>
+                        <button 
+                          onClick={() => handleOpenProgramModal(program.id, program.nama_indo, st.sesi)}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Tambah Pengajar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -246,21 +386,23 @@ export function JadwalMengajarClient({
               )}
 
               <div className="max-h-[35vh] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                <div 
-                  onClick={() => setSelectedTeacherId("")}
-                  className={`flex cursor-pointer items-center justify-between rounded-2xl border p-3 transition ${
-                    selectedTeacherId === ""
-                      ? "border-emerald-500 bg-[var(--color-primary-50)]"
-                      : "border-[var(--color-surface-dark)] hover:border-[var(--color-primary-100)] hover:bg-[var(--color-secondary)]"
-                  }`}
-                >
-                  <span className="text-sm font-semibold text-[var(--color-text)]">Kosongkan Jadwal</span>
-                  {selectedTeacherId === "" && (
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary-50)]0">
-                      <Save className="h-3 w-3 text-white" />
-                    </div>
-                  )}
-                </div>
+                {!selectedSlot.isProgramLevel && (
+                  <div 
+                    onClick={() => setSelectedTeacherId("")}
+                    className={`flex cursor-pointer items-center justify-between rounded-2xl border p-3 transition ${
+                      selectedTeacherId === ""
+                        ? "border-emerald-500 bg-[var(--color-primary-50)]"
+                        : "border-[var(--color-surface-dark)] hover:border-[var(--color-primary-100)] hover:bg-[var(--color-secondary)]"
+                    }`}
+                  >
+                    <span className="text-sm font-semibold text-[var(--color-text)]">Kosongkan Jadwal</span>
+                    {selectedTeacherId === "" && (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary-50)]0">
+                        <Save className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {filteredTeachers.map(t => (
                   <div 

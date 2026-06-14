@@ -28,6 +28,11 @@ export default async function JadwalSayaPage() {
     include: { kelas: { include: { program: true } } }
   });
 
+  const pengajarSesiProgram = await prisma.pengajarSesiProgram.findMany({
+    where: { userId: session.userId },
+    include: { program: true }
+  });
+
   // Ambil data Wali Kelas jika dia wali kelas
   let waliKelasData = null;
   if (session.kelasId) {
@@ -41,6 +46,9 @@ export default async function JadwalSayaPage() {
   const programIds = new Set<string>();
   pengajarSesi.forEach(p => {
     if (p.kelas?.programId) programIds.add(p.kelas.programId);
+  });
+  pengajarSesiProgram.forEach(p => {
+    programIds.add(p.programId);
   });
   if (waliKelasData?.programId) {
     programIds.add(waliKelasData.programId);
@@ -80,7 +88,14 @@ export default async function JadwalSayaPage() {
   for (const sesi of sortedSesiKeys) {
     // Cari kelas apa yang diajar di sesi ini (bisa jadi kosong)
     const ps = pengajarSesi.find(p => p.sesi === sesi);
-    let kelasTujuan = ps?.kelas || null;
+    const psp = pengajarSesiProgram.find(p => p.sesi === sesi);
+    let kelasTujuan: any = ps?.kelas || null;
+    let isProgramLevel = false;
+
+    if (psp) {
+      kelasTujuan = { nama: `Seluruh Program ${psp.program.nama_indo}`, programId: psp.programId };
+      isProgramLevel = true;
+    }
 
     // Default jadwal
     let jamBuka = "";
@@ -144,6 +159,7 @@ export default async function JadwalSayaPage() {
         jamBuka,
         jamTutup,
         kelas: kelasTujuan ? kelasTujuan.nama : null,
+        isProgramLevel,
         isTaqwimInfo: isTaqwim && isWaliKelasTaqwim ? "Otomatis ditugaskan (Wali Kelas)" : (isTaqwim ? "Ditiadakan (Hari Taqwim)" : null)
       });
     }
@@ -215,8 +231,8 @@ export default async function JadwalSayaPage() {
              <div className="pt-5 border-t border-[var(--color-surface-dark)]/50">
                {jadwal.kelas ? (
                  <div>
-                   <p className="text-[11px] uppercase tracking-[0.2em] font-black text-[var(--color-primary)] mb-1.5">Mengajar Kelas</p>
-                   <p className="text-2xl font-black text-[var(--color-text)]">{jadwal.kelas}</p>
+                   <p className={`text-[11px] uppercase tracking-[0.2em] font-black mb-1.5 ${jadwal.isProgramLevel ? 'text-amber-600' : 'text-[var(--color-primary)]'}`}>{jadwal.isProgramLevel ? 'Mengajar' : 'Mengajar Kelas'}</p>
+                   <p className={`text-2xl font-black text-[var(--color-text)] ${jadwal.isProgramLevel ? 'text-xl text-amber-700' : ''}`}>{jadwal.kelas}</p>
                    {jadwal.isTaqwimInfo && <p className={`text-xs mt-2 font-bold ${jadwal.isSpecialTaqwimCard ? 'text-[var(--color-primary)]' : 'text-amber-600'}`}>{jadwal.isTaqwimInfo}</p>}
                  </div>
                ) : (
