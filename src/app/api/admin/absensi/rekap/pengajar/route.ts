@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,14 +11,35 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Parameter rentang tanggal tidak lengkap" }, { status: 400 });
   }
 
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
+    let isTeacher = false;
+    if (session.role !== "ADMIN") {
+      const psCount = await prisma.pengajarSesi.count({
+        where: { userId: session.userId }
+      });
+      if (psCount > 0 || session.kelasId) {
+        isTeacher = true;
+      }
+    }
+
+    const whereClause: any = {
+      tanggal: {
+        gte: new Date(`${dari}T00:00:00Z`),
+        lte: new Date(`${sampai}T23:59:59Z`),
+      }
+    };
+
+    if (isTeacher) {
+      whereClause.userId = session.userId;
+    }
+
     const records = await prisma.absenPengajar.findMany({
-      where: {
-        tanggal: {
-          gte: new Date(`${dari}T00:00:00Z`),
-          lte: new Date(`${sampai}T23:59:59Z`),
-        }
-      },
+      where: whereClause,
       include: {
         user: { select: { id: true, nama: true, username: true } },
         kelas: { select: { id: true, nama: true } },
@@ -109,6 +131,7 @@ export async function GET(request: Request) {
     }
 
     const pengajarSesi = await prisma.pengajarSesi.findMany({
+      where: isTeacher ? { userId: session.userId } : undefined,
       include: { 
         user: { select: { id: true, nama: true, username: true } },
         kelas: { select: { nama: true } }

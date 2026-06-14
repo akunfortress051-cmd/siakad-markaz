@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle, RefreshCw } from "lucide-react";
 
 // Helper: Hitung sesi aktif, sesi berikutnya, dan status libur
-function computeSessionState(jadwalConfig: any, programList: any[], kelasId: string | null, tanggal: string) {
+function computeSessionState(jadwalConfig: any, programList: any[], targetKelasIds: string[] | null, tanggal: string) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Jakarta',
     hour: '2-digit', minute: '2-digit', hour12: false
@@ -23,29 +23,37 @@ function computeSessionState(jadwalConfig: any, programList: any[], kelasId: str
     return { activeSesis: [], nextSession: null, isResting: true };
   }
 
-  let programId = null;
-  if (kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
-    if (kelasId.startsWith("PROGRAM_")) {
-      programId = kelasId.replace("PROGRAM_", "");
-    } else {
-      const prog = programList.find(p => p.kelasList.some((k:any) => k.id === kelasId));
-      if (prog) programId = prog.id;
-    }
+  const programIds = new Set<string>();
+  if (targetKelasIds) {
+    targetKelasIds.forEach(kId => {
+      if (kId && kId !== "ALL" && kId !== "UNASSIGNED") {
+        if (kId.startsWith("PROGRAM_")) {
+          programIds.add(kId.replace("PROGRAM_", ""));
+        } else {
+          const prog = programList.find(p => p.kelasList.some((k:any) => k.id === kId));
+          if (prog) programIds.add(prog.id);
+        }
+      }
+    });
   }
 
   let finalJadwal = [...jadwalConfig.globalSesi];
+  const addedSesiTambahan = new Set<string>();
 
-  if (programId) {
+  programIds.forEach(programId => {
     const tambahan = jadwalConfig.sesiTambahan.filter((s:any) => s.programId === programId && s.isActive);
     tambahan.forEach((t:any) => {
-      finalJadwal.push({
-        sesi: t.sesi,
-        label: "Sesi " + t.sesi.replace("SESI_", ""),
-        jamBuka: t.jamBuka,
-        jamTutup: t.jamTutup,
-        toleransiMenit: t.toleransiMenit,
-        isActive: t.isActive
-      });
+      if (!addedSesiTambahan.has(t.sesi)) {
+        addedSesiTambahan.add(t.sesi);
+        finalJadwal.push({
+          sesi: t.sesi,
+          label: "Sesi " + t.sesi.replace("SESI_", ""),
+          jamBuka: t.jamBuka,
+          jamTutup: t.jamTutup,
+          toleransiMenit: t.toleransiMenit,
+          isActive: t.isActive
+        });
+      }
     });
 
     const isTaqwimDate = jadwalConfig.taqwim.tanggalList.some((t:any) => t.programId === programId && t.tanggal.startsWith(tanggal));
@@ -64,15 +72,16 @@ function computeSessionState(jadwalConfig: any, programList: any[], kelasId: str
         }
       }
     }
-  }
+  });
 
   for (const jadwal of finalJadwal) {
     if (!jadwal.isActive) continue;
     const [bukaH, bukaM] = jadwal.jamBuka.split(':').map(Number);
     const [tutupH, tutupM] = jadwal.jamTutup.split(':').map(Number);
     const bukaVal = bukaH * 60 + bukaM;
-    const tutupVal = tutupH * 60 + tutupM;
-    const isCrossMidnight = (tutupH * 60 + tutupM) < bukaVal;
+    const baseTutup = tutupH * 60 + tutupM;
+    const tutupVal = baseTutup + (jadwal.toleransiMenit || 0);
+    const isCrossMidnight = baseTutup < bukaVal || tutupVal >= 1440;
 
     let isActive = false;
     if (isCrossMidnight) {
@@ -206,7 +215,8 @@ export function AbsensiKelasClient({
       .then(res => res.json())
       .then(data => {
         setJadwalSesiList(data);
-        const { activeSesis, nextSession, isResting } = computeSessionState(data, programList, kelasId, `${y}-${m}-${d}`);
+        const targetKelasIds = isTeacher ? (allowedClassIds || []) : [kelasId].filter(Boolean) as string[];
+        const { activeSesis, nextSession, isResting } = computeSessionState(data, programList, targetKelasIds, `${y}-${m}-${d}`);
         setActiveSessionsList(activeSesis);
         setNextSessionInfo(nextSession);
         setIsResting(isResting);
@@ -242,15 +252,46 @@ export function AbsensiKelasClient({
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
 
+  const [countdown, setCountdown] = useState<number | null>(null);
+
   // Efek interval untuk auto-switch sesi — TANPA activeSession di dependency
   useEffect(() => {
     if (!isTeacher || !jadwalSesiList || !jadwalSesiList.globalSesi) return;
 
     const intervalId = setInterval(() => {
-      const { activeSesis, nextSession, isResting } = computeSessionState(jadwalSesiList, programList, kelasId, tanggal);
+      const targetKelasIds = isTeacher ? (allowedClassIds || []) : [kelasId].filter(Boolean) as string[];
+      const { activeSesis, nextSession, isResting } = computeSessionState(jadwalSesiList, programList, targetKelasIds, tanggal);
       setActiveSessionsList(activeSesis);
       setNextSessionInfo(nextSession);
       setIsResting(isResting);
+
+      if (nextSession && !activeSesis.length) {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Jakarta',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        });
+        const parts = formatter.formatToParts(new Date());
+        const h = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+        const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+        const s = parseInt(parts.find(p => p.type === 'second')?.value || '0');
+        
+        const currentSeconds = h * 3600 + m * 60 + s;
+        const [bukaH, bukaM] = nextSession.jamBuka.split(':').map(Number);
+        let targetSeconds = bukaH * 3600 + bukaM * 60;
+        
+        if (targetSeconds < currentSeconds) {
+           targetSeconds += 24 * 3600;
+        }
+        
+        const diff = targetSeconds - currentSeconds;
+        if (diff <= 10 && diff > 0) {
+          setCountdown(diff);
+        } else {
+          setCountdown(null);
+        }
+      } else {
+        setCountdown(null);
+      }
 
       const prevSession = activeSessionRef.current;
 
@@ -285,7 +326,7 @@ export function AbsensiKelasClient({
           toast("Sesi saat ini telah berakhir", { icon: '🔒' });
         }
       }
-    }, 10000);
+    }, 1000);
 
     return () => clearInterval(intervalId);
   }, [isTeacher, jadwalSesiList, teacherSessions]); // ← activeSession DIHAPUS dari deps
@@ -723,7 +764,11 @@ export function AbsensiKelasClient({
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                   </span>
-                  Sistem akan otomatis berpindah...
+                  {countdown !== null ? (
+                    <span className="text-amber-600 font-black px-1">Beralih dalam {countdown} detik...</span>
+                  ) : (
+                    "Sistem akan otomatis berpindah..."
+                  )}
                 </div>
               </>
             ) : (

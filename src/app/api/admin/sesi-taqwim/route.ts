@@ -49,14 +49,14 @@ export async function POST(request: Request) {
       update: {
         jamBuka,
         jamTutup,
-        toleransiMenit: Number(toleransiMenit) || 15,
+        toleransiMenit: toleransiMenit !== undefined ? Number(toleransiMenit) : 15,
         isActive: Boolean(isActive)
       },
       create: {
         programId,
         jamBuka,
         jamTutup,
-        toleransiMenit: Number(toleransiMenit) || 15,
+        toleransiMenit: toleransiMenit !== undefined ? Number(toleransiMenit) : 15,
         isActive: Boolean(isActive)
       }
     });
