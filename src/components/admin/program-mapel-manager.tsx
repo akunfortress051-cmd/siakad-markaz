@@ -266,7 +266,7 @@ function SortableMapelRow({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-warning-light)]0 py-1.5 text-xs font-bold text-white hover:bg-[var(--color-warning)] disabled:opacity-60 transition"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-warning)] py-1.5 text-xs font-bold text-white hover:bg-[var(--color-warning)] disabled:opacity-60 transition"
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
               Simpan
@@ -537,7 +537,7 @@ function ProgramCard({
                 <button
                   onClick={handleSaveProgram}
                   disabled={savingProgram}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-warning-light)]0 py-2 text-sm font-bold text-white hover:bg-[var(--color-warning)] disabled:opacity-60 transition"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-warning)] py-2 text-sm font-bold text-white hover:bg-[var(--color-warning)] disabled:opacity-60 transition"
                 >
                   {savingProgram ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   Simpan

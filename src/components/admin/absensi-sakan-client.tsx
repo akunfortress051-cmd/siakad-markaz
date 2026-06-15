@@ -216,7 +216,7 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                   onChange={(e) => setSendToWa(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="h-6 w-11 rounded-full bg-[var(--color-surface-dark)] transition-colors peer-checked:bg-[var(--color-primary-50)]0 peer-focus:ring-2 peer-focus:ring-emerald-300"></div>
+                <div className="h-6 w-11 rounded-full bg-[var(--color-surface-dark)] transition-colors peer-checked:bg-[var(--color-primary)] peer-focus:ring-2 peer-focus:ring-emerald-300"></div>
                 <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -232,7 +232,7 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
         {/* Stats */}
         <div className="flex flex-wrap gap-4 border-b border-[var(--color-surface-dark)] px-6 py-4 bg-white">
            <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-[var(--color-primary-50)]0"></span>
+             <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]"></span>
              <span className="text-[var(--color-text)]">Hadir: {statHadir}</span>
            </div>
            <div className="flex items-center gap-2 text-sm font-bold">
@@ -240,11 +240,11 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
              <span className="text-[var(--color-text)]">Izin: {statIzin}</span>
            </div>
            <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-[var(--color-warning-light)]0"></span>
+             <span className="h-2 w-2 rounded-full bg-[var(--color-warning)]"></span>
              <span className="text-[var(--color-text)]">Sakit: {statSakit}</span>
            </div>
            <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-[var(--color-danger-light)]0"></span>
+             <span className="h-2 w-2 rounded-full bg-[var(--color-danger)]"></span>
              <span className="text-[var(--color-text)]">Alpha: {statAlpha}</span>
            </div>
            <div className="flex items-center gap-2 text-sm font-bold pl-4 border-l border-[var(--color-surface-dark)]">
@@ -298,10 +298,10 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                               onClick={() => handleStatusChange(santri.riwayatId, st)}
                               className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                                 currentStatus === st
-                                  ? st === "HADIR" ? "bg-[var(--color-primary-50)]0 text-white shadow-[var(--color-primary-100)] shadow-sm"
+                                  ? st === "HADIR" ? "bg-[var(--color-primary)] text-white shadow-[var(--color-primary-100)] shadow-sm"
                                   : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
-                                  : st === "SAKIT" ? "bg-[var(--color-warning-light)]0 text-white shadow-amber-200 shadow-sm"
-                                  : "bg-[var(--color-danger-light)]0 text-white shadow-rose-200 shadow-sm"
+                                  : st === "SAKIT" ? "bg-[var(--color-warning)] text-white shadow-amber-200 shadow-sm"
+                                  : "bg-[var(--color-danger)] text-white shadow-rose-200 shadow-sm"
                                 : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
                               }`}
                             >

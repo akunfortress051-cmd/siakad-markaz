@@ -10,10 +10,10 @@ type StackedProgressBarProps = {
 };
 
 const SEGMENTS = [
-  { key: "hadir", label: "Hadir", color: "bg-[var(--color-primary-50)]0", textColor: "text-[var(--color-primary)]" },
+  { key: "hadir", label: "Hadir", color: "bg-[var(--color-primary)]", textColor: "text-[var(--color-primary)]" },
   { key: "izin", label: "Izin", color: "bg-indigo-500", textColor: "text-indigo-700" },
-  { key: "sakit", label: "Sakit", color: "bg-[var(--color-warning-light)]0", textColor: "text-[var(--color-warning)]" },
-  { key: "alpha", label: "Alfa", color: "bg-[var(--color-danger-light)]0", textColor: "text-[var(--color-danger)]" },
+  { key: "sakit", label: "Sakit", color: "bg-[var(--color-warning)]", textColor: "text-[var(--color-warning)]" },
+  { key: "alpha", label: "Alfa", color: "bg-[var(--color-danger)]", textColor: "text-[var(--color-danger)]" },
 ] as const;
 
 export function StackedProgressBar({

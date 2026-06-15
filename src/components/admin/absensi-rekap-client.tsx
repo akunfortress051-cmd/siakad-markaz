@@ -24,10 +24,10 @@ type RekapData = {
 };
 
 const STATUS_CONFIG = [
-  { key: "HADIR" as const, label: "Hadir", color: "bg-[var(--color-primary-50)]0", light: "bg-[var(--color-primary-50)] text-[var(--color-primary)] border-[var(--color-primary-100)]" },
+  { key: "HADIR" as const, label: "Hadir", color: "bg-[var(--color-primary)]", light: "bg-[var(--color-primary-50)] text-[var(--color-primary)] border-[var(--color-primary-100)]" },
   { key: "IZIN" as const,  label: "Izin",  color: "bg-indigo-500",  light: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  { key: "SAKIT" as const, label: "Sakit", color: "bg-[var(--color-warning-light)]0",   light: "bg-[var(--color-warning-light)] text-[var(--color-warning)] border-[var(--color-warning)]" },
-  { key: "ALPHA" as const, label: "Alpha", color: "bg-[var(--color-danger-light)]0",    light: "bg-[var(--color-danger-light)] text-[var(--color-danger)] border-[var(--color-danger)]" },
+  { key: "SAKIT" as const, label: "Sakit", color: "bg-[var(--color-warning)]",   light: "bg-[var(--color-warning-light)] text-[var(--color-warning)] border-[var(--color-warning)]" },
+  { key: "ALPHA" as const, label: "Alpha", color: "bg-[var(--color-danger)]",    light: "bg-[var(--color-danger-light)] text-[var(--color-danger)] border-[var(--color-danger)]" },
 ];
 
 function getTotalFromCounts(counts: StatusCounts) {
@@ -113,7 +113,7 @@ function RekapCard({
       <div className="mt-2 flex items-center gap-2">
         <div className="flex-1 h-1.5 rounded-full bg-[var(--color-surface)] overflow-hidden">
           <div
-            className="h-full rounded-full bg-[var(--color-primary-50)]0 transition-all duration-700"
+            className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700"
             style={{ width: `${hadirPct}%` }}
           />
         </div>

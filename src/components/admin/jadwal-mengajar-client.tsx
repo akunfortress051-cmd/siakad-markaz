@@ -397,7 +397,7 @@ export function JadwalMengajarClient({
                   >
                     <span className="text-sm font-semibold text-[var(--color-text)]">Kosongkan Jadwal</span>
                     {selectedTeacherId === "" && (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary-50)]0">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)]">
                         <Save className="h-3 w-3 text-white" />
                       </div>
                     )}
@@ -424,7 +424,7 @@ export function JadwalMengajarClient({
                       </div>
                     </div>
                     {selectedTeacherId === t.id && (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary-50)]0">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)]">
                         <Check className="h-3 w-3 text-white" />
                       </div>
                     )}

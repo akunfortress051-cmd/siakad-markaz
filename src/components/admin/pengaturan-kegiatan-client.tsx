@@ -165,7 +165,7 @@ export function PengaturanKegiatanClient({ initialList }: { initialList: Kegiata
                   />
                   <button
                     onClick={() => handleSaveEdit(item.id)}
-                    className="flex items-center gap-1 rounded-full bg-[var(--color-primary-50)]0 px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--color-primary)]"
+                    className="flex items-center gap-1 rounded-full bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--color-primary)]"
                   >
                     <Check className="h-3.5 w-3.5" /> Simpan
                   </button>

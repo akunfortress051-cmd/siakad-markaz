@@ -242,7 +242,7 @@ export function AbsensiKegiatanClient({
           {/* Stats */}
           <div className="flex flex-wrap gap-4 border-b border-[var(--color-surface-dark)] px-6 py-4 bg-white">
             <div className="flex items-center gap-2 text-sm font-bold">
-              <span className="h-2 w-2 rounded-full bg-[var(--color-primary-50)]0"></span>
+              <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]"></span>
               <span className="text-[var(--color-text)]">Hadir: {statHadir}</span>
             </div>
             <div className="flex items-center gap-2 text-sm font-bold">
@@ -250,11 +250,11 @@ export function AbsensiKegiatanClient({
               <span className="text-[var(--color-text)]">Izin: {statIzin}</span>
             </div>
             <div className="flex items-center gap-2 text-sm font-bold">
-              <span className="h-2 w-2 rounded-full bg-[var(--color-warning-light)]0"></span>
+              <span className="h-2 w-2 rounded-full bg-[var(--color-warning)]"></span>
               <span className="text-[var(--color-text)]">Sakit: {statSakit}</span>
             </div>
             <div className="flex items-center gap-2 text-sm font-bold">
-              <span className="h-2 w-2 rounded-full bg-[var(--color-danger-light)]0"></span>
+              <span className="h-2 w-2 rounded-full bg-[var(--color-danger)]"></span>
               <span className="text-[var(--color-text)]">Alpha: {statAlpha}</span>
             </div>
             <div className="flex items-center gap-2 text-sm font-bold pl-4 border-l border-[var(--color-surface-dark)]">
@@ -315,12 +315,12 @@ export function AbsensiKegiatanClient({
                                 className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                                   currentStatus === st
                                     ? st === "HADIR"
-                                      ? "bg-[var(--color-primary-50)]0 text-white"
+                                      ? "bg-[var(--color-primary)] text-white"
                                       : st === "IZIN"
                                       ? "bg-indigo-500 text-white"
                                       : st === "SAKIT"
-                                      ? "bg-[var(--color-warning-light)]0 text-white"
-                                      : "bg-[var(--color-danger-light)]0 text-white"
+                                      ? "bg-[var(--color-warning)] text-white"
+                                      : "bg-[var(--color-danger)] text-white"
                                     : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
                                 }`}
                               >
