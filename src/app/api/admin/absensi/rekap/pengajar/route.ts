@@ -11,7 +11,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Parameter rentang tanggal tidak lengkap" }, { status: 400 });
   }
 
-  const session = await getSession();
+  // Izinkan akses dari cron internal menggunakan secret header
+  const cronSecret = (request as any).headers?.get?.("x-cron-secret") || 
+    new Headers(request.headers).get("x-cron-secret");
+  const isCronRequest = cronSecret && cronSecret === process.env.CRON_SECRET;
+
+  const session = (isCronRequest
+    ? { role: "ADMIN", userId: null, kelasId: null }  // Treat cron sebagai admin
+    : await getSession()) as any;
+
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

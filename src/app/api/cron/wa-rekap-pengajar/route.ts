@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     // Header x-forwarded-host dan cookie dilempar agar session admin tidak tertolak jika API memerlukan auth (meskipun rekap API tampaknya publik/tidak ber-session dalam route handler-nya)
     const res = await fetch(fetchUrl, {
       headers: {
-        cookie: request.headers.get("cookie") || ""
+        cookie: request.headers.get("cookie") || "",
+        "x-cron-secret": process.env.CRON_SECRET || "",
       }
     });
 

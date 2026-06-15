@@ -179,7 +179,7 @@ export function AbsensiKelasClient({
   const [waktuMulai, setWaktuMulai] = useState("");
   const [waktuSelesai, setWaktuSelesai] = useState("");
   const [atribut, setAtribut] = useState({ kopiah: false, nametag: false, bros: false });
-  const [kecerdasan, setKecerdasan] = useState("");
+  const [kecerdasan, setKecerdasan] = useState<string[]>([]);
   const [isBadalMode, setIsBadalMode] = useState(false);
   const [showBadalModal, setShowBadalModal] = useState(false);
   const [badalTargetKelasId, setBadalTargetKelasId] = useState("");
@@ -252,7 +252,7 @@ export function AbsensiKelasClient({
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
 
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState<{ minutes: number; seconds: number } | null>(null);
 
   // Efek interval untuk auto-switch sesi — TANPA activeSession di dependency
   useEffect(() => {
@@ -265,7 +265,7 @@ export function AbsensiKelasClient({
       setNextSessionInfo(nextSession);
       setIsResting(isResting);
 
-      if (nextSession && !activeSesis.length) {
+      if (nextSession) {
         const formatter = new Intl.DateTimeFormat('en-US', {
           timeZone: 'Asia/Jakarta',
           hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
@@ -284,8 +284,8 @@ export function AbsensiKelasClient({
         }
         
         const diff = targetSeconds - currentSeconds;
-        if (diff <= 10 && diff > 0) {
-          setCountdown(diff);
+        if (diff > 0) {
+          setCountdown({ minutes: Math.floor(diff / 60), seconds: diff % 60 });
         } else {
           setCountdown(null);
         }
@@ -330,6 +330,38 @@ export function AbsensiKelasClient({
 
     return () => clearInterval(intervalId);
   }, [isTeacher, jadwalSesiList, teacherSessions]); // ← activeSession DIHAPUS dari deps
+
+  // Interval countdown untuk mode Admin (non-teacher) — teacher sudah punya interval di atas
+  useEffect(() => {
+    if (isTeacher || !jadwalSesiList || !jadwalSesiList.globalSesi) return;
+    const intervalId = setInterval(() => {
+      const targetKelasIds = [kelasId].filter(Boolean) as string[];
+      const { nextSession } = computeSessionState(jadwalSesiList, programList, targetKelasIds, tanggal);
+      if (nextSession) {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Jakarta',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        });
+        const parts = formatter.formatToParts(new Date());
+        const h = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+        const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+        const s = parseInt(parts.find(p => p.type === 'second')?.value || '0');
+        const currentSeconds = h * 3600 + m * 60 + s;
+        const [bukaH, bukaM] = nextSession.jamBuka.split(':').map(Number);
+        let targetSeconds = bukaH * 3600 + bukaM * 60;
+        if (targetSeconds < currentSeconds) targetSeconds += 24 * 3600;
+        const diff = targetSeconds - currentSeconds;
+        if (diff > 0) {
+          setCountdown({ minutes: Math.floor(diff / 60), seconds: diff % 60 });
+        } else {
+          setCountdown(null);
+        }
+      } else {
+        setCountdown(null);
+      }
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [isTeacher, jadwalSesiList, kelasId, tanggal]);
 
   // Auto-save form pengajar ke localStorage saat berubah
   useEffect(() => {
@@ -377,7 +409,7 @@ export function AbsensiKelasClient({
             nametag: !!data.absenPengajarData.atributNametag,
             bros: !!data.absenPengajarData.atributBros,
           });
-          setKecerdasan(data.absenPengajarData.kecerdasan || "");
+          setKecerdasan(data.absenPengajarData.kecerdasan ? data.absenPengajarData.kecerdasan.split(", ") : []);
           setIsSaved(true); // Data sudah tersimpan di server
         } else {
           // Coba muat dari cache localStorage
@@ -387,13 +419,13 @@ export function AbsensiKelasClient({
             setWaktuMulai(cached.waktuMulai || "");
             setWaktuSelesai(cached.waktuSelesai || "");
             setAtribut(cached.atribut || { kopiah: false, nametag: false, bros: false });
-            setKecerdasan(cached.kecerdasan || "");
+            setKecerdasan(cached.kecerdasan || []);
           } else {
             setMateri("");
             setWaktuMulai("");
             setWaktuSelesai("");
             setAtribut({ kopiah: false, nametag: false, bros: false });
-            setKecerdasan("");
+            setKecerdasan([]);
           }
           setIsSaved(false);
         }
@@ -472,7 +504,7 @@ export function AbsensiKelasClient({
           atributKopiah: atribut.kopiah,
           atributNametag: atribut.nametag,
           atributBros: atribut.bros,
-          kecerdasan: kecerdasan || null,
+          kecerdasan: kecerdasan.length > 0 ? kecerdasan.join(", ") : null,
           isBadal: isBadalMode
         };
         if (userRole === "ADMIN" && showAdminPengajarForm) {
@@ -616,6 +648,20 @@ export function AbsensiKelasClient({
                   {activeSession ? activeSession.replace('_', ' ') : "Tidak ada"}
                 </span>
               </div>
+              {/* Countdown ke sesi berikutnya saat sesi aktif */}
+              {activeSession && nextSessionInfo && countdown && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)] w-24">Berikutnya</span>
+                  <span className="text-sm font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    {nextSessionInfo.label} pukul {nextSessionInfo.jamBuka}
+                    <span className="ml-1 font-black text-amber-600 tabular-nums">
+                      {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                    </span>
+                    lagi
+                  </span>
+                </div>
+              )}
               {activeSession && jadwalSesiList && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)] w-24">Waktu</span>
@@ -789,13 +835,19 @@ export function AbsensiKelasClient({
                 <p className="text-base text-[var(--color-text-muted)] max-w-md mb-8 font-medium leading-relaxed">
                   Sesi berikutnya adalah <strong className="text-[var(--color-text)] px-1">{nextSessionInfo.label}</strong> yang akan dimulai pada jam <strong className="text-[var(--color-text)] px-1">{nextSessionInfo.jamBuka} WIB</strong>.
                 </p>
-                <div className="inline-flex items-center gap-3 px-6 py-3 bg-[var(--color-surface-light)] rounded-full text-sm font-bold text-[var(--color-text-muted)] border border-[var(--color-surface-dark)]">
-                  <span className="relative flex h-3 w-3">
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-amber-50 rounded-2xl text-sm font-bold text-amber-700 border border-amber-200 shadow-sm">
+                  <span className="relative flex h-3 w-3 flex-shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                   </span>
                   {countdown !== null ? (
-                    <span className="text-amber-600 font-black px-1">Beralih dalam {countdown} detik...</span>
+                    <span className="flex items-center gap-2">
+                      Dimulai dalam
+                      <span className="inline-flex items-center gap-1 bg-white border border-amber-300 rounded-xl px-3 py-1 font-black text-amber-700 tabular-nums text-base shadow-sm">
+                        <Clock className="w-4 h-4 text-amber-500" />
+                        {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                      </span>
+                    </span>
                   ) : (
                     "Sistem akan otomatis berpindah..."
                   )}
@@ -1117,23 +1169,37 @@ export function AbsensiKelasClient({
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-3">Basic Kecerdasan</label>
-                        <select
-                          value={kecerdasan}
-                          onChange={(e) => { setKecerdasan(e.target.value); setIsSaved(false); }}
-                          className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-3 text-sm focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 outline-none transition-all"
-                        >
-                          <option value="">-- Pilih Jenis Kecerdasan --</option>
-                          <option value="Verbal-Linguistic">Verbal-Linguistic Intelligence (الذَّكَاءُ اللُّغَوِيُّ)</option>
-                          <option value="Logical-Mathematical">Logical-Mathematical Intelligence (الذَّكَاءُ الْمَنْطِقِيُّ الرِّيَاضِيُّ)</option>
-                          <option value="Visual-Spatial">Visual-Spatial Intelligence (الذَّكَاءُ الْبَصَرِيُّ الْمَكَانِيُّ)</option>
-                          <option value="Musical-Rhythmic">Musical-Rhythmic Intelligence (الذَّكَاءُ الْمُوسِيقِيُّ)</option>
-                          <option value="Bodily-Kinesthetic">Bodily-Kinesthetic Intelligence (الذَّكَاءُ الْجَسَدِيُّ الْحَرَكِيُّ)</option>
-                          <option value="Interpersonal">Interpersonal Intelligence (الذَّكَاءُ الاِجْتِمَاعِيُّ)</option>
-                          <option value="Intrapersonal">Intrapersonal Intelligence (الذَّكَاءُ الذَّاتِيُّ)</option>
-                          <option value="Naturalistic">Naturalistic Intelligence (الذَّكَاءُ الطَّبِيعِيُّ)</option>
-                          <option value="Existential">Existential Intelligence (الذَّكَاءُ الْوُجُودِيُّ)</option>
-                        </select>
+                        <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-3">Basic Kecerdasan (Bisa Pilih Lebih Dari Satu)</label>
+                        <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                           {[
+                              { id: "Verbal-Linguistic", label: "Verbal-Linguistic Intelligence (الذَّكَاءُ اللُّغَوِيُّ)" },
+                              { id: "Logical-Mathematical", label: "Logical-Mathematical Intelligence (الذَّكَاءُ الْمَنْطِقِيُّ الرِّيَاضِيُّ)" },
+                              { id: "Visual-Spatial", label: "Visual-Spatial Intelligence (الذَّكَاءُ الْبَصَرِيُّ الْمَكَانِيُّ)" },
+                              { id: "Musical-Rhythmic", label: "Musical-Rhythmic Intelligence (الذَّكَاءُ الْمُوسِيقِيُّ)" },
+                              { id: "Bodily-Kinesthetic", label: "Bodily-Kinesthetic Intelligence (الذَّكَاءُ الْجَسَدِيُّ الْحَرَكِيُّ)" },
+                              { id: "Interpersonal", label: "Interpersonal Intelligence (الذَّكَاءُ الاِجْتِمَاعِيُّ)" },
+                              { id: "Intrapersonal", label: "Intrapersonal Intelligence (الذَّكَاءُ الذَّاتِيُّ)" },
+                              { id: "Naturalistic", label: "Naturalistic Intelligence (الذَّكَاءُ الطَّبِيعِيُّ)" },
+                              { id: "Existential", label: "Existential Intelligence (الذَّكَاءُ الْوُجُودِيُّ)" }
+                           ].map(item => (
+                              <label key={item.id} className="flex items-center justify-between cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-[var(--color-surface-dark)] hover:border-[var(--color-primary-100)] transition-colors shadow-sm">
+                                 <span className="text-sm font-semibold text-[var(--color-text)]">{item.label}</span>
+                                 <input
+                                    type="checkbox"
+                                    checked={kecerdasan.includes(item.id)}
+                                    onChange={(e) => {
+                                       if (e.target.checked) {
+                                          setKecerdasan([...kecerdasan, item.id]);
+                                       } else {
+                                          setKecerdasan(kecerdasan.filter(k => k !== item.id));
+                                       }
+                                       setIsSaved(false);
+                                    }}
+                                    className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 border-[var(--color-surface-dark)]"
+                                 />
+                              </label>
+                           ))}
+                        </div>
                       </div>
                     </div>
 

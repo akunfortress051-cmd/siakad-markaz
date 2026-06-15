@@ -76,7 +76,10 @@ export async function GET(request: NextRequest) {
     const fetchUrl = `${origin}/api/admin/absensi/rekap/detail?type=kelas&dari=${dari}&sampai=${sampai}`;
     
     const res = await fetch(fetchUrl, {
-      headers: { cookie: request.headers.get("cookie") || "" }
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+        "x-cron-secret": process.env.CRON_SECRET || "",
+      }
     });
     
     if (!res.ok) {
