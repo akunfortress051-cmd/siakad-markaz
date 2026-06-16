@@ -93,12 +93,32 @@ export async function POST(request: Request) {
     const isTeacherSubmit = userSession && userSession.role !== "ADMIN";
     const isAdminBackupSubmit = userSession && userSession.role === "ADMIN" && payload.targetUserId;
 
-    if ((isTeacherSubmit || isAdminBackupSubmit) && absenPengajar && kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
+    if ((isTeacherSubmit || isAdminBackupSubmit) && absenPengajar) {
       const targetUserId = isTeacherSubmit ? userSession.userId : payload.targetUserId;
       let actualKelasId = kelasId;
 
-      if (kelasId.startsWith("PROGRAM_")) {
-        const programId = kelasId.replace("PROGRAM_", "");
+      // Jika kelasId tidak valid (ALL, UNASSIGNED, atau kosong), cari kelasId yang valid
+      // berdasarkan assignment pengajar target di sesi yang sedang diabsen
+      if (!actualKelasId || actualKelasId === "ALL" || actualKelasId === "UNASSIGNED") {
+        // Cari dari PengajarSesiProgram dulu (sesi 7+)
+        const psp = await prisma.pengajarSesiProgram.findFirst({
+          where: { userId: targetUserId, sesi: sesi as any },
+          include: { program: { include: { kelasList: { select: { id: true }, take: 1 } } } }
+        });
+        if (psp && psp.program.kelasList.length > 0) {
+          actualKelasId = psp.program.kelasList[0].id;
+        } else {
+          // Fallback: cari dari PengajarSesi biasa
+          const ps = await prisma.pengajarSesi.findFirst({
+            where: { userId: targetUserId, sesi: sesi as any }
+          });
+          if (ps) actualKelasId = ps.kelasId;
+        }
+      }
+
+      // Konversi PROGRAM_xxx ke kelas pertama program tersebut
+      if (actualKelasId && actualKelasId.startsWith("PROGRAM_")) {
+        const programId = actualKelasId.replace("PROGRAM_", "");
         const firstClass = await prisma.kelas.findFirst({
           where: { programId: programId }
         });
@@ -107,6 +127,12 @@ export async function POST(request: Request) {
         } else {
           return NextResponse.json({ error: "Program tidak memiliki kelas satupun" }, { status: 400 });
         }
+      }
+
+      // Jika masih tidak ada kelasId yang valid, skip tanpa error
+      if (!actualKelasId) {
+        await prisma.$transaction(operations);
+        return NextResponse.json({ success: true, count: operations.length, note: "Absen santri tersimpan, absen pengajar dilewati (tidak ada kelas yang terdeteksi)" });
       }
 
       operations.push(
