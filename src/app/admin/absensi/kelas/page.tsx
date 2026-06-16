@@ -23,7 +23,8 @@ export default async function AbsensiKelasPage() {
   
   let allowedClassIds: string[] | null = null; // null = all classes allowed
   let teacherSessions: { sesi: string, kelasId: string, isProgramLevel?: boolean, programId?: string, programNama?: string }[] = [];
-  let allPengajarSesi: any[] = []; // Untuk Admin Backup Mode
+  let allPengajarSesi: any[] = []; // Untuk Admin Backup Mode (PengajarSesi kelas reguler)
+  let allPengajarSesiProgram: any[] = []; // Untuk Admin Backup Mode (PengajarSesiProgram level program)
   
   // Ambil data Taqwim hari ini
   const { getTodayWibString, parseWibDateString } = await import("@/lib/absensi");
@@ -103,13 +104,22 @@ export default async function AbsensiKelasPage() {
         allowedClassIds = [];
       }
     } else {
+      // Ambil pengajar kelas reguler
       allPengajarSesi = await prisma.pengajarSesi.findMany({
         select: {
           sesi: true,
           kelasId: true,
-          user: {
-            select: { id: true, nama: true }
-          }
+          user: { select: { id: true, nama: true } }
+        }
+      });
+
+      // Ambil pengajar level program (Sesi 7+)
+      allPengajarSesiProgram = await prisma.pengajarSesiProgram.findMany({
+        select: {
+          sesi: true,
+          programId: true,
+          user: { select: { id: true, nama: true } },
+          program: { select: { id: true, nama_indo: true } }
         }
       });
       
@@ -141,6 +151,7 @@ export default async function AbsensiKelasPage() {
         userRole={session?.role}
         teacherSessions={teacherSessions}
         allPengajarSesi={allPengajarSesi}
+        allPengajarSesiProgram={allPengajarSesiProgram}
       />
     </div>
   );

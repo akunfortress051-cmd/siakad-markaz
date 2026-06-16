@@ -58,37 +58,51 @@ export async function GET(request: NextRequest) {
       where: { isActive: true },
     });
 
-    // ─── 3. Gabungkan dan filter sesi yang sudah LEWAT (tapi belum lebih dari 2 jam) ─
+    // ─── 3. Tentukan sesi yang sudah LEWAT secara program-aware ─────────────
+    // Sesi global digunakan untuk pengajar kelas reguler.
+    // Sesi tambahan per-program digunakan untuk pengajar level program.
+    // Keduanya diproses TERPISAH agar jam yang berbeda tidak saling menimpa.
     type SesiInfo = { sesi: string; jamTutup: string; toleransiMenit: number };
-    const allSesi: SesiInfo[] = [
-      ...globalSesiList.map((s) => ({
-        sesi: s.sesi as string,
-        jamTutup: s.jamTutup,
-        toleransiMenit: s.toleransiMenit,
-      })),
-      ...sesiTambahanList.map((s) => ({
-        sesi: s.sesi as string,
-        jamTutup: s.jamTutup,
-        toleransiMenit: s.toleransiMenit,
-      })),
-    ];
 
-    // De-duplikasi sesi (jika sesi tambahan overlap dengan global)
-    const uniqueSesiMap = new Map<string, SesiInfo>();
-    for (const s of allSesi) {
-      if (!uniqueSesiMap.has(s.sesi)) {
-        uniqueSesiMap.set(s.sesi, s);
+    // Sesi global yang sudah lewat (untuk pengajar kelas reguler / PengajarSesi)
+    const passedGlobalSessions = globalSesiList.filter((s) => {
+      const tutupMenit = timeToMinutes(s.jamTutup) + s.toleransiMenit;
+      const selisih = nowMinutes - tutupMenit;
+      return selisih > 0 && selisih <= MAKS_JEDA_MENIT;
+    }).map((s): SesiInfo => ({
+      sesi: s.sesi as string,
+      jamTutup: s.jamTutup,
+      toleransiMenit: s.toleransiMenit,
+    }));
+
+    // Sesi tambahan per-program yang sudah lewat (untuk PengajarSesiProgram)
+    // Dikelompokkan per-programId agar bisa dicari dengan cepat
+    type SesiTambahanInfo = SesiInfo & { programId: string };
+    const passedSesiTambahanByProgram = new Map<string, SesiTambahanInfo[]>();
+    for (const st of sesiTambahanList) {
+      const tutupMenit = timeToMinutes(st.jamTutup) + st.toleransiMenit;
+      const selisih = nowMinutes - tutupMenit;
+      if (selisih > 0 && selisih <= MAKS_JEDA_MENIT) {
+        if (!passedSesiTambahanByProgram.has(st.programId)) {
+          passedSesiTambahanByProgram.set(st.programId, []);
+        }
+        passedSesiTambahanByProgram.get(st.programId)!.push({
+          sesi: st.sesi as string,
+          jamTutup: st.jamTutup,
+          toleransiMenit: st.toleransiMenit,
+          programId: st.programId,
+        });
       }
     }
 
-    const passedSessions = Array.from(uniqueSesiMap.values()).filter((s) => {
-      const tutupMenit = timeToMinutes(s.jamTutup) + s.toleransiMenit;
-      const selisih = nowMinutes - tutupMenit;
-      // Sudah lewat (selisih > 0) dan belum lebih dari 2 jam (120 menit)
-      return selisih > 0 && selisih <= MAKS_JEDA_MENIT;
-    });
+    // Untuk backward compatibility: kumpulan semua sesi yang perlu dicek
+    // (gabungan global + tambahan, de-duplikasi hanya untuk keperluan logging)
+    const allPassedSesiKeys = new Set<string>([
+      ...passedGlobalSessions.map(s => s.sesi),
+      ...Array.from(passedSesiTambahanByProgram.values()).flat().map(s => s.sesi),
+    ]);
 
-    if (passedSessions.length === 0) {
+    if (passedGlobalSessions.length === 0 && passedSesiTambahanByProgram.size === 0) {
       return NextResponse.json({
         success: true,
         message: "Tidak ada sesi yang perlu dicek saat ini.",
@@ -146,10 +160,10 @@ export async function GET(request: NextRequest) {
     let totalSkip = 0;
     const errors: string[] = [];
 
-    for (const sesiInfo of passedSessions) {
+    // --- A. Pengajar kelas reguler (PengajarSesi) → gunakan sesi GLOBAL ---
+    for (const sesiInfo of passedGlobalSessions) {
       const sesiLabel = `Sesi ${sesiInfo.sesi.replace("SESI_", "")}`;
 
-      // --- Pengajar kelas reguler (PengajarSesi) ---
       const pengajarSesiIni = pengajarSesiList.filter(
         (ps) => ps.sesi === sesiInfo.sesi
       );
@@ -157,31 +171,14 @@ export async function GET(request: NextRequest) {
       for (const ps of pengajarSesiIni) {
         const key = `${ps.user.id}_${ps.sesi}`;
 
-        // Sudah mengisi absen? Skip
-        if (sudahAbsenSet.has(key)) {
-          totalSkip++;
-          continue;
-        }
+        if (sudahAbsenSet.has(key)) { totalSkip++; continue; }
+        if (sudahDikirimSet.has(key)) { totalSkip++; continue; }
+        if (!ps.user.noHp) { totalSkip++; continue; }
 
-        // Sudah pernah dikirim reminder hari ini untuk sesi ini? Skip
-        if (sudahDikirimSet.has(key)) {
-          totalSkip++;
-          continue;
-        }
-
-        // Tidak punya nomor HP? Skip tapi catat log
-        if (!ps.user.noHp) {
-          totalSkip++;
-          continue;
-        }
-
-        // Kirim pesan
         const pesan = formatReminderMessage(ps.user.nama, sesiLabel, ps.kelas.nama);
         const result = await sendReminderWhatsApp(ps.user.noHp, pesan);
 
-        // Simpan ReminderLog (agar tidak kirim ulang)
         try {
-          // Upsert log agar jika sebelumnya gagal (success: false), sekarang diupdate
           await prisma.reminderLog.upsert({
             where: {
               userId_tanggal_sesi: {
@@ -190,10 +187,7 @@ export async function GET(request: NextRequest) {
                 sesi: ps.sesi as any,
               }
             },
-            update: {
-              success: result.success,
-              sentAt: new Date()
-            },
+            update: { success: result.success, sentAt: new Date() },
             create: {
               userId: ps.user.id,
               tanggal: todayDate,
@@ -202,9 +196,7 @@ export async function GET(request: NextRequest) {
             },
           });
           if (result.success) sudahDikirimSet.add(key);
-        } catch {
-          // Abaikan error upsert
-        }
+        } catch { /* Abaikan error upsert */ }
 
         if (result.success) {
           totalKirim++;
@@ -212,76 +204,69 @@ export async function GET(request: NextRequest) {
           errors.push(`Gagal kirim ke ${ps.user.nama} (${ps.sesi}): ${result.detail}`);
         }
 
-        // Jeda 3-5 detik antar pengiriman
         await randomDelay(3000, 5000);
       }
+    }
 
-      // --- Pengajar level program (PengajarSesiProgram) ---
-      const pengajarProgramIni = pengajarSesiProgramList.filter(
-        (psp) => psp.sesi === sesiInfo.sesi
-      );
+    // --- B. Pengajar level program (PengajarSesiProgram) → gunakan sesi TAMBAHAN per-program ---
+    // Setiap pengajar dicek berdasarkan jam sesi tambahan PROGRAM MEREKA SENDIRI,
+    // sehingga jika Sesi 7 di program mereka jam 20:10, reminder dikirim pada jam 20:10+
+    // meskipun Sesi 7 global berbeda jamnya.
+    for (const psp of pengajarSesiProgramList) {
+      const programId = psp.program.id;
+      const sesiProgramLewat = passedSesiTambahanByProgram.get(programId) || [];
 
-      for (const psp of pengajarProgramIni) {
-        const key = `${psp.user.id}_${psp.sesi}`;
+      // Jika tidak ada sesi tambahan yang lewat untuk program ini,
+      // fallback ke sesi global yang lewat (agar program yang tidak punya sesi tambahan tetap terkirim)
+      const sesiToCheck = sesiProgramLewat.length > 0
+        ? sesiProgramLewat.filter(s => s.sesi === psp.sesi)
+        : passedGlobalSessions.filter(s => s.sesi === psp.sesi);
 
-        if (sudahAbsenSet.has(key)) {
-          totalSkip++;
-          continue;
-        }
+      if (sesiToCheck.length === 0) continue;
 
-        if (sudahDikirimSet.has(key)) {
-          totalSkip++;
-          continue;
-        }
+      const key = `${psp.user.id}_${psp.sesi}`;
+      if (sudahAbsenSet.has(key)) { totalSkip++; continue; }
+      if (sudahDikirimSet.has(key)) { totalSkip++; continue; }
+      if (!psp.user.noHp) { totalSkip++; continue; }
 
-        if (!psp.user.noHp) {
-          totalSkip++;
-          continue;
-        }
+      const sesiLabel = `Sesi ${psp.sesi.replace("SESI_", "")}`;
+      const kelasNama = `Program ${psp.program.nama_indo}`;
+      const pesan = formatReminderMessage(psp.user.nama, sesiLabel, kelasNama);
+      const result = await sendReminderWhatsApp(psp.user.noHp, pesan);
 
-        const kelasNama = `Program ${psp.program.nama_indo}`;
-        const pesan = formatReminderMessage(psp.user.nama, sesiLabel, kelasNama);
-        const result = await sendReminderWhatsApp(psp.user.noHp, pesan);
-
-        try {
-          await prisma.reminderLog.upsert({
-            where: {
-              userId_tanggal_sesi: {
-                userId: psp.user.id,
-                tanggal: todayDate,
-                sesi: psp.sesi as any,
-              }
-            },
-            update: {
-              success: result.success,
-              sentAt: new Date()
-            },
-            create: {
+      try {
+        await prisma.reminderLog.upsert({
+          where: {
+            userId_tanggal_sesi: {
               userId: psp.user.id,
               tanggal: todayDate,
               sesi: psp.sesi as any,
-              success: result.success,
-            },
-          });
-          if (result.success) sudahDikirimSet.add(key);
-        } catch {
-          // Abaikan error upsert
-        }
+            }
+          },
+          update: { success: result.success, sentAt: new Date() },
+          create: {
+            userId: psp.user.id,
+            tanggal: todayDate,
+            sesi: psp.sesi as any,
+            success: result.success,
+          },
+        });
+        if (result.success) sudahDikirimSet.add(key);
+      } catch { /* Abaikan error upsert */ }
 
-        if (result.success) {
-          totalKirim++;
-        } else {
-          errors.push(`Gagal kirim ke ${psp.user.nama} (${psp.sesi}): ${result.detail}`);
-        }
-
-        await randomDelay(3000, 5000);
+      if (result.success) {
+        totalKirim++;
+      } else {
+        errors.push(`Gagal kirim ke ${psp.user.nama} (${psp.sesi}): ${result.detail}`);
       }
+
+      await randomDelay(3000, 5000);
     }
 
     return NextResponse.json({
       success: true,
       tanggal: todayStr,
-      sesiDicek: passedSessions.map((s) => s.sesi),
+      sesiDicek: Array.from(allPassedSesiKeys),
       totalKirim,
       totalSkip,
       errors: errors.length > 0 ? errors : undefined,

@@ -37,17 +37,30 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
     });
   }
 
+  // Mulai dari sesi global sebagai base
   let finalJadwal = [...jadwalConfig.globalSesi];
-  const addedSesiTambahan = new Set<string>();
 
   // Jika includeAllSesiTambahan aktif (untuk deteksi badal), masukkan SEMUA sesi tambahan
   const sesiTambahanToCheck = includeAllSesiTambahan
     ? jadwalConfig.sesiTambahan.filter((s:any) => s.isActive)
     : jadwalConfig.sesiTambahan.filter((s:any) => programIds.has(s.programId) && s.isActive);
 
+  // Sesi tambahan per-program bisa memiliki jam berbeda dari global (contoh: Sesi 7 global jam 17:00,
+  // sesi 7 program X jam 20:10). Untuk program yang bersangkutan, jam sesi tambahan harus dipakai.
+  // Strategi: jika sesi tambahan mengoverride sesi yang sudah ada di global → timpa jamnya.
+  // Jika sesi tambahan adalah sesi baru (tidak ada di global) → tambahkan.
   sesiTambahanToCheck.forEach((t:any) => {
-    if (!addedSesiTambahan.has(t.sesi)) {
-      addedSesiTambahan.add(t.sesi);
+    const globalIdx = finalJadwal.findIndex(j => j.sesi === t.sesi);
+    if (globalIdx !== -1) {
+      // Override: ganti jam sesi global dengan jam sesi tambahan untuk program ini
+      finalJadwal[globalIdx] = {
+        ...finalJadwal[globalIdx],
+        jamBuka: t.jamBuka,
+        jamTutup: t.jamTutup,
+        toleransiMenit: t.toleransiMenit,
+      };
+    } else {
+      // Sesi baru yang tidak ada di global: tambahkan
       finalJadwal.push({
         sesi: t.sesi,
         label: "Sesi " + t.sesi.replace("SESI_", ""),
@@ -60,7 +73,6 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   });
 
   programIds.forEach(programId => {
-
     const isTaqwimDate = jadwalConfig.taqwim.tanggalList.some((t:any) => t.programId === programId && t.tanggal.startsWith(tanggal));
     if (isTaqwimDate) {
       const taqwimConf = jadwalConfig.taqwim.configs.find((c:any) => c.programId === programId && c.isActive);
@@ -78,6 +90,7 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
       }
     }
   });
+
 
   for (const jadwal of finalJadwal) {
     if (!jadwal.isActive) continue;
@@ -153,13 +166,15 @@ export function AbsensiKelasClient({
   allowedClassIds = null,
   userRole,
   teacherSessions = [],
-  allPengajarSesi = []
+  allPengajarSesi = [],
+  allPengajarSesiProgram = []
 }: {
   programList: any[];
   allowedClassIds?: string[] | null;
   userRole?: string;
   teacherSessions?: { sesi: string; kelasId: string; isProgramLevel?: boolean; programId?: string; programNama?: string }[];
   allPengajarSesi?: { sesi: string; kelasId: string; user: { id: string; nama: string } }[];
+  allPengajarSesiProgram?: { sesi: string; programId: string; user: { id: string; nama: string }; program: { id: string; nama_indo: string } }[];
 }) {
   const [tanggal, setTanggal] = useState("");
   const [sesi, setSesi] = useState<SesiKelas>("SESI_1");
@@ -742,26 +757,46 @@ export function AbsensiKelasClient({
                   onChange={(e) => setSesi(e.target.value as SesiKelas)}
                   className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
                 >
-                  <option value="SESI_1">Sesi 1</option>
-                  <option value="SESI_2">Sesi 2</option>
-                  <option value="SESI_3">Sesi 3</option>
-                  <option value="SESI_4">Sesi 4</option>
-                  <option value="SESI_5">Sesi 5</option>
-                  <option value="SESI_6">Sesi 6</option>
-                  {jadwalSesiList?.sesiTambahan?.filter((s:any) => {
-                     // Cari programId yang aktif
-                     let pId = null;
-                     if (kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
-                       if (kelasId.startsWith("PROGRAM_")) pId = kelasId.replace("PROGRAM_", "");
-                       else {
-                         const prog = programList.find(p => p.kelasList.some((k:any) => k.id === kelasId));
-                         if (prog) pId = prog.id;
-                       }
-                     }
-                     return s.programId === pId;
-                  }).map((s:any) => (
-                    <option key={s.sesi} value={s.sesi}>Sesi {s.sesi.replace('SESI_', '')}</option>
-                  ))}
+                  {/* Sesi global (semua sesi yang ada di JadwalSesi, termasuk Sesi 7+) */}
+                  {jadwalSesiList?.globalSesi?.map((gs: any) => (
+                    <option key={gs.sesi} value={gs.sesi}>
+                      {gs.label || `Sesi ${gs.sesi.replace('SESI_', '')}`}
+                    </option>
+                  )) ?? (
+                    // Fallback hardcode Sesi 1-6 jika jadwalSesiList belum tersedia
+                    <>
+                      <option value="SESI_1">Sesi 1</option>
+                      <option value="SESI_2">Sesi 2</option>
+                      <option value="SESI_3">Sesi 3</option>
+                      <option value="SESI_4">Sesi 4</option>
+                      <option value="SESI_5">Sesi 5</option>
+                      <option value="SESI_6">Sesi 6</option>
+                    </>
+                  )}
+                  {/* Sesi tambahan program yang tidak ada di global (ditampilkan per-program agar tidak bingung) */}
+                  {jadwalSesiList?.sesiTambahan?.filter((s: any) => {
+                    // Tampilkan sesi tambahan yang sesinya tidak ada di globalSesi
+                    const existsInGlobal = jadwalSesiList?.globalSesi?.some((gs: any) => gs.sesi === s.sesi);
+                    if (existsInGlobal) return false;
+                    // Filter berdasarkan program yang aktif di kelasId yang dipilih
+                    let pId = null;
+                    if (kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
+                      if (kelasId.startsWith("PROGRAM_")) pId = kelasId.replace("PROGRAM_", "");
+                      else {
+                        const prog = programList.find(p => p.kelasList.some((k: any) => k.id === kelasId));
+                        if (prog) pId = prog.id;
+                      }
+                    }
+                    return !pId || s.programId === pId;
+                  }).map((s: any) => {
+                    // Cari nama program dari programList untuk ditampilkan di label
+                    const progNama = programList.find(p => p.id === s.programId)?.nama_indo ?? s.programId;
+                    return (
+                      <option key={`${s.sesi}_${s.programId}`} value={s.sesi}>
+                        Sesi {s.sesi.replace('SESI_', '')} — {progNama}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1081,22 +1116,38 @@ export function AbsensiKelasClient({
                         >
                           <option value="">-- Pilih Pengajar --</option>
                           {(() => {
-                            // Kumpulkan semua user unik
-                            const uniqueUsersMap = new Map<string, { id: string, nama: string }>();
-                            allPengajarSesi.forEach(ps => {
-                              if (!uniqueUsersMap.has(ps.user.id)) {
-                                uniqueUsersMap.set(ps.user.id, ps.user);
+                            // Tentukan programId dari kelasId yang aktif
+                            let activeProgramId: string | null = null;
+                            if (kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
+                              if (kelasId.startsWith("PROGRAM_")) {
+                                activeProgramId = kelasId.replace("PROGRAM_", "");
+                              } else {
+                                const prog = programList.find(p => p.kelasList.some((k: any) => k.id === kelasId));
+                                if (prog) activeProgramId = prog.id;
                               }
-                            });
+                            }
 
-                            // Filter pengajar yang BENAR-BENAR terjadwal di tab ini
-                            const matchedTeachers = allPengajarSesi
+                            // Pengajar kelas reguler terjadwal di sesi+kelas ini
+                            const matchedRegular = allPengajarSesi
                               .filter(ps => ps.sesi === sesi && ps.kelasId === kelasId)
                               .map(ps => ps.user);
 
-                            // Sisa pengajar lain (sebagai fallback/badal admin)
-                            const otherTeachers = Array.from(uniqueUsersMap.values())
-                              .filter(u => !matchedTeachers.some(mt => mt.id === u.id))
+                            // Pengajar level program terjadwal di sesi+program ini
+                            const matchedProgram = allPengajarSesiProgram
+                              .filter(psp => psp.sesi === sesi && activeProgramId && psp.programId === activeProgramId)
+                              .map(psp => psp.user);
+
+                            // Gabungkan yang terjadwal (tanpa duplikat)
+                            const matchedIds = new Set([...matchedRegular, ...matchedProgram].map(u => u.id));
+                            const matchedTeachers = [...matchedRegular, ...matchedProgram.filter(u => !matchedRegular.some(r => r.id === u.id))];
+
+                            // Semua pengajar unik (untuk optgroup "Pengajar Lain")
+                            const allUsersMap = new Map<string, { id: string; nama: string }>();
+                            allPengajarSesi.forEach(ps => { if (!allUsersMap.has(ps.user.id)) allUsersMap.set(ps.user.id, ps.user); });
+                            allPengajarSesiProgram.forEach(psp => { if (!allUsersMap.has(psp.user.id)) allUsersMap.set(psp.user.id, psp.user); });
+
+                            const otherTeachers = Array.from(allUsersMap.values())
+                              .filter(u => !matchedIds.has(u.id))
                               .sort((a, b) => a.nama.localeCompare(b.nama));
 
                             const currentKelasLabel = allClassesOptions.find(c => c.id === kelasId)?.label ?? kelasId;
@@ -1107,18 +1158,14 @@ export function AbsensiKelasClient({
                                 {matchedTeachers.length > 0 && (
                                   <optgroup label={`Terjadwal di ${currentSesiLabel} | ${currentKelasLabel}`}>
                                     {matchedTeachers.map(u => (
-                                      <option key={`matched-${u.id}`} value={u.id}>
-                                        {u.nama}
-                                      </option>
+                                      <option key={`matched-${u.id}`} value={u.id}>{u.nama}</option>
                                     ))}
                                   </optgroup>
                                 )}
                                 {otherTeachers.length > 0 && (
                                   <optgroup label="Pengajar Lain (Sebagai Pengganti)">
                                     {otherTeachers.map(u => (
-                                      <option key={`other-${u.id}`} value={u.id}>
-                                        {u.nama}
-                                      </option>
+                                      <option key={`other-${u.id}`} value={u.id}>{u.nama}</option>
                                     ))}
                                   </optgroup>
                                 )}

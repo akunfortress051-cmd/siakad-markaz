@@ -132,21 +132,38 @@ export default async function JadwalSayaPage() {
     }
 
     if (!isTaqwim) {
-      // Ambil jam normal
-      const gs = globalSesi.find(g => g.sesi === sesi);
-      if (gs) {
-        jamBuka = gs.jamBuka;
-        jamTutup = gs.jamTutup;
-        label = gs.label || label;
-      } else {
-        // Sesi Tambahan
-        const st = sesiTambahan.find(s => s.sesi === sesi && s.programId === kelasTujuan?.programId);
+      // Prioritas pengambilan jam:
+      // 1. Jika pengajar level program (psp) → cari dari SesiTambahanProgram programnya dulu
+      // 2. Jika tidak ada sesi tambahan → fallback ke sesi global
+      // 3. Jika pengajar kelas reguler (ps) → langsung ke sesi global
+      if (isProgramLevel && psp) {
+        const st = sesiTambahan.find(s => s.sesi === sesi && s.programId === psp.programId);
         if (st) {
           jamBuka = st.jamBuka;
           jamTutup = st.jamTutup;
+        } else {
+          // Fallback ke global jika program tidak punya sesi tambahan
+          const gs = globalSesi.find(g => g.sesi === sesi);
+          if (gs) { jamBuka = gs.jamBuka; jamTutup = gs.jamTutup; label = gs.label || label; }
+        }
+      } else {
+        // Pengajar kelas reguler: ambil dari global dulu, lalu sesi tambahan
+        const gs = globalSesi.find(g => g.sesi === sesi);
+        if (gs) {
+          jamBuka = gs.jamBuka;
+          jamTutup = gs.jamTutup;
+          label = gs.label || label;
+        } else {
+          // Sesi Tambahan (untuk kelas yang programnya punya sesi tambahan)
+          const st = sesiTambahan.find(s => s.sesi === sesi && s.programId === kelasTujuan?.programId);
+          if (st) {
+            jamBuka = st.jamBuka;
+            jamTutup = st.jamTutup;
+          }
         }
       }
     }
+
 
     // Tampilkan card hanya jika:
     // 1. Dia ada jadwal di sesi ini (kelasTujuan != null) ATAU
