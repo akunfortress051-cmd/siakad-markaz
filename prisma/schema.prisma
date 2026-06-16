@@ -266,6 +266,7 @@ model User {
   role         String
   kelasId      String?  @unique
   sakan        String?
+  noHp         String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
@@ -274,6 +275,7 @@ model User {
   pengajarSesiProgramList PengajarSesiProgram[]
   absenPengajarList   AbsenPengajar[]
   absenDigantikanList AbsenPengajar[] @relation("PengajarDigantikan")
+  reminderLogs        ReminderLog[]
 }
 
 model RolePermission {
@@ -371,4 +373,17 @@ model PengajarSesiProgram {
   program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@unique([userId, programId, sesi])
+}
+
+model ReminderLog {
+  id      String    @id @default(cuid())
+  userId  String
+  tanggal DateTime  @db.Date
+  sesi    SesiKelas
+  sentAt  DateTime  @default(now())
+  success Boolean   @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tanggal, sesi])
 }

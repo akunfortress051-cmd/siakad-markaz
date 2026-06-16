@@ -19,6 +19,7 @@ export async function GET() {
         role: true,
         kelasId: true,
         sakan: true,
+        noHp: true,
         isActive: true,
         createdAt: true,
         kelas: {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { nama, username, password, role, kelasId, sakan } = body;
+    const { nama, username, password, role, kelasId, sakan, noHp } = body;
 
     if (!nama || !username || !password || !role) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
         role,
         kelasId: kelasId || null,
         sakan: sakan || null,
+        noHp: noHp || null,
         isActive: true,
       }
     });

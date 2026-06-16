@@ -60,6 +60,106 @@ export async function sendWhatsAppMessage(target: string, message: string): Prom
 }
 
 /**
+ * Mengirim pesan reminder WhatsApp menggunakan sesi KEDUA (WA_SESSION_ID2).
+ * Dipisah dari sesi utama agar tidak mengganggu pengiriman laporan rekap.
+ */
+export async function sendReminderWhatsApp(
+  target: string,
+  message: string
+): Promise<{ success: boolean; detail?: string }> {
+  const apiKey = process.env.WA_API_KEY || "024a3190-cfd8-4da6-8e82-7ac0f6c568d0";
+  const sessionId = process.env.WA_SESSION_ID2 || process.env.WA_SESSION_ID || "default";
+
+  if (!target || !target.trim()) {
+    return { success: false, detail: "Nomor HP target kosong" };
+  }
+
+  try {
+    const res = await fetch(`${WA_API_URL}/sessions/${sessionId}/send`, {
+      method: "POST",
+      headers: {
+        "X-API-Key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: target.trim(),
+        message,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      return { success: true, detail: "Reminder terkirim" };
+    }
+
+    return { success: false, detail: data.message || data.error || `HTTP Error ${res.status}` };
+  } catch (error: any) {
+    return { success: false, detail: error.message || "Network error" };
+  }
+}
+
+/**
+ * Delay helper untuk jeda antar pengiriman pesan (hindari spam detection).
+ */
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Format pesan reminder natural untuk pengajar yang belum mengisi absen kelas.
+ *
+ * Contoh output:
+ * ```
+ * Assalamu'alaikum Ustadz Ahmad,
+ *
+ * Mohon maaf mengganggu waktunya. Ini adalah pengingat bahwa absen kelas
+ * berikut belum terisi:
+ *
+ * 📋 *Detail Sesi*
+ * Nama Pengajar: *Ustadz Ahmad*
+ * Sesi: *Sesi 2*
+ * Kelas: *Nahwu A*
+ * Jam Masuk: ________
+ * Jam Keluar: ________
+ * Santri yang Alpha: ________
+ *
+ * NB: Yang hadir cukup dikosongkan saja.
+ *
+ * Jazakumullahu khoiron atas perhatiannya 🙏
+ *
+ * ℹ️ _Pesan ini dikirim otomatis oleh Sistem Absensi Markaz Arabiyyah sebagai pengingat._
+ * ```
+ */
+export function formatReminderMessage(
+  namaPengajar: string,
+  sesiLabel: string,
+  kelasNama: string,
+): string {
+  const lines: string[] = [];
+
+  lines.push(`Assalamu'alaikum ${namaPengajar},`);
+  lines.push("");
+  lines.push("Mohon maaf mengganggu waktunya. Ini adalah pengingat bahwa absen kelas berikut belum terisi:");
+  lines.push("");
+  lines.push("📋 *Detail Sesi*");
+  lines.push(`Nama Pengajar: *${namaPengajar}*`);
+  lines.push(`Sesi: *${sesiLabel}*`);
+  lines.push(`Kelas: *${kelasNama}*`);
+  lines.push("Jam Masuk: ________");
+  lines.push("Jam Keluar: ________");
+  lines.push("Santri yang Alpha: ________");
+  lines.push("");
+  lines.push("NB: Yang hadir cukup dikosongkan saja.");
+  lines.push("");
+  lines.push("Jazakumullahu khoiron atas perhatiannya 🙏");
+  lines.push("");
+  lines.push("ℹ️ _Pesan ini dikirim otomatis oleh Sistem Absensi Markaz Arabiyyah sebagai pengingat._");
+
+  return lines.join("\n");
+}
+
+/**
  * Nama hari dalam bahasa Indonesia.
  */
 const HARI_INDO = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];

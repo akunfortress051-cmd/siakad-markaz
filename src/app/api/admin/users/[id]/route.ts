@@ -12,7 +12,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { nama, username, password, role, kelasId, sakan, isActive } = body;
+    const { nama, username, password, role, kelasId, sakan, noHp, isActive } = body;
 
     const dataToUpdate: any = {
       nama,
@@ -20,6 +20,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       role,
       kelasId: kelasId || null,
       sakan: sakan || null,
+      noHp: noHp !== undefined ? (noHp || null) : undefined,
     };
 
     if (isActive !== undefined) {

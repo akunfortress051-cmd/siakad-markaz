@@ -11,6 +11,7 @@ type User = {
   role: string;
   kelasId: string | null;
   sakan: string | null;
+  noHp: string | null;
   isActive: boolean;
   kelas?: { nama: string };
 };
@@ -70,6 +71,7 @@ export default function ManajemenUserPage() {
     role: "PENGAJAR",
     kelasId: "",
     sakan: "",
+    noHp: "",
     isActive: true,
   });
 
@@ -115,6 +117,7 @@ export default function ManajemenUserPage() {
         role: user.role,
         kelasId: user.kelasId || "",
         sakan: user.sakan || "",
+        noHp: user.noHp || "",
         isActive: user.isActive,
       });
     } else {
@@ -126,6 +129,7 @@ export default function ManajemenUserPage() {
         role: "PENGAJAR",
         kelasId: "",
         sakan: "",
+        noHp: "",
         isActive: true,
       });
     }
@@ -143,6 +147,19 @@ export default function ManajemenUserPage() {
       const payload: any = { ...formData };
       if (!payload.kelasId) payload.kelasId = null;
       if (!payload.sakan) payload.sakan = null;
+      
+      if (!payload.noHp) {
+        payload.noHp = null;
+      } else {
+        // Format nomor HP ke 628...
+        let hp = payload.noHp.replace(/\D/g, ""); // Hapus semua karakter non-angka
+        if (hp.startsWith("0")) {
+          hp = "62" + hp.substring(1);
+        } else if (hp.startsWith("8")) {
+          hp = "62" + hp;
+        }
+        payload.noHp = hp;
+      }
 
       const res = await fetch(url, {
         method,
@@ -371,6 +388,9 @@ export default function ManajemenUserPage() {
                       <td className="px-6 py-4">
                         <div className="font-semibold text-[var(--color-text)]">{user.nama}</div>
                         <div className="text-[var(--color-text-muted)] text-xs">@{user.username}</div>
+                        {user.noHp && (
+                          <div className="text-[var(--color-text-subtle)] text-xs mt-0.5">📱 {user.noHp}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getRoleBadgeColor(user.role)}`}>
@@ -502,6 +522,19 @@ export default function ManajemenUserPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
                   placeholder="Minimal 6 karakter"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--color-text)] mb-1">
+                  Nomor HP (WhatsApp) <span className="text-[var(--color-text-subtle)] font-normal">(Opsional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.noHp}
+                  onChange={(e) => setFormData({ ...formData, noHp: e.target.value })}
+                  className="w-full px-3 py-2 border border-[var(--color-surface-dark)] rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Contoh: 081234567890"
                 />
               </div>
 
