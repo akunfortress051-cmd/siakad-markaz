@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle, RefreshCw, Copy } from "lucide-react";
 
 // Helper: Hitung sesi aktif, sesi berikutnya, dan status libur
-function computeSessionState(jadwalConfig: any, programList: any[], targetKelasIds: string[] | null, tanggal: string) {
+function computeSessionState(jadwalConfig: any, programList: any[], targetKelasIds: string[] | null, tanggal: string, includeAllSesiTambahan: boolean = false) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Jakarta',
     hour: '2-digit', minute: '2-digit', hour12: false
@@ -40,21 +40,26 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   let finalJadwal = [...jadwalConfig.globalSesi];
   const addedSesiTambahan = new Set<string>();
 
+  // Jika includeAllSesiTambahan aktif (untuk deteksi badal), masukkan SEMUA sesi tambahan
+  const sesiTambahanToCheck = includeAllSesiTambahan
+    ? jadwalConfig.sesiTambahan.filter((s:any) => s.isActive)
+    : jadwalConfig.sesiTambahan.filter((s:any) => programIds.has(s.programId) && s.isActive);
+
+  sesiTambahanToCheck.forEach((t:any) => {
+    if (!addedSesiTambahan.has(t.sesi)) {
+      addedSesiTambahan.add(t.sesi);
+      finalJadwal.push({
+        sesi: t.sesi,
+        label: "Sesi " + t.sesi.replace("SESI_", ""),
+        jamBuka: t.jamBuka,
+        jamTutup: t.jamTutup,
+        toleransiMenit: t.toleransiMenit,
+        isActive: t.isActive
+      });
+    }
+  });
+
   programIds.forEach(programId => {
-    const tambahan = jadwalConfig.sesiTambahan.filter((s:any) => s.programId === programId && s.isActive);
-    tambahan.forEach((t:any) => {
-      if (!addedSesiTambahan.has(t.sesi)) {
-        addedSesiTambahan.add(t.sesi);
-        finalJadwal.push({
-          sesi: t.sesi,
-          label: "Sesi " + t.sesi.replace("SESI_", ""),
-          jamBuka: t.jamBuka,
-          jamTutup: t.jamTutup,
-          toleransiMenit: t.toleransiMenit,
-          isActive: t.isActive
-        });
-      }
-    });
 
     const isTaqwimDate = jadwalConfig.taqwim.tanggalList.some((t:any) => t.programId === programId && t.tanggal.startsWith(tanggal));
     if (isTaqwimDate) {
@@ -216,7 +221,7 @@ export function AbsensiKelasClient({
       .then(data => {
         setJadwalSesiList(data);
         const targetKelasIds = isTeacher ? (allowedClassIds || []) : [kelasId].filter(Boolean) as string[];
-        const { activeSesis, nextSession, isResting } = computeSessionState(data, programList, targetKelasIds, `${y}-${m}-${d}`);
+        const { activeSesis, nextSession, isResting } = computeSessionState(data, programList, targetKelasIds, `${y}-${m}-${d}`, isTeacher);
         setActiveSessionsList(activeSesis);
         setNextSessionInfo(nextSession);
         setIsResting(isResting);
@@ -260,7 +265,7 @@ export function AbsensiKelasClient({
 
     const intervalId = setInterval(() => {
       const targetKelasIds = isTeacher ? (allowedClassIds || []) : [kelasId].filter(Boolean) as string[];
-      const { activeSesis, nextSession, isResting } = computeSessionState(jadwalSesiList, programList, targetKelasIds, tanggal);
+      const { activeSesis, nextSession, isResting } = computeSessionState(jadwalSesiList, programList, targetKelasIds, tanggal, isTeacher);
       setActiveSessionsList(activeSesis);
       setNextSessionInfo(nextSession);
       setIsResting(isResting);
@@ -377,7 +382,8 @@ export function AbsensiKelasClient({
     if (isTeacher && !hasCheckedSession) return;
 
     // Cegah kebocoran: Jika dia PENGAJAR tapi tidak punya kelas satupun (baru dibuat, belum dijadwal)
-    if (isTeacher && allowedClassIds && allowedClassIds.length === 0) {
+    // KECUALI jika sedang dalam mode Badal (kelasId valid dari modal badal)
+    if (isTeacher && allowedClassIds && allowedClassIds.length === 0 && !isBadalMode) {
       setSantriList([]);
       setAbsenMap({});
       return;
@@ -455,7 +461,7 @@ export function AbsensiKelasClient({
     return () => {
       ignore = true;
     };
-  }, [tanggal, sesi, kelasId, isTeacher, hasCheckedSession]);
+  }, [tanggal, sesi, kelasId, isTeacher, hasCheckedSession, isBadalMode]);
 
   const handleStatusChange = (riwayatId: string, status: AbsenStatus) => {
     setAbsenMap(prev => ({
