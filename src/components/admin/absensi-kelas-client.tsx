@@ -578,10 +578,18 @@ export function AbsensiKelasClient({
 
   const allOptions = (() => {
     const list: { id: string; label: string; group: string }[] = [];
+    const addedIds = new Set<string>(); // Mencegah duplikat key
+
+    const pushOption = (opt: { id: string; label: string; group: string }) => {
+      if (!addedIds.has(opt.id)) {
+        addedIds.add(opt.id);
+        list.push(opt);
+      }
+    };
 
     // Jika tidak dibatasi, boleh pilih "Semua Santri"
     if (!allowedClassIds) {
-      list.push({ id: "ALL", label: "Semua Santri", group: "" });
+      pushOption({ id: "ALL", label: "Semua Santri", group: "" });
     }
 
     programList.forEach((program) => {
@@ -589,26 +597,26 @@ export function AbsensiKelasClient({
       const isProgramLevelAllowed = teacherSessions.some(ts => ts.isProgramLevel && ts.programId === program.id);
       
       if (isProgramLevelAllowed || !allowedClassIds) {
-        list.push({ id: `PROGRAM_${program.id}`, label: `Seluruh Program ${program.nama_indo}`, group: "Program Level" });
+        pushOption({ id: `PROGRAM_${program.id}`, label: `Seluruh Program ${program.nama_indo}`, group: "Program Level" });
       }
 
       if (program.kelasList.length > 0) {
         program.kelasList.forEach((k: any) => {
           // Jika dibatasi, hanya masukkan kelas yang diperbolehkan
           if (!allowedClassIds || allowedClassIds.includes(k.id)) {
-            list.push({ id: k.id, label: k.nama, group: program.nama_indo });
+            pushOption({ id: k.id, label: k.nama, group: program.nama_indo });
           }
         });
       } else {
         // Program tanpa kelas (jika tidak dibatasi dan belum masuk di atas)
         if (!allowedClassIds && !isProgramLevelAllowed) {
-          list.push({ id: `PROGRAM_${program.id}`, label: program.nama_indo, group: "Program" });
+          pushOption({ id: `PROGRAM_${program.id}`, label: program.nama_indo, group: "Program" });
         }
       }
     });
 
     if (!allowedClassIds) {
-      list.push({ id: "UNASSIGNED", label: "Belum Ditempatkan", group: "" });
+      pushOption({ id: "UNASSIGNED", label: "Belum Ditempatkan", group: "" });
     }
 
     return list;
@@ -1082,6 +1090,15 @@ export function AbsensiKelasClient({
               (userRole === "ADMIN" && showAdminPengajarForm)
             ) && (
                 <div ref={adminFormRef} className="p-6 md:p-8 bg-[var(--color-surface-light)] border-t border-[var(--color-surface-dark)]">
+                  {/* Peringatan jika admin belum memilih kelas spesifik */}
+                  {userRole === "ADMIN" && (kelasId === "ALL" || kelasId === "UNASSIGNED") && (
+                    <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <span className="text-amber-500 text-lg">⚠️</span>
+                      <p className="text-sm font-medium text-amber-800">
+                        Pilih <strong>kelas atau program spesifik</strong> di filter atas agar data absen pengajar bisa tersimpan. Data absen santri tetap tersimpan meski filter "Semua Santri" aktif.
+                      </p>
+                    </div>
+                  )}
                   <div className={`border rounded-3xl p-8 space-y-6 shadow-sm max-w-4xl mx-auto ${isSaved ? 'bg-[var(--color-primary-50)]/40 border-[var(--color-primary-50)]' : 'bg-white border-[var(--color-surface-dark)]'}`}>
                     {/* Header dengan status indikator */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-surface-dark)]/30 pb-5">

@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const isTeacherSubmit = userSession && userSession.role !== "ADMIN";
     const isAdminBackupSubmit = userSession && userSession.role === "ADMIN" && payload.targetUserId;
 
-    if ((isTeacherSubmit || isAdminBackupSubmit) && absenPengajar && kelasId) {
+    if ((isTeacherSubmit || isAdminBackupSubmit) && absenPengajar && kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
       const targetUserId = isTeacherSubmit ? userSession.userId : payload.targetUserId;
       let actualKelasId = kelasId;
 
