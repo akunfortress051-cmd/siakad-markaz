@@ -37,47 +37,56 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
     });
   }
 
-  // Mulai dari sesi global sebagai base
-  let finalJadwal = [...jadwalConfig.globalSesi];
+  let finalJadwal: any[] = [];
 
-  // Jika includeAllSesiTambahan aktif (untuk deteksi badal), masukkan SEMUA sesi tambahan
-  const sesiTambahanToCheck = includeAllSesiTambahan
-    ? jadwalConfig.sesiTambahan.filter((s:any) => s.isActive)
-    : jadwalConfig.sesiTambahan.filter((s:any) => programIds.has(s.programId) && s.isActive);
-
-  // Sesi tambahan per-program bisa memiliki jam berbeda dari global (contoh: Sesi 7 global jam 17:00,
-  // sesi 7 program X jam 20:10). Untuk program yang bersangkutan, jam sesi tambahan harus dipakai.
-  // Strategi: jika sesi tambahan mengoverride sesi yang sudah ada di global → timpa jamnya.
-  // Jika sesi tambahan adalah sesi baru (tidak ada di global) → tambahkan.
-  sesiTambahanToCheck.forEach((t:any) => {
-    const globalIdx = finalJadwal.findIndex(j => j.sesi === t.sesi);
-    if (globalIdx !== -1) {
-      // Override: ganti jam sesi global dengan jam sesi tambahan untuk program ini
-      finalJadwal[globalIdx] = {
-        ...finalJadwal[globalIdx],
-        jamBuka: t.jamBuka,
-        jamTutup: t.jamTutup,
-        toleransiMenit: t.toleransiMenit,
-      };
-    } else {
-      // Sesi baru yang tidak ada di global: tambahkan
-      finalJadwal.push({
-        sesi: t.sesi,
-        label: "Sesi " + t.sesi.replace("SESI_", ""),
-        jamBuka: t.jamBuka,
-        jamTutup: t.jamTutup,
-        toleransiMenit: t.toleransiMenit,
-        isActive: t.isActive
+  if (programIds.size === 0) {
+    finalJadwal = jadwalConfig.globalSesi ? jadwalConfig.globalSesi.map((g:any) => ({...g, programId: null})) : [];
+    if (includeAllSesiTambahan && jadwalConfig.sesiTambahan) {
+      jadwalConfig.sesiTambahan.filter((s:any) => s.isActive).forEach((t:any) => {
+        finalJadwal.push({
+          sesi: t.sesi, label: "Sesi " + t.sesi.replace("SESI_", ""),
+          jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit,
+          isActive: t.isActive, programId: t.programId
+        });
       });
     }
-  });
+  } else {
+    programIds.forEach(pId => {
+      const progJadwal = jadwalConfig.globalSesi ? jadwalConfig.globalSesi.map((g:any) => ({...g, programId: pId})) : [];
+      const tambahan = jadwalConfig.sesiTambahan ? jadwalConfig.sesiTambahan.filter((s:any) => s.programId === pId && s.isActive) : [];
+      tambahan.forEach((t:any) => {
+        const idx = progJadwal.findIndex((g:any) => g.sesi === t.sesi);
+        if (idx !== -1) {
+          progJadwal[idx] = { ...progJadwal[idx], jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit };
+        } else {
+          progJadwal.push({
+            sesi: t.sesi, label: "Sesi " + t.sesi.replace("SESI_", ""),
+            jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit,
+            isActive: t.isActive, programId: pId
+          });
+        }
+      });
+      finalJadwal.push(...progJadwal);
+    });
+
+    if (includeAllSesiTambahan && jadwalConfig.sesiTambahan) {
+      const extra = jadwalConfig.sesiTambahan.filter((s:any) => !programIds.has(s.programId) && s.isActive);
+      extra.forEach((t:any) => {
+        finalJadwal.push({
+          sesi: t.sesi, label: "Sesi " + t.sesi.replace("SESI_", ""),
+          jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit,
+          isActive: t.isActive, programId: t.programId
+        });
+      });
+    }
+  }
 
   programIds.forEach(programId => {
-    const isTaqwimDate = jadwalConfig.taqwim.tanggalList.some((t:any) => t.programId === programId && t.tanggal.startsWith(tanggal));
+    const isTaqwimDate = jadwalConfig.taqwim?.tanggalList?.some((t:any) => t.programId === programId && t.tanggal.startsWith(tanggal));
     if (isTaqwimDate) {
-      const taqwimConf = jadwalConfig.taqwim.configs.find((c:any) => c.programId === programId && c.isActive);
+      const taqwimConf = jadwalConfig.taqwim?.configs?.find((c:any) => c.programId === programId && c.isActive);
       if (taqwimConf) {
-        const s1Idx = finalJadwal.findIndex(j => j.sesi === "SESI_1");
+        const s1Idx = finalJadwal.findIndex(j => j.sesi === "SESI_1" && j.programId === programId);
         if (s1Idx !== -1) {
           finalJadwal[s1Idx] = {
             ...finalJadwal[s1Idx],
@@ -118,13 +127,14 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
     }
   }
 
-  activeSesis.sort((a,b) => {
+  const uniqueActiveSesis = Array.from(new Set(activeSesis));
+  uniqueActiveSesis.sort((a,b) => {
     const na = parseInt(a.replace("SESI_", ""));
     const nb = parseInt(b.replace("SESI_", ""));
     return na - nb;
   });
 
-  return { activeSesis, nextSession, isResting: activeSesis.length === 0 && !nextSession };
+  return { activeSesis: uniqueActiveSesis, nextSession, isResting: uniqueActiveSesis.length === 0 && !nextSession };
 }
 
 // Helper: Cache key untuk form pengajar
@@ -272,7 +282,7 @@ export function AbsensiKelasClient({
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
 
-  const [countdown, setCountdown] = useState<{ minutes: number; seconds: number } | null>(null);
+  const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
   // Efek interval untuk auto-switch sesi — TANPA activeSession di dependency
   useEffect(() => {
@@ -305,7 +315,7 @@ export function AbsensiKelasClient({
         
         const diff = targetSeconds - currentSeconds;
         if (diff > 0) {
-          setCountdown({ minutes: Math.floor(diff / 60), seconds: diff % 60 });
+          setCountdown({ hours: Math.floor(diff / 3600), minutes: Math.floor((diff % 3600) / 60), seconds: diff % 60 });
         } else {
           setCountdown(null);
         }
@@ -318,7 +328,8 @@ export function AbsensiKelasClient({
       let currentActive: string | null = null;
       if (activeSesis.length > 0) {
         if (prevSession && activeSesis.includes(prevSession)) {
-          if (isCompletedRef.current && activeSesis.length > 1) {
+          const teachesPrev = teacherSessions.some(ts => ts.sesi === prevSession);
+          if ((isCompletedRef.current || !teachesPrev) && activeSesis.length > 1) {
             const idx = activeSesis.indexOf(prevSession);
             currentActive = idx + 1 < activeSesis.length ? activeSesis[idx + 1] : prevSession;
           } else {
@@ -372,7 +383,7 @@ export function AbsensiKelasClient({
         if (targetSeconds < currentSeconds) targetSeconds += 24 * 3600;
         const diff = targetSeconds - currentSeconds;
         if (diff > 0) {
-          setCountdown({ minutes: Math.floor(diff / 60), seconds: diff % 60 });
+          setCountdown({ hours: Math.floor(diff / 3600), minutes: Math.floor((diff % 3600) / 60), seconds: diff % 60 });
         } else {
           setCountdown(null);
         }
@@ -685,7 +696,7 @@ export function AbsensiKelasClient({
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
                     {nextSessionInfo.label} pukul {nextSessionInfo.jamBuka}
                     <span className="ml-1 font-black text-amber-600 tabular-nums">
-                      {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                      {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
                     </span>
                     lagi
                   </span>
@@ -711,8 +722,8 @@ export function AbsensiKelasClient({
                             j = jadwalSesiList.taqwim.configs.find((c:any) => c.programId === pId && c.isActive);
                          }
                       }
+                      if (!j && pId && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x: any) => x.sesi === activeSession && x.programId === pId);
                       if (!j) j = jadwalSesiList.globalSesi?.find((x: any) => x.sesi === activeSession);
-                      if (!j && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x: any) => x.sesi === activeSession && x.programId === pId);
                       
                       if (j) return `${j.jamBuka} - ${j.jamTutup} (Dispensasi: ${j.toleransiMenit} mnt)`;
                       return "-";
@@ -894,7 +905,7 @@ export function AbsensiKelasClient({
                       Dimulai dalam
                       <span className="inline-flex items-center gap-1 bg-white border border-amber-300 rounded-xl px-3 py-1 font-black text-amber-700 tabular-nums text-base shadow-sm">
                         <Clock className="w-4 h-4 text-amber-500" />
-                        {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                        {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
                       </span>
                     </span>
                   ) : (
