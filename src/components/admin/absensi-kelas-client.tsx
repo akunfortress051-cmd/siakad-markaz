@@ -282,6 +282,11 @@ export function AbsensiKelasClient({
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
 
+  const activeClassIdRef = useRef(activeClassId);
+  useEffect(() => {
+    activeClassIdRef.current = activeClassId;
+  }, [activeClassId]);
+
   const [countdown, setCountdown] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
   // Efek interval untuk auto-switch sesi — TANPA activeSession di dependency
@@ -324,35 +329,76 @@ export function AbsensiKelasClient({
       }
 
       const prevSession = activeSessionRef.current;
+      const prevClassId = activeClassIdRef.current;
 
-      let currentActive: string | null = null;
+      const activeAssignments = teacherSessions.filter(ts => activeSesis.includes(ts.sesi));
+
+      let nextSesi: string | null = null;
+      let nextKelasId: string | null = null;
+
       if (activeSesis.length > 0) {
         if (prevSession && activeSesis.includes(prevSession)) {
           const teachesPrev = teacherSessions.some(ts => ts.sesi === prevSession);
-          if ((isCompletedRef.current || !teachesPrev) && activeSesis.length > 1) {
-            const idx = activeSesis.indexOf(prevSession);
-            currentActive = idx + 1 < activeSesis.length ? activeSesis[idx + 1] : prevSession;
+          if (teachesPrev) {
+            const currentAssignmentIdx = activeAssignments.findIndex(a => a.sesi === prevSession && a.kelasId === prevClassId);
+            
+            if (currentAssignmentIdx !== -1) {
+              if (isCompletedRef.current && activeAssignments.length > 1) {
+                const nextAssign = currentAssignmentIdx + 1 < activeAssignments.length ? activeAssignments[currentAssignmentIdx + 1] : activeAssignments[currentAssignmentIdx];
+                nextSesi = nextAssign.sesi;
+                nextKelasId = nextAssign.kelasId;
+              } else {
+                nextSesi = prevSession;
+                nextKelasId = prevClassId;
+              }
+            } else {
+              nextSesi = prevSession;
+              nextKelasId = prevClassId;
+            }
           } else {
-            currentActive = prevSession;
+            if (activeAssignments.length > 0) {
+              nextSesi = activeAssignments[0].sesi;
+              nextKelasId = activeAssignments[0].kelasId;
+            } else {
+              const idx = activeSesis.indexOf(prevSession);
+              nextSesi = idx + 1 < activeSesis.length ? activeSesis[idx + 1] : prevSession;
+              nextKelasId = null;
+            }
           }
         } else {
-          currentActive = activeSesis[0];
+          if (activeAssignments.length > 0) {
+            nextSesi = activeAssignments[0].sesi;
+            nextKelasId = activeAssignments[0].kelasId;
+          } else {
+            nextSesi = activeSesis[0];
+            nextKelasId = null;
+          }
         }
       }
 
-      if (prevSession !== currentActive) {
-        setActiveSession(currentActive);
-        setIsBadalMode(false);
-        setIsSaved(false);
-        if (currentActive) {
-          const teachingThisSession = teacherSessions.find(ts => ts.sesi === currentActive);
-          setSesi(currentActive as SesiKelas);
-          if (teachingThisSession) {
-            setKelasId(teachingThisSession.kelasId);
-            setActiveClassId(teachingThisSession.kelasId);
+      if (prevSession !== nextSesi || prevClassId !== nextKelasId) {
+        if (nextSesi) {
+          setActiveSession(nextSesi);
+          setSesi(nextSesi as SesiKelas);
+          setIsBadalMode(false);
+          setIsSaved(false);
+
+          if (nextKelasId) {
+             setKelasId(nextKelasId);
+             setActiveClassId(nextKelasId);
+          } else {
+             const fallback = teacherSessions.find(ts => ts.sesi === nextSesi);
+             if (fallback) {
+               setKelasId(fallback.kelasId);
+               setActiveClassId(fallback.kelasId);
+             } else {
+               setKelasId("");
+               setActiveClassId(null);
+             }
           }
-          toast("Sesi berganti otomatis ke " + currentActive.replace('_', ' '), { icon: '🔄' });
+          toast("Sesi berganti otomatis", { icon: '🔄' });
         } else {
+          setActiveSession(null);
           setSesi("" as SesiKelas);
           toast("Sesi saat ini telah berakhir", { icon: '🔒' });
         }

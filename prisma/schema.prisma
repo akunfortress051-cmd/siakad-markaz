@@ -8,17 +8,17 @@ datasource db {
 }
 
 model Program {
-  id                String                @id @default(cuid())
-  nama_indo         String                @unique
-  nama_arab         String
-  kkm               Int
-  programMapels     ProgramMapel[]
-  riwayatRecords    RiwayatSantri[]
-  kelasList         Kelas[]
-  syahadahLayout    SyahadahLayout?
-  sesiTambahanList  SesiTambahanProgram[]
-  sesiTaqwim        SesiTaqwim?
-  tanggalTaqwimList TanggalTaqwim[]
+  id                      String                @id @default(cuid())
+  nama_indo               String                @unique
+  nama_arab               String
+  kkm                     Int
+  programMapels           ProgramMapel[]
+  riwayatRecords          RiwayatSantri[]
+  kelasList               Kelas[]
+  syahadahLayout          SyahadahLayout?
+  sesiTambahanList        SesiTambahanProgram[]
+  sesiTaqwim              SesiTaqwim?
+  tanggalTaqwimList       TanggalTaqwim[]
   pengajarSesiProgramList PengajarSesiProgram[]
 }
 
@@ -270,12 +270,12 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  kelas               Kelas?          @relation("WaliKelas", fields: [kelasId], references: [id], onDelete: SetNull)
-  pengajarSesiList    PengajarSesi[]
+  kelas                   Kelas?                @relation("WaliKelas", fields: [kelasId], references: [id], onDelete: SetNull)
+  pengajarSesiList        PengajarSesi[]
   pengajarSesiProgramList PengajarSesiProgram[]
-  absenPengajarList   AbsenPengajar[]
-  absenDigantikanList AbsenPengajar[] @relation("PengajarDigantikan")
-  reminderLogs        ReminderLog[]
+  absenPengajarList       AbsenPengajar[]
+  absenDigantikanList     AbsenPengajar[]       @relation("PengajarDigantikan")
+  reminderLogs            ReminderLog[]
 }
 
 model RolePermission {
@@ -328,7 +328,7 @@ model AbsenPengajar {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tanggal, sesi])
+  @@unique([userId, tanggal, sesi, kelasId])
 }
 
 model SesiTambahanProgram {

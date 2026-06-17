@@ -28,14 +28,25 @@ export async function GET(request: Request) {
   const userSession = (await getSession()) as any;
   let absenPengajarData = null;
   if (userSession && userSession.role !== "ADMIN") {
-     absenPengajarData = await prisma.absenPengajar.findUnique({
-       where: {
-         userId_tanggal_sesi: {
-           userId: userSession.userId,
-           tanggal: parsedDate,
-           sesi: sesi as any
-         }
-       }
+     let actualKelasId = kelasId;
+     if (actualKelasId && actualKelasId.startsWith("PROGRAM_")) {
+        const programId = actualKelasId.replace("PROGRAM_", "");
+        const firstClass = await prisma.kelas.findFirst({ where: { programId } });
+        if (firstClass) actualKelasId = firstClass.id;
+     }
+
+     const whereCondition: any = {
+       userId: userSession.userId,
+       tanggal: parsedDate,
+       sesi: sesi as any
+     };
+
+     if (actualKelasId && actualKelasId !== "ALL" && actualKelasId !== "UNASSIGNED") {
+        whereCondition.kelasId = actualKelasId;
+     }
+
+     absenPengajarData = await prisma.absenPengajar.findFirst({
+       where: whereCondition
      });
   }
 
@@ -138,10 +149,11 @@ export async function POST(request: Request) {
       operations.push(
         prisma.absenPengajar.upsert({
           where: {
-            userId_tanggal_sesi: {
+            userId_tanggal_sesi_kelasId: {
               userId: targetUserId,
               tanggal: parsedDate,
               sesi: sesi,
+              kelasId: actualKelasId,
             }
           },
           update: {
