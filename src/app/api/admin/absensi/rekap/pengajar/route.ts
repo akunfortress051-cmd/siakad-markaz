@@ -66,23 +66,38 @@ export async function GET(request: Request) {
     const jadwalSesiList = await prisma.jadwalSesi.findMany();
     const jadwalMap = new Map(jadwalSesiList.map(j => [j.sesi, j]));
 
-    const formatted = records.map(r => {
-      const jadwal = jadwalMap.get(r.sesi);
-      let terlambatMenit = 0;
-      if (jadwal && r.waktuMulai && r.waktuMulai !== "-") {
-        const [hM, mM] = r.waktuMulai.split(":").map(Number);
-        const [hB, mB] = jadwal.jamBuka.split(":").map(Number);
-        const totalMinutesMulai = (hM * 60) + mM;
-        let totalMinutesBuka = (hB * 60) + mB;
+    // Fetch SesiTambahanProgram untuk mendeteksi keterlambatan sesi 7-10
+    const sesiTambahanList = await prisma.sesiTambahanProgram.findMany({ where: { isActive: true } });
 
-        // Handle cross-midnight (e.g. jamBuka 23:59, waktuMulai 00:03)
-        if (totalMinutesBuka > 1200 && totalMinutesMulai < 120) {
-          totalMinutesBuka -= 24 * 60;
+    const formatted = records.map(r => {
+      let terlambatMenit = 0;
+      // Badal: tidak dihitung keterlambatan berapapun menitnya
+      if (!r.isBadal && r.waktuMulai && r.waktuMulai !== "-") {
+        // Cari jadwal: prioritas global JadwalSesi, fallback ke SesiTambahanProgram (sesi 7-10)
+        let jadwalBuka: string | null = jadwalMap.get(r.sesi)?.jamBuka ?? null;
+        if (!jadwalBuka && r.kelas.program?.id) {
+          const tambahan = sesiTambahanList.find(
+            s => s.sesi === r.sesi && s.programId === r.kelas.program!.id
+          );
+          if (tambahan) jadwalBuka = tambahan.jamBuka;
         }
 
-        const diff = totalMinutesMulai - totalMinutesBuka;
-        if (diff > 0) {
-          terlambatMenit = diff;
+        if (jadwalBuka) {
+          const [hM, mM] = r.waktuMulai.split(":").map(Number);
+          const [hB, mB] = jadwalBuka.split(":").map(Number);
+          const totalMinutesMulai = (hM * 60) + mM;
+          let totalMinutesBuka = (hB * 60) + mB;
+
+          // Handle cross-midnight (e.g. jamBuka 23:59, waktuMulai 00:03)
+          if (totalMinutesBuka > 1200 && totalMinutesMulai < 120) {
+            totalMinutesBuka -= 24 * 60;
+          }
+
+          const diff = totalMinutesMulai - totalMinutesBuka;
+          // Grace period 5 menit: baru dianggap terlambat jika lebih dari 5 menit sejak jadwal buka
+          if (diff > 5) {
+            terlambatMenit = diff - 5;
+          }
         }
       }
 

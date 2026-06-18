@@ -219,6 +219,8 @@ export function AbsensiKelasClient({
   // Admin Backup Mode
   const [showAdminPengajarForm, setShowAdminPengajarForm] = useState(false);
   const [selectedAdminPengajarId, setSelectedAdminPengajarId] = useState("");
+  const [adminIsBadal, setAdminIsBadal] = useState(false);
+  const [adminPengajarDigantikanId, setAdminPengajarDigantikanId] = useState("");
   const adminFormRef = useRef<HTMLDivElement>(null);
 
   const [activeSessionsList, setActiveSessionsList] = useState<string[]>([]);
@@ -592,7 +594,8 @@ export function AbsensiKelasClient({
           atributNametag: atribut.nametag,
           atributBros: atribut.bros,
           kecerdasan: kecerdasan.length > 0 ? kecerdasan.join(", ") : null,
-          isBadal: isBadalMode
+          isBadal: isTeacher ? isBadalMode : adminIsBadal,
+          pengajarDigantikanId: isTeacher ? undefined : (adminIsBadal && adminPengajarDigantikanId ? adminPengajarDigantikanId : undefined),
         };
         if (userRole === "ADMIN" && showAdminPengajarForm) {
           payload.targetUserId = selectedAdminPengajarId;
@@ -907,6 +910,11 @@ export function AbsensiKelasClient({
                   setShowAdminPengajarForm(newState);
                   if (newState) {
                     setTimeout(() => adminFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                  } else {
+                    // Reset state badal saat form ditutup
+                    setAdminIsBadal(false);
+                    setAdminPengajarDigantikanId("");
+                    setSelectedAdminPengajarId("");
                   }
                 }}
                 className={`rounded-full px-4 py-2 text-xs font-bold transition ${showAdminPengajarForm
@@ -1256,6 +1264,48 @@ export function AbsensiKelasClient({
                             );
                           })()}
                         </select>
+                      </div>
+                    )}
+
+                    {/* Badal section — hanya tampil di Admin Backup Form */}
+                    {userRole === "ADMIN" && (
+                      <div className="flex flex-col gap-4 p-4 rounded-2xl border border-[var(--color-surface-dark)] bg-[var(--color-surface-light)]">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={adminIsBadal}
+                            onChange={(e) => {
+                              setAdminIsBadal(e.target.checked);
+                              if (!e.target.checked) setAdminPengajarDigantikanId("");
+                              setIsSaved(false);
+                            }}
+                            className="rounded text-[var(--color-warning)] focus:ring-[var(--color-warning)] w-5 h-5 border-[var(--color-surface-dark)]"
+                          />
+                          <span className="text-sm font-bold text-[var(--color-text)]">Pengajar ini adalah Badal (Pengganti)</span>
+                        </label>
+                        {adminIsBadal && (
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-2">Menggantikan Pengajar</label>
+                            <select
+                              value={adminPengajarDigantikanId}
+                              onChange={(e) => { setAdminPengajarDigantikanId(e.target.value); setIsSaved(false); }}
+                              className="w-full rounded-2xl border border-[var(--color-warning)] bg-[var(--color-warning-light)] px-4 py-3 text-sm focus:border-[var(--color-warning)] focus:ring-4 focus:ring-[var(--color-warning)]/10 outline-none transition-all font-semibold"
+                            >
+                              <option value="">-- Pilih Pengajar yang Digantikan --</option>
+                              {(() => {
+                                const allUsersMap = new Map<string, { id: string; nama: string }>();
+                                allPengajarSesi.forEach(ps => { if (!allUsersMap.has(ps.user.id)) allUsersMap.set(ps.user.id, ps.user); });
+                                allPengajarSesiProgram.forEach(psp => { if (!allUsersMap.has(psp.user.id)) allUsersMap.set(psp.user.id, psp.user); });
+                                return Array.from(allUsersMap.values())
+                                  .filter(u => u.id !== selectedAdminPengajarId)
+                                  .sort((a, b) => a.nama.localeCompare(b.nama))
+                                  .map(u => (
+                                    <option key={u.id} value={u.id}>{u.nama}</option>
+                                  ));
+                              })()}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     )}
 

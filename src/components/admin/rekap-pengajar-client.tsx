@@ -188,6 +188,7 @@ export function RekapPengajarClient() {
                 <th>Kelas</th>
                 <th>Sesi</th>
                 ${datesArray.map(d => `<th>${format(d, "d")} <br/> ${format(d, "EEE", { locale: id })}</th>`).join('')}
+                <th>Ket. Atribut</th>
               </tr>
             </thead>
             <tbody>`;
@@ -232,10 +233,27 @@ export function RekapPengajarClient() {
               html += `<td></td>`;
             }
           });
+
+          // Kolom keterangan atribut: kumpulkan hari di mana atribut tidak lengkap
+          const missingAtributLines: string[] = [];
+          datesArray.forEach(dateObj => {
+            const dateStr = format(dateObj, "yyyy-MM-dd");
+            const record = rows[rowKey][dateStr];
+            if (record && record.status === "HADIR") {
+              const missing: string[] = [];
+              if (!record.atribut.kopiah) missing.push("Kopiah");
+              if (!record.atribut.nametag) missing.push("Nametag");
+              if (!record.atribut.bros) missing.push("Baju");
+              if (missing.length > 0) {
+                missingAtributLines.push(`${format(dateObj, "d")}: ${missing.join(", ")}`);
+              }
+            }
+          });
+          html += `<td class="white-red" style="text-align:left; font-size:10px; white-space:pre-line;">${missingAtributLines.join("\n")}</td>`;
           html += `</tr>`;
         });
         // Empty row separation
-        html += `<tr><td colspan="${3 + datesArray.length}" style="border:none; height: 20px;"></td></tr>`;
+        html += `<tr><td colspan="${4 + datesArray.length}" style="border:none; height: 20px;"></td></tr>`;
       });
 
       html += `</tbody></table></body></html>`;
