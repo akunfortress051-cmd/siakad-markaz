@@ -211,6 +211,7 @@ export function AbsensiKelasClient({
   const [atribut, setAtribut] = useState({ kopiah: false, nametag: false, bros: false });
   const [kecerdasan, setKecerdasan] = useState<string[]>([]);
   const [isBadalMode, setIsBadalMode] = useState(false);
+  const isBadalModeRef = useRef(false);
   const [showBadalModal, setShowBadalModal] = useState(false);
   const [badalTargetKelasId, setBadalTargetKelasId] = useState("");
   const [isSaved, setIsSaved] = useState(false); // Indikator apakah absen sudah tersimpan
@@ -226,6 +227,7 @@ export function AbsensiKelasClient({
 
   // Sync ref dengan state
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
+  useEffect(() => { isBadalModeRef.current = isBadalMode; }, [isBadalMode]);
 
   useEffect(() => {
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -338,34 +340,41 @@ export function AbsensiKelasClient({
 
       if (activeSesis.length > 0) {
         if (prevSession && activeSesis.includes(prevSession)) {
-          const teachesPrev = teacherSessions.some(ts => ts.sesi === prevSession);
-          if (teachesPrev) {
-            const currentAssignmentIdx = activeAssignments.findIndex(a => a.sesi === prevSession && a.kelasId === prevClassId);
-            
-            if (currentAssignmentIdx !== -1) {
-              if (isCompletedRef.current && activeAssignments.length > 1) {
-                const nextAssign = currentAssignmentIdx + 1 < activeAssignments.length ? activeAssignments[currentAssignmentIdx + 1] : activeAssignments[currentAssignmentIdx];
-                nextSesi = nextAssign.sesi;
-                nextKelasId = nextAssign.kelasId;
+          // Jika sedang dalam mode Badal, jangan ganggu — pertahankan state saat ini
+          if (isBadalModeRef.current) {
+            nextSesi = prevSession;
+            nextKelasId = prevClassId;
+          } else {
+            const teachesPrev = teacherSessions.some(ts => ts.sesi === prevSession);
+            if (teachesPrev) {
+              const currentAssignmentIdx = activeAssignments.findIndex(a => a.sesi === prevSession && a.kelasId === prevClassId);
+              
+              if (currentAssignmentIdx !== -1) {
+                if (isCompletedRef.current && activeAssignments.length > 1) {
+                  const nextAssign = currentAssignmentIdx + 1 < activeAssignments.length ? activeAssignments[currentAssignmentIdx + 1] : activeAssignments[currentAssignmentIdx];
+                  nextSesi = nextAssign.sesi;
+                  nextKelasId = nextAssign.kelasId;
+                } else {
+                  nextSesi = prevSession;
+                  nextKelasId = prevClassId;
+                }
               } else {
                 nextSesi = prevSession;
                 nextKelasId = prevClassId;
               }
             } else {
-              nextSesi = prevSession;
-              nextKelasId = prevClassId;
-            }
-          } else {
-            if (activeAssignments.length > 0) {
-              nextSesi = activeAssignments[0].sesi;
-              nextKelasId = activeAssignments[0].kelasId;
-            } else {
-              const idx = activeSesis.indexOf(prevSession);
-              nextSesi = idx + 1 < activeSesis.length ? activeSesis[idx + 1] : prevSession;
-              nextKelasId = null;
+              if (activeAssignments.length > 0) {
+                nextSesi = activeAssignments[0].sesi;
+                nextKelasId = activeAssignments[0].kelasId;
+              } else {
+                const idx = activeSesis.indexOf(prevSession);
+                nextSesi = idx + 1 < activeSesis.length ? activeSesis[idx + 1] : prevSession;
+                nextKelasId = null;
+              }
             }
           }
         } else {
+          // Sesi sebelumnya sudah tidak aktif lagi — reset badal juga
           if (activeAssignments.length > 0) {
             nextSesi = activeAssignments[0].sesi;
             nextKelasId = activeAssignments[0].kelasId;
