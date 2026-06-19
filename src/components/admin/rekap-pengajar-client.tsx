@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { FileText, Search, User, Clock, Calendar, Send } from "lucide-react";
+import { FileText, Search, User, Clock, Calendar, Send, Edit3, Trash2, X, Save } from "lucide-react";
 import toast from "react-hot-toast";
 
 type PengajarRecord = {
@@ -38,7 +38,8 @@ const HARI_OPTIONS = [
   { value: "Minggu", label: "Minggu" },
 ];
 
-export function RekapPengajarClient() {
+export function RekapPengajarClient({ userRole = "" }: { userRole?: string }) {
+  const isAdmin = userRole === "ADMIN";
   const searchParams = useSearchParams();
   const dari = searchParams.get("dari");
   const sampai = searchParams.get("sampai");
@@ -49,6 +50,54 @@ export function RekapPengajarClient() {
   const [filterHari, setFilterHari] = useState("ALL");
   const [filterKelas, setFilterKelas] = useState("ALL");
   const [filterPengajar, setFilterPengajar] = useState("ALL");
+
+  // Edit modal state (Admin only)
+  const [editingRecord, setEditingRecord] = useState<PengajarRecord | null>(null);
+  const [editForm, setEditForm] = useState({ materi: "", waktuMulai: "", waktuSelesai: "", kopiah: false, nametag: false, bros: false, terlambatMenit: 0 });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openEditModal = (r: PengajarRecord) => {
+    setEditingRecord(r);
+    setEditForm({ materi: r.materi !== "ALPHA (Belum Absen)" ? r.materi : "", waktuMulai: r.waktuMulai !== "-" ? r.waktuMulai : "", waktuSelesai: r.waktuSelesai !== "-" ? r.waktuSelesai : "", kopiah: r.atribut.kopiah, nametag: r.atribut.nametag, bros: r.atribut.bros, terlambatMenit: r.terlambatMenit || 0 });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRecord) return;
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch("/api/admin/absensi/rekap/pengajar", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingRecord.id, materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atributKopiah: editForm.kopiah, atributNametag: editForm.nametag, atributBros: editForm.bros, terlambatMenit: editForm.terlambatMenit })
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("Data berhasil diperbarui");
+        if (editingRecord.id.startsWith("alpha_")) {
+          // If created from ALPHA, we need to refresh or just update locally (better to refresh if id changed, but let's just update local object with new id)
+          setData(prev => prev.map(d => d.id === editingRecord.id ? { ...d, id: result.data.id, status: "HADIR", materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atribut: { kopiah: editForm.kopiah, nametag: editForm.nametag, bros: editForm.bros }, terlambatMenit: editForm.terlambatMenit } : d));
+        } else {
+          setData(prev => prev.map(d => d.id === editingRecord.id ? { ...d, materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atribut: { kopiah: editForm.kopiah, nametag: editForm.nametag, bros: editForm.bros }, terlambatMenit: editForm.terlambatMenit } : d));
+        }
+        setEditingRecord(null);
+      } else {
+        toast.error(result.error || "Gagal memperbarui");
+      }
+    } catch { toast.error("Terjadi kesalahan"); } finally { setIsSavingEdit(false); }
+  };
+
+  const handleDeleteRecord = async (r: PengajarRecord) => {
+    if (r.id.startsWith("alpha_") || r.status === "ALPHA") { toast.error("Tidak bisa menghapus record ALPHA"); return; }
+    if (!confirm(`Hapus data absen ${r.pengajar} di ${r.kelas} ${r.sesi}?`)) return;
+    try {
+      const res = await fetch(`/api/admin/absensi/rekap/pengajar?id=${r.id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("Data berhasil dihapus");
+        setData(prev => prev.filter(d => d.id !== r.id));
+      } else { toast.error(result.error || "Gagal menghapus"); }
+    } catch { toast.error("Terjadi kesalahan"); }
+  };
 
   useEffect(() => {
     if (!dari || !sampai) return;
@@ -420,11 +469,12 @@ export function RekapPengajarClient() {
                         <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider">Materi</th>
                         <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center">Waktu</th>
                         <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center">Atribut</th>
+                        {isAdmin && <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center w-20">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-surface)]">
                       {group.records.map((r) => (
-                        <tr key={r.id} className="hover:bg-[var(--color-surface-light)]">
+                        <tr key={r.id} className={`hover:bg-[var(--color-surface-light)] ${isAdmin ? 'cursor-pointer' : ''}`} onClick={() => { if (isAdmin) openEditModal(r); }}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="h-7 w-7 bg-violet-100 text-violet-700 rounded-lg flex items-center justify-center">
@@ -478,6 +528,16 @@ export function RekapPengajarClient() {
                               </div>
                             )}
                           </td>
+                          {isAdmin && (
+                            <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={() => openEditModal(r)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition" title="Edit"><Edit3 size={14} /></button>
+                                {r.status !== "ALPHA" && !r.id.startsWith("alpha_") && (
+                                  <button onClick={() => handleDeleteRecord(r)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition" title="Hapus"><Trash2 size={14} /></button>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -488,6 +548,55 @@ export function RekapPengajarClient() {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setEditingRecord(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-lg text-[var(--color-text)]">Edit Absen Pengajar</h2>
+              <button onClick={() => setEditingRecord(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition"><X size={20} /></button>
+            </div>
+            <div className="text-sm space-y-1 bg-[var(--color-surface-light)] rounded-xl p-3 border border-[var(--color-surface-dark)]">
+              <p><span className="font-bold">Pengajar:</span> {editingRecord.pengajar}</p>
+              <p><span className="font-bold">Kelas:</span> {editingRecord.kelas} &middot; {editingRecord.sesi.replace('_', ' ')}</p>
+              <p><span className="font-bold">Tanggal:</span> {editingRecord.tanggal}</p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Materi</label>
+              <input type="text" value={editForm.materi} onChange={e => setEditForm(f => ({ ...f, materi: e.target.value }))} className="w-full border border-[var(--color-surface-dark)] rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-violet-500" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Waktu Mulai</label>
+                <input type="text" maxLength={5} placeholder="08:00" value={editForm.waktuMulai} onChange={e => { let v = e.target.value.replace(/[^0-9:]/g,''); if (v.length===2 && !v.includes(':') && v.length > editForm.waktuMulai.length) v+=':'; setEditForm(f => ({...f, waktuMulai: v})); }} className="w-full border border-[var(--color-surface-dark)] rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-violet-500 font-mono" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Waktu Selesai</label>
+                <input type="text" maxLength={5} placeholder="09:30" value={editForm.waktuSelesai} onChange={e => { let v = e.target.value.replace(/[^0-9:]/g,''); if (v.length===2 && !v.includes(':') && v.length > editForm.waktuSelesai.length) v+=':'; setEditForm(f => ({...f, waktuSelesai: v})); }} className="w-full border border-[var(--color-surface-dark)] rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-violet-500 font-mono" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Telat (Mnt)</label>
+                <input type="number" placeholder="0" value={editForm.terlambatMenit} onChange={e => setEditForm(f => ({...f, terlambatMenit: parseInt(e.target.value) || 0}))} className="w-full border border-[var(--color-surface-dark)] rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-violet-500 font-mono" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">Atribut</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" checked={editForm.kopiah} onChange={e => setEditForm(f => ({...f, kopiah: e.target.checked}))} className="rounded" /> Kopiah</label>
+                <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" checked={editForm.nametag} onChange={e => setEditForm(f => ({...f, nametag: e.target.checked}))} className="rounded" /> Nametag</label>
+                <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" checked={editForm.bros} onChange={e => setEditForm(f => ({...f, bros: e.target.checked}))} className="rounded" /> Bros</label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-surface)]">
+              <button onClick={() => setEditingRecord(null)} className="px-4 py-2 text-sm font-bold rounded-xl border border-[var(--color-surface-dark)] hover:bg-[var(--color-surface-light)] transition">Batal</button>
+              <button onClick={handleSaveEdit} disabled={isSavingEdit} className="px-4 py-2 text-sm font-bold rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-50 flex items-center gap-2">
+                <Save size={14} /> {isSavingEdit ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

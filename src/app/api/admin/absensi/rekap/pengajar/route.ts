@@ -72,7 +72,9 @@ export async function GET(request: Request) {
     const formatted = records.map(r => {
       let terlambatMenit = 0;
       // Badal: tidak dihitung keterlambatan berapapun menitnya
-      if (!r.isBadal && r.waktuMulai && r.waktuMulai !== "-") {
+      if (r.terlambatMenit !== null) {
+        terlambatMenit = r.terlambatMenit;
+      } else if (!r.isBadal && r.waktuMulai && r.waktuMulai !== "-") {
         // Cari jadwal: prioritas global JadwalSesi, fallback ke SesiTambahanProgram (sesi 7-10)
         let jadwalBuka: string | null = jadwalMap.get(r.sesi)?.jamBuka ?? null;
         if (!jadwalBuka && r.kelas.program?.id) {
@@ -236,3 +238,114 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Terjadi kesalahan sistem" }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, materi, waktuMulai, waktuSelesai, atributKopiah, atributNametag, atributBros, terlambatMenit } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
+    }
+
+    if (id.startsWith("alpha_")) {
+      // Format: alpha_{userId}_{kelasId}_{sesi}_{tanggal}
+      // OR Format: alpha_{userId}_PROGRAM_{programId}_{sesi}_{tanggal}
+      const parts = id.split("_");
+      let userId = "", kelasId = "", sesi = "", tanggalStr = "";
+
+      if (parts[2] === "PROGRAM") {
+        userId = parts[1];
+        const programId = parts[3];
+        sesi = parts[4];
+        tanggalStr = parts.slice(5).join("-"); // tgl was passed as string, originally separated by hyphens but split might miss if we used _. Wait, tgl is YYYY-MM-DD which has hyphens. We split by _ so it's parts[5].
+        tanggalStr = parts[5];
+
+        const firstClass = await prisma.kelas.findFirst({ where: { programId } });
+        if (!firstClass) return NextResponse.json({ error: "Program tidak punya kelas" }, { status: 400 });
+        kelasId = firstClass.id;
+      } else {
+        userId = parts[1];
+        kelasId = parts[2];
+        sesi = parts[3];
+        tanggalStr = parts[4];
+      }
+
+      const created = await prisma.absenPengajar.create({
+        data: {
+          userId,
+          kelasId,
+          sesi: sesi as any,
+          tanggal: new Date(`${tanggalStr}T00:00:00Z`),
+          waktuMulai: waktuMulai || "-",
+          waktuSelesai: waktuSelesai || "-",
+          materi: materi || "Hadir (Input Manual Admin)",
+          atributKopiah: Boolean(atributKopiah),
+          atributNametag: Boolean(atributNametag),
+          atributBros: Boolean(atributBros),
+          terlambatMenit: terlambatMenit !== undefined && terlambatMenit !== "" ? Number(terlambatMenit) : null,
+          isBadal: false
+        }
+      });
+      return NextResponse.json({ success: true, data: created });
+    }
+
+    // Pastikan record ada
+    const existing = await prisma.absenPengajar.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Data absen pengajar tidak ditemukan" }, { status: 404 });
+    }
+
+    const updated = await prisma.absenPengajar.update({
+      where: { id },
+      data: {
+        materi: materi ?? existing.materi,
+        waktuMulai: waktuMulai ?? existing.waktuMulai,
+        waktuSelesai: waktuSelesai ?? existing.waktuSelesai,
+        atributKopiah: atributKopiah !== undefined ? Boolean(atributKopiah) : existing.atributKopiah,
+        atributNametag: atributNametag !== undefined ? Boolean(atributNametag) : existing.atributNametag,
+        atributBros: atributBros !== undefined ? Boolean(atributBros) : existing.atributBros,
+        terlambatMenit: terlambatMenit !== undefined && terlambatMenit !== "" ? Number(terlambatMenit) : null,
+      }
+    });
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating absen pengajar:", error);
+    return NextResponse.json({ error: "Gagal memperbarui data" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
+    }
+
+    const existing = await prisma.absenPengajar.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Data absen pengajar tidak ditemukan" }, { status: 404 });
+    }
+
+    await prisma.absenPengajar.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting absen pengajar:", error);
+    return NextResponse.json({ error: "Gagal menghapus data" }, { status: 500 });
+  }
+}
+
