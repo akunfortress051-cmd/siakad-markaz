@@ -311,7 +311,7 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
           return { score: (n.nilaiAkhir || 0) + (n.nilaiTambahan || 0), bobot: pm?.mapel.bobot ?? 1 };
         })
       );
-      const averagePredikat = getPredikat(average);
+      const averagePredikat = getPredikat(Math.round(average));
 
       return {
         id: masterSantri.id,
@@ -619,7 +619,7 @@ export async function getCertificateData(id: string) {
   );
   const status = calculateStatus(riwayat, accumulativeRows.map((nilai: any) => ({ skor: Number(nilai.skor) })), riwayat.program);
 
-  let predikat: { indo: string; arab: string } = getPredikat(average);
+  let predikat: { indo: string; arab: string } = getPredikat(Math.round(average));
 
   // Check Martabah Ula
   if (status !== "TIDAK_LULUS" && riwayat.programId && average > 0) {
