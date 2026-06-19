@@ -20,7 +20,7 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   let minDiff = Infinity;
 
   if (!jadwalConfig || !jadwalConfig.globalSesi) {
-    return { activeSesis: [], nextSession: null, isResting: true };
+    return { activeSesis: [] as string[], nextSession: null, isResting: true, activeSessionLabels: {} as Record<string, string> };
   }
 
   const programIds = new Set<string>();
@@ -134,7 +134,14 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
     return na - nb;
   });
 
-  return { activeSesis: uniqueActiveSesis, nextSession, isResting: uniqueActiveSesis.length === 0 && !nextSession };
+  // Buat map label untuk sesi yang aktif (agar bisa tampilkan "Sesi Taqwim" dll)
+  const activeSessionLabels: Record<string, string> = {};
+  for (const sesiKey of uniqueActiveSesis) {
+    const jadwal = finalJadwal.find(j => j.sesi === sesiKey);
+    if (jadwal?.label) activeSessionLabels[sesiKey] = jadwal.label;
+  }
+
+  return { activeSesis: uniqueActiveSesis, nextSession, isResting: uniqueActiveSesis.length === 0 && !nextSession, activeSessionLabels };
 }
 
 // Helper: Cache key untuk form pengajar
@@ -226,6 +233,7 @@ export function AbsensiKelasClient({
   const [activeSessionsList, setActiveSessionsList] = useState<string[]>([]);
   const [nextSessionInfo, setNextSessionInfo] = useState<any | null>(null);
   const [isResting, setIsResting] = useState(false);
+  const [activeSessionLabels, setActiveSessionLabels] = useState<Record<string, string>>({});
 
   // Sync ref dengan state
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
@@ -250,10 +258,11 @@ export function AbsensiKelasClient({
       .then(data => {
         setJadwalSesiList(data);
         const targetKelasIds = isTeacher ? (allowedClassIds || []) : [kelasId].filter(Boolean) as string[];
-        const { activeSesis, nextSession, isResting } = computeSessionState(data, programList, targetKelasIds, `${y}-${m}-${d}`, isTeacher);
+        const { activeSesis, nextSession, isResting, activeSessionLabels: labels } = computeSessionState(data, programList, targetKelasIds, `${y}-${m}-${d}`, isTeacher);
         setActiveSessionsList(activeSesis);
         setNextSessionInfo(nextSession);
         setIsResting(isResting);
+        setActiveSessionLabels(labels || {});
 
         const currentActive = activeSesis.length > 0 ? activeSesis[0] : null;
 
@@ -299,10 +308,11 @@ export function AbsensiKelasClient({
 
     const intervalId = setInterval(() => {
       const targetKelasIds = isTeacher ? (allowedClassIds || []) : [kelasId].filter(Boolean) as string[];
-      const { activeSesis, nextSession, isResting } = computeSessionState(jadwalSesiList, programList, targetKelasIds, tanggal, isTeacher);
+      const { activeSesis, nextSession, isResting, activeSessionLabels: labels } = computeSessionState(jadwalSesiList, programList, targetKelasIds, tanggal, isTeacher);
       setActiveSessionsList(activeSesis);
       setNextSessionInfo(nextSession);
       setIsResting(isResting);
+      setActiveSessionLabels(labels || {});
 
       if (nextSession) {
         const formatter = new Intl.DateTimeFormat('en-US', {
@@ -743,7 +753,9 @@ export function AbsensiKelasClient({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)] w-24">Sesi Aktif</span>
                 <span className={`text-sm font-bold px-3 py-1 rounded-lg border ${activeSession ? 'text-[var(--color-primary)] bg-[var(--color-primary-50)] border-[var(--color-primary-50)]' : 'text-[var(--color-danger)] bg-[var(--color-danger-light)] border-[var(--color-danger-light)]'}`}>
-                  {activeSession ? activeSession.replace('_', ' ') : "Tidak ada"}
+                  {activeSession
+                    ? (activeSessionLabels[activeSession] || activeSession.replace('_', ' '))
+                    : "Tidak ada"}
                 </span>
               </div>
               {/* Countdown ke sesi berikutnya saat sesi aktif */}
@@ -765,19 +777,22 @@ export function AbsensiKelasClient({
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)] w-24">Waktu</span>
                   <span className="text-sm font-medium text-[var(--color-text-muted)] bg-[var(--color-secondary)] px-3 py-1 rounded-lg border border-[var(--color-surface)]">
                     {(() => {
+                      // Gunakan activeClassId (kelas aktual pengajar), bukan kelasId (bisa PROGRAM_xxx)
+                      const resolvedClassId = activeClassId || kelasId;
                       let pId = null;
-                      if (kelasId && kelasId !== "ALL" && kelasId !== "UNASSIGNED") {
-                        if (kelasId.startsWith("PROGRAM_")) pId = kelasId.replace("PROGRAM_", "");
+                      if (resolvedClassId && resolvedClassId !== "ALL" && resolvedClassId !== "UNASSIGNED") {
+                        if (resolvedClassId.startsWith("PROGRAM_")) pId = resolvedClassId.replace("PROGRAM_", "");
                         else {
-                          const prog = programList.find(p => p.kelasList.some((k:any) => k.id === kelasId));
+                          const prog = programList.find(p => p.kelasList.some((k:any) => k.id === resolvedClassId));
                           if (prog) pId = prog.id;
                         }
                       }
                       let j = null;
+                      // Cek taqwim override terlebih dahulu (selalu cek, bukan hanya untuk SESI_1)
                       if (activeSession === "SESI_1" && pId) {
-                         const isTaqwimDate = jadwalSesiList.taqwim?.tanggalList.some((t:any) => t.programId === pId && t.tanggal.startsWith(tanggal));
+                         const isTaqwimDate = jadwalSesiList.taqwim?.tanggalList?.some((t:any) => t.programId === pId && t.tanggal.startsWith(tanggal));
                          if (isTaqwimDate) {
-                            j = jadwalSesiList.taqwim.configs.find((c:any) => c.programId === pId && c.isActive);
+                            j = jadwalSesiList.taqwim?.configs?.find((c:any) => c.programId === pId && c.isActive);
                          }
                       }
                       if (!j && pId && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x: any) => x.sesi === activeSession && x.programId === pId);

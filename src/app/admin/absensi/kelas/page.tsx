@@ -76,25 +76,34 @@ export default async function AbsensiKelasPage() {
         
         // Logika Override Taqwim
         if (taqwimProgramIds.length > 0) {
-          // Cari programId dari kelas-kelas yang ada di teacherSessions dan wali kelas
+          let isWaliKelasInTaqwimProgram = false;
+          
+          // Cek apakah guru ini adalah Wali Kelas di salah satu program taqwim
           for (const prog of programList) {
             if (taqwimProgramIds.includes(prog.id)) {
               const kelasIdsInProgram = prog.kelasList.map((k:any) => k.id);
-              
-              // 1. Hapus jadwal SESI_1 pengajar biasa di program ini
-              teacherSessions = teacherSessions.filter(ts => {
-                if (ts.sesi === "SESI_1" && kelasIdsInProgram.includes(ts.kelasId)) {
-                  // Jika dia BUKAN wali kelas dari kelas ini, hapus
-                  if (session.kelasId !== ts.kelasId) return false;
-                }
-                return true;
-              });
-              
-              // 2. Tambahkan SESI_1 untuk Wali Kelas jika kelasnya ada di program ini
               if (session.kelasId && kelasIdsInProgram.includes(session.kelasId)) {
-                if (!teacherSessions.some(ts => ts.sesi === "SESI_1" && ts.kelasId === session.kelasId)) {
-                  teacherSessions.push({ sesi: "SESI_1", kelasId: session.kelasId });
-                }
+                isWaliKelasInTaqwimProgram = true;
+                break;
+              }
+            }
+          }
+
+          if (isWaliKelasInTaqwimProgram && session.kelasId) {
+            // Guru adalah Wali Kelas di program taqwim:
+            // Hapus SEMUA SESI_1 reguler (dari program manapun) karena hari ini digantikan Taqwim
+            teacherSessions = teacherSessions.filter(ts => ts.sesi !== "SESI_1");
+            // Pasang SESI_1 khusus untuk kelas Wali Kelas (Taqwim)
+            teacherSessions.push({ sesi: "SESI_1", kelasId: session.kelasId });
+          } else {
+            // Guru bukan Wali Kelas taqwim — hapus saja SESI_1 di program yang taqwim
+            for (const prog of programList) {
+              if (taqwimProgramIds.includes(prog.id)) {
+                const kelasIdsInProgram = prog.kelasList.map((k:any) => k.id);
+                teacherSessions = teacherSessions.filter(ts => {
+                  if (ts.sesi === "SESI_1" && kelasIdsInProgram.includes(ts.kelasId)) return false;
+                  return true;
+                });
               }
             }
           }
