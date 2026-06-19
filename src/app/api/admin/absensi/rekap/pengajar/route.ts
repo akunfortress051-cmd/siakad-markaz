@@ -254,25 +254,28 @@ export async function PUT(request: Request) {
     }
 
     if (id.startsWith("alpha_")) {
-      // Format: alpha_{userId}_{kelasId}_{sesi}_{tanggal}
-      // OR Format: alpha_{userId}_PROGRAM_{programId}_{sesi}_{tanggal}
+      // Format: alpha_{userId}_{kelasId}_{SESI}_{X}_{YYYY-MM-DD}
+      // OR Format: alpha_{userId}_PROGRAM_{programId}_{SESI}_{X}_{YYYY-MM-DD}
+      // NOTE: SESI_1 splits into two parts when split("_"), so we reconstruct it
       const parts = id.split("_");
       let originalUserId = "", kelasId = "", sesi = "", tanggalStr = "";
 
       if (parts[2] === "PROGRAM") {
+        // parts: ["alpha", userId, "PROGRAM", programId, "SESI", sesiNum, tanggal]
         originalUserId = parts[1];
         const programId = parts[3];
-        sesi = parts[4];
-        tanggalStr = parts[5];
+        sesi = `${parts[4]}_${parts[5]}`; // e.g. "SESI_1"
+        tanggalStr = parts[6];             // e.g. "2026-06-19"
 
         const firstClass = await prisma.kelas.findFirst({ where: { programId } });
         if (!firstClass) return NextResponse.json({ error: "Program tidak punya kelas" }, { status: 400 });
         kelasId = firstClass.id;
       } else {
+        // parts: ["alpha", userId, kelasId, "SESI", sesiNum, tanggal]
         originalUserId = parts[1];
         kelasId = parts[2];
-        sesi = parts[3];
-        tanggalStr = parts[4];
+        sesi = `${parts[3]}_${parts[4]}`; // e.g. "SESI_1"
+        tanggalStr = parts[5];             // e.g. "2026-06-19"
       }
 
       const finalUserId = isBadal && pengajarBadalId ? pengajarBadalId : originalUserId;
