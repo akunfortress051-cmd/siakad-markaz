@@ -247,7 +247,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, materi, waktuMulai, waktuSelesai, atributKopiah, atributNametag, atributBros, terlambatMenit } = body;
+    const { id, materi, waktuMulai, waktuSelesai, atributKopiah, atributNametag, atributBros, terlambatMenit, isBadal, pengajarBadalId } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
@@ -257,28 +257,30 @@ export async function PUT(request: Request) {
       // Format: alpha_{userId}_{kelasId}_{sesi}_{tanggal}
       // OR Format: alpha_{userId}_PROGRAM_{programId}_{sesi}_{tanggal}
       const parts = id.split("_");
-      let userId = "", kelasId = "", sesi = "", tanggalStr = "";
+      let originalUserId = "", kelasId = "", sesi = "", tanggalStr = "";
 
       if (parts[2] === "PROGRAM") {
-        userId = parts[1];
+        originalUserId = parts[1];
         const programId = parts[3];
         sesi = parts[4];
-        tanggalStr = parts.slice(5).join("-"); // tgl was passed as string, originally separated by hyphens but split might miss if we used _. Wait, tgl is YYYY-MM-DD which has hyphens. We split by _ so it's parts[5].
         tanggalStr = parts[5];
 
         const firstClass = await prisma.kelas.findFirst({ where: { programId } });
         if (!firstClass) return NextResponse.json({ error: "Program tidak punya kelas" }, { status: 400 });
         kelasId = firstClass.id;
       } else {
-        userId = parts[1];
+        originalUserId = parts[1];
         kelasId = parts[2];
         sesi = parts[3];
         tanggalStr = parts[4];
       }
 
+      const finalUserId = isBadal && pengajarBadalId ? pengajarBadalId : originalUserId;
+      const finalPengajarDigantikanId = isBadal && pengajarBadalId ? originalUserId : null;
+
       const created = await prisma.absenPengajar.create({
         data: {
-          userId,
+          userId: finalUserId,
           kelasId,
           sesi: sesi as any,
           tanggal: new Date(`${tanggalStr}T00:00:00Z`),
@@ -289,7 +291,8 @@ export async function PUT(request: Request) {
           atributNametag: Boolean(atributNametag),
           atributBros: Boolean(atributBros),
           terlambatMenit: terlambatMenit !== undefined && terlambatMenit !== "" ? Number(terlambatMenit) : null,
-          isBadal: false
+          isBadal: Boolean(isBadal),
+          pengajarDigantikanId: finalPengajarDigantikanId,
         }
       });
       return NextResponse.json({ success: true, data: created });

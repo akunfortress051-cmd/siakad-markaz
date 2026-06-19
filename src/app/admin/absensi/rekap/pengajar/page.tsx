@@ -5,6 +5,8 @@ import { RekapFilterClient } from "@/components/admin/rekap-filter-client";
 import { RekapPengajarClient } from "@/components/admin/rekap-pengajar-client";
 import { getSession } from "@/lib/auth";
 
+import prisma from "@/lib/prisma";
+
 export const metadata: Metadata = {
   title: "Rekap Absen Pengajar - Admin Panel",
 };
@@ -15,6 +17,15 @@ export default async function RekapPengajarPage() {
   await requirePermission("rekap_pengajar");
   const session = await getSession();
   const userRole = session?.role || "";
+
+  // Ambil daftar pengajar untuk dropdown badal
+  const pengajarListRaw = await prisma.user.findMany({
+    where: { isActive: true, role: { not: "SANTRI" } },
+    select: { id: true, nama: true },
+    orderBy: { nama: "asc" }
+  });
+  const pengajarList = pengajarListRaw.map(p => ({ id: p.id, nama: p.nama }));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 pb-2">
@@ -31,7 +42,7 @@ export default async function RekapPengajarPage() {
       </Suspense>
 
       <Suspense fallback={<div className="animate-pulse p-10 text-center text-[var(--color-text-subtle)] font-medium">Memuat Rincian...</div>}>
-        <RekapPengajarClient userRole={userRole} />
+        <RekapPengajarClient userRole={userRole} pengajarList={pengajarList} />
       </Suspense>
     </div>
   );

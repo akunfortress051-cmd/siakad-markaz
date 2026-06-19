@@ -38,7 +38,7 @@ const HARI_OPTIONS = [
   { value: "Minggu", label: "Minggu" },
 ];
 
-export function RekapPengajarClient({ userRole = "" }: { userRole?: string }) {
+export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { userRole?: string, pengajarList?: { id: string, nama: string }[] }) {
   const isAdmin = userRole === "ADMIN";
   const searchParams = useSearchParams();
   const dari = searchParams.get("dari");
@@ -53,12 +53,12 @@ export function RekapPengajarClient({ userRole = "" }: { userRole?: string }) {
 
   // Edit modal state (Admin only)
   const [editingRecord, setEditingRecord] = useState<PengajarRecord | null>(null);
-  const [editForm, setEditForm] = useState({ materi: "", waktuMulai: "", waktuSelesai: "", kopiah: false, nametag: false, bros: false, terlambatMenit: 0 });
+  const [editForm, setEditForm] = useState({ materi: "", waktuMulai: "", waktuSelesai: "", kopiah: false, nametag: false, bros: false, terlambatMenit: 0, isBadal: false, pengajarBadalId: "" });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const openEditModal = (r: PengajarRecord) => {
     setEditingRecord(r);
-    setEditForm({ materi: r.materi !== "ALPHA (Belum Absen)" ? r.materi : "", waktuMulai: r.waktuMulai !== "-" ? r.waktuMulai : "", waktuSelesai: r.waktuSelesai !== "-" ? r.waktuSelesai : "", kopiah: r.atribut.kopiah, nametag: r.atribut.nametag, bros: r.atribut.bros, terlambatMenit: r.terlambatMenit || 0 });
+    setEditForm({ materi: r.materi !== "ALPHA (Belum Absen)" ? r.materi : "", waktuMulai: r.waktuMulai !== "-" ? r.waktuMulai : "", waktuSelesai: r.waktuSelesai !== "-" ? r.waktuSelesai : "", kopiah: r.atribut.kopiah, nametag: r.atribut.nametag, bros: r.atribut.bros, terlambatMenit: r.terlambatMenit || 0, isBadal: false, pengajarBadalId: "" });
   };
 
   const handleSaveEdit = async () => {
@@ -68,14 +68,14 @@ export function RekapPengajarClient({ userRole = "" }: { userRole?: string }) {
       const res = await fetch("/api/admin/absensi/rekap/pengajar", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingRecord.id, materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atributKopiah: editForm.kopiah, atributNametag: editForm.nametag, atributBros: editForm.bros, terlambatMenit: editForm.terlambatMenit })
+        body: JSON.stringify({ id: editingRecord.id, materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atributKopiah: editForm.kopiah, atributNametag: editForm.nametag, atributBros: editForm.bros, terlambatMenit: editForm.terlambatMenit, isBadal: editForm.isBadal, pengajarBadalId: editForm.pengajarBadalId })
       });
       const result = await res.json();
       if (result.success) {
         toast.success("Data berhasil diperbarui");
         if (editingRecord.id.startsWith("alpha_")) {
-          // If created from ALPHA, we need to refresh or just update locally (better to refresh if id changed, but let's just update local object with new id)
-          setData(prev => prev.map(d => d.id === editingRecord.id ? { ...d, id: result.data.id, status: "HADIR", materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atribut: { kopiah: editForm.kopiah, nametag: editForm.nametag, bros: editForm.bros }, terlambatMenit: editForm.terlambatMenit } : d));
+          const badalName = editForm.isBadal ? pengajarList.find(p => p.id === editForm.pengajarBadalId)?.nama || "Unknown" : editingRecord.pengajar;
+          setData(prev => prev.map(d => d.id === editingRecord.id ? { ...d, id: result.data.id, status: "HADIR", materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atribut: { kopiah: editForm.kopiah, nametag: editForm.nametag, bros: editForm.bros }, terlambatMenit: editForm.terlambatMenit, pengajar: badalName, isBadal: editForm.isBadal, pengajarDigantikan: editForm.isBadal ? editingRecord.pengajar : null } : d));
         } else {
           setData(prev => prev.map(d => d.id === editingRecord.id ? { ...d, materi: editForm.materi, waktuMulai: editForm.waktuMulai, waktuSelesai: editForm.waktuSelesai, atribut: { kopiah: editForm.kopiah, nametag: editForm.nametag, bros: editForm.bros }, terlambatMenit: editForm.terlambatMenit } : d));
         }
@@ -558,10 +558,31 @@ export function RekapPengajarClient({ userRole = "" }: { userRole?: string }) {
               <button onClick={() => setEditingRecord(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition"><X size={20} /></button>
             </div>
             <div className="text-sm space-y-1 bg-[var(--color-surface-light)] rounded-xl p-3 border border-[var(--color-surface-dark)]">
-              <p><span className="font-bold">Pengajar:</span> {editingRecord.pengajar}</p>
+              <p><span className="font-bold">Pengajar Asli:</span> {editingRecord.pengajar}</p>
               <p><span className="font-bold">Kelas:</span> {editingRecord.kelas} &middot; {editingRecord.sesi.replace('_', ' ')}</p>
               <p><span className="font-bold">Tanggal:</span> {editingRecord.tanggal}</p>
             </div>
+            
+            {editingRecord.id.startsWith("alpha_") && (
+              <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
+                <label className="flex items-center gap-2 text-sm font-bold text-amber-900 cursor-pointer">
+                  <input type="checkbox" checked={editForm.isBadal} onChange={e => setEditForm(f => ({...f, isBadal: e.target.checked}))} className="rounded border-amber-300 text-amber-600 focus:ring-amber-500" />
+                  Gunakan Pengajar Badal
+                </label>
+                {editForm.isBadal && (
+                  <div className="mt-3">
+                    <label className="text-xs font-bold text-amber-800 uppercase tracking-wider block mb-1">Pilih Pengajar Badal</label>
+                    <select value={editForm.pengajarBadalId} onChange={e => setEditForm(f => ({...f, pengajarBadalId: e.target.value}))} className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-amber-500">
+                      <option value="">-- Pilih Pengajar --</option>
+                      {pengajarList.map(p => (
+                        <option key={p.id} value={p.id}>{p.nama}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Materi</label>
               <input type="text" value={editForm.materi} onChange={e => setEditForm(f => ({ ...f, materi: e.target.value }))} className="w-full border border-[var(--color-surface-dark)] rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-violet-500" />
