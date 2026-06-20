@@ -35,7 +35,7 @@ const ELEMENT_GROUPS: { label: string; keys: OnlineLayoutElementKey[] }[] = [
   },
   {
     label: "TTD Kanan",
-    keys: ["jabatanKanan", "stempelKanan", "ttdKanan", "namaKanan"],
+    keys: ["jabatanKanan", "ttdKanan", "namaKanan"],
   },
   {
     label: "Lainnya",

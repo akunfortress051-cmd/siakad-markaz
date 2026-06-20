@@ -368,20 +368,6 @@ export function SyahadahOnlineDocument({ data, qrUrl, layout, editorMode, select
               أمينة المناهج للتعليم عن بعد
             </p>
 
-            {/* ── KANAN: Cap (Stempel) ── */}
-            <img
-              src="/images/stamp.png"
-              alt="Cap Kanan"
-              {...ep("stempelKanan", editorMode, selectedElement, onSelectElement, "Cap Kanan", {
-                position: "absolute",
-                right: `calc(10mm + ${-lo.stempelKanan.offsetX}mm)`,
-                top: `calc(6mm + ${lo.stempelKanan.offsetY}mm)`,
-                height: "36mm",
-                objectFit: "contain",
-                opacity: 0.88,
-                zIndex: 3,
-              })}
-            />
 
             {/* ── KANAN: Tanda Tangan ── */}
             <img

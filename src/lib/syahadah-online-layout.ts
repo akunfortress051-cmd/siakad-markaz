@@ -19,7 +19,6 @@ export const ONLINE_LAYOUT_ELEMENT_KEYS = [
   "namaKiri",
   // Right signature block (Aminah)
   "jabatanKanan",
-  "stempelKanan",
   "ttdKanan",
   "namaKanan",
   // Other
@@ -50,7 +49,6 @@ export const ONLINE_ELEMENT_LABELS: Record<OnlineLayoutElementKey, string> = {
   ttdKiri: "TTD Kiri",
   namaKiri: "Nama Kiri",
   jabatanKanan: "Jabatan Kanan",
-  stempelKanan: "Cap Kanan",
   ttdKanan: "TTD Kanan",
   namaKanan: "Nama Kanan",
   tanggalCetak: "Tanggal Cetak",

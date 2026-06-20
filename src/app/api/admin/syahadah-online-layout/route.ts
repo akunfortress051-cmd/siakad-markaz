@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { mergeOnlineLayout, getDefaultOnlineLayout, OnlineLayoutData } from "@/lib/syahadah-online-layout";
 
 // GET — ambil layout untuk record tertentu
@@ -51,7 +52,7 @@ export async function DELETE(req: NextRequest) {
 
   await prisma.syahadahOnline.update({
     where: { id },
-    data: { layoutData: null },
+    data: { layoutData: Prisma.DbNull },
   });
 
   return NextResponse.json({ success: true });
