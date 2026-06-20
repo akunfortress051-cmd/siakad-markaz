@@ -23,9 +23,10 @@ export default async function CetakOnlinePage({
   }
 
   const baseUrl = await getBaseUrl();
-  const qrUrl = `${baseUrl}/ijazah/${id}`;
+  const qrUrl = `${baseUrl}/verifikasi-online/${id}`;
 
-  const layout = mergeOnlineLayout(record.layoutData as Partial<OnlineLayoutData> | null);
+  const template = await prisma.syahadahTemplate.findFirst({ orderBy: { id: "asc" } });
+  const layout = mergeOnlineLayout(template?.onlineLayoutData as Partial<OnlineLayoutData> | null);
 
   const data = {
     id: record.id,

@@ -3,57 +3,51 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { mergeOnlineLayout, getDefaultOnlineLayout, OnlineLayoutData } from "@/lib/syahadah-online-layout";
 
-// GET — ambil layout untuk record tertentu
+// GET — ambil global online layout
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json({ layout: getDefaultOnlineLayout() });
-  }
-
-  const record = await prisma.syahadahOnline.findUnique({
-    where: { id },
-    select: { layoutData: true },
+  const template = await prisma.syahadahTemplate.findFirst({
+    orderBy: { id: "asc" },
+    select: { onlineLayoutData: true },
   });
 
-  const layout = mergeOnlineLayout(record?.layoutData as Partial<OnlineLayoutData> | null);
+  const layout = mergeOnlineLayout(template?.onlineLayoutData as Partial<OnlineLayoutData> | null);
   return NextResponse.json({ layout });
 }
 
-// POST — simpan layout
+// POST — simpan global online layout
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, layoutData } = body;
+    const { layoutData } = body;
 
-    if (!id || !layoutData) {
-      return NextResponse.json({ error: "id dan layoutData wajib diisi" }, { status: 400 });
+    if (!layoutData) {
+      return NextResponse.json({ error: "layoutData wajib diisi" }, { status: 400 });
     }
 
-    await prisma.syahadahOnline.update({
-      where: { id },
-      data: { layoutData: layoutData as any },
-    });
+    const template = await prisma.syahadahTemplate.findFirst({ orderBy: { id: "asc" } });
+    if (template) {
+      await prisma.syahadahTemplate.update({
+        where: { id: template.id },
+        data: { onlineLayoutData: layoutData as any },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Error saving online layout:", err);
+    console.error("Error saving global online layout:", err);
     return NextResponse.json({ error: "Gagal menyimpan layout" }, { status: 500 });
   }
 }
 
-// DELETE — reset layout ke default
+// DELETE — reset global online layout ke default
 export async function DELETE(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-
-  if (!id) return NextResponse.json({ error: "id wajib diisi" }, { status: 400 });
-
-  await prisma.syahadahOnline.update({
-    where: { id },
-    data: { layoutData: Prisma.DbNull },
-  });
+  const template = await prisma.syahadahTemplate.findFirst({ orderBy: { id: "asc" } });
+  if (template) {
+    await prisma.syahadahTemplate.update({
+      where: { id: template.id },
+      data: { onlineLayoutData: Prisma.DbNull },
+    });
+  }
 
   return NextResponse.json({ success: true });
 }

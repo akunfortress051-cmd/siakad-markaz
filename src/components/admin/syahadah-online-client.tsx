@@ -11,6 +11,8 @@ type ProgramOnline = {
   tglCetakArab: string | null;
   periodeAwal: string | null;
   periodeAkhir: string | null;
+  periodeAwalIndo: string | null;
+  periodeAkhirIndo: string | null;
   _count?: { syahadahList: number };
 };
 
@@ -47,6 +49,8 @@ export function SyahadahOnlineClient() {
   const [progTglCetak, setProgTglCetak] = useState("");
   const [progPeriodeAwal, setProgPeriodeAwal] = useState("");
   const [progPeriodeAkhir, setProgPeriodeAkhir] = useState("");
+  const [progPeriodeAwalIndo, setProgPeriodeAwalIndo] = useState("");
+  const [progPeriodeAkhirIndo, setProgPeriodeAkhirIndo] = useState("");
 
   const fetchPrograms = useCallback(async () => {
     const res = await fetch("/api/admin/program-online");
@@ -71,6 +75,8 @@ export function SyahadahOnlineClient() {
     setProgTglCetak("");
     setProgPeriodeAwal("");
     setProgPeriodeAkhir("");
+    setProgPeriodeAwalIndo("");
+    setProgPeriodeAkhirIndo("");
   };
 
   const openEditProgram = (p: ProgramOnline) => {
@@ -80,6 +86,8 @@ export function SyahadahOnlineClient() {
     setProgTglCetak(p.tglCetakArab || "");
     setProgPeriodeAwal(p.periodeAwal || "");
     setProgPeriodeAkhir(p.periodeAkhir || "");
+    setProgPeriodeAwalIndo(p.periodeAwalIndo || "");
+    setProgPeriodeAkhirIndo(p.periodeAkhirIndo || "");
     setShowProgramForm(true);
   };
 
@@ -96,6 +104,8 @@ export function SyahadahOnlineClient() {
       tglCetakArab: progTglCetak || null,
       periodeAwal: progPeriodeAwal || null,
       periodeAkhir: progPeriodeAkhir || null,
+      periodeAwalIndo: progPeriodeAwalIndo || null,
+      periodeAkhirIndo: progPeriodeAkhirIndo || null,
     };
 
     const res = await fetch("/api/admin/program-online", {
@@ -150,15 +160,15 @@ export function SyahadahOnlineClient() {
       toast.error("Nama wajib diisi");
       return;
     }
-    if (!formIsMusyarokah && !formProgramId) {
-      toast.error("Pilih program atau centang Musyarokah");
+    if (!formProgramId) {
+      toast.error("Pilih program terlebih dahulu");
       return;
     }
 
     const payload = {
       ...(editingRecord ? { id: editingRecord.id } : {}),
       nama: formNama,
-      programOnlineId: formIsMusyarokah ? null : formProgramId,
+      programOnlineId: formProgramId,
       isMusyarokah: formIsMusyarokah,
       nilai: formIsMusyarokah ? null : formNilai,
     };
@@ -293,35 +303,33 @@ export function SyahadahOnlineClient() {
                     </label>
                   </div>
 
-                  {!formIsMusyarokah && (
-                    <>
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">Program</label>
-                        <select
-                          value={formProgramId}
-                          onChange={(e) => setFormProgramId(e.target.value)}
-                          className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
-                        >
-                          <option value="">-- Pilih Program --</option>
-                          {programs.map((p) => (
-                            <option key={p.id} value={p.id}>{p.namaIndo} ({p.namaArab})</option>
-                          ))}
-                        </select>
-                      </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">Program</label>
+                    <select
+                      value={formProgramId}
+                      onChange={(e) => setFormProgramId(e.target.value)}
+                      className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
+                    >
+                      <option value="">-- Pilih Program --</option>
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>{p.namaIndo} ({p.namaArab})</option>
+                      ))}
+                    </select>
+                  </div>
 
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">Nilai Rata-rata</label>
-                        <input
-                          type="number"
-                          value={formNilai}
-                          onChange={(e) => setFormNilai(e.target.value)}
-                          className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
-                          placeholder="Contoh: 86"
-                          min={0}
-                          max={100}
-                        />
-                      </div>
-                    </>
+                  {!formIsMusyarokah && (
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">Nilai Rata-rata</label>
+                      <input
+                        type="number"
+                        value={formNilai}
+                        onChange={(e) => setFormNilai(e.target.value)}
+                        className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
+                        placeholder="Contoh: 86"
+                        min={0}
+                        max={100}
+                      />
+                    </div>
                   )}
                 </div>
 
@@ -517,6 +525,28 @@ export function SyahadahOnlineClient() {
                         className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
                         placeholder="١٠ مايو ٢٠٢٦"
                         dir="rtl"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">Periode Awal (Indo)</label>
+                      <input
+                        type="text"
+                        value={progPeriodeAwalIndo}
+                        onChange={(e) => setProgPeriodeAwalIndo(e.target.value)}
+                        className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
+                        placeholder="16 April 2026"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">Periode Akhir (Indo)</label>
+                      <input
+                        type="text"
+                        value={progPeriodeAkhirIndo}
+                        onChange={(e) => setProgPeriodeAkhirIndo(e.target.value)}
+                        className="neu-input w-full mt-1 px-4 py-2.5 text-sm rounded-xl"
+                        placeholder="10 Mei 2026"
                       />
                     </div>
                   </div>

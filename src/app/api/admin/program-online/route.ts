@@ -14,14 +14,14 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir } = body;
+    const { namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir, periodeAwalIndo, periodeAkhirIndo } = body;
 
     if (!namaIndo || !namaArab) {
       return NextResponse.json({ error: "Nama Indo dan Nama Arab wajib diisi" }, { status: 400 });
     }
 
     const program = await prisma.programOnline.create({
-      data: { namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir },
+      data: { namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir, periodeAwalIndo, periodeAkhirIndo },
     });
 
     return NextResponse.json(program);
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir } = body;
+    const { id, namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir, periodeAwalIndo, periodeAkhirIndo } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID wajib diisi" }, { status: 400 });
@@ -45,7 +45,7 @@ export async function PUT(req: NextRequest) {
 
     const program = await prisma.programOnline.update({
       where: { id },
-      data: { namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir },
+      data: { namaIndo, namaArab, tglCetakArab, periodeAwal, periodeAkhir, periodeAwalIndo, periodeAkhirIndo },
     });
 
     return NextResponse.json(program);

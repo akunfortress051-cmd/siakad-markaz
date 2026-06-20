@@ -154,6 +154,7 @@ model SyahadahTemplate {
   jabatan_mudir_arab       String
   teks_dufah_akbarnas_arab String?
   teks_dufah_arab          String?
+  onlineLayoutData         Json?
 }
 
 model SyahadahLayout {
@@ -396,9 +397,11 @@ model ProgramOnline {
   namaIndo     String   @unique
   namaArab     String
   tglCetakArab String?
-  periodeAwal  String?
-  periodeAkhir String?
-  createdAt    DateTime @default(now())
+  periodeAwal      String?
+  periodeAkhir     String?
+  periodeAwalIndo  String?
+  periodeAkhirIndo String?
+  createdAt        DateTime @default(now())
 
   syahadahList SyahadahOnline[]
 }

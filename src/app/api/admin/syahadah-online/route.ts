@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const record = await prisma.syahadahOnline.create({
       data: {
         nama,
-        programOnlineId: isMusyarokah ? null : programOnlineId,
+        programOnlineId,
         isMusyarokah: !!isMusyarokah,
         nilai: isMusyarokah ? null : (nilai ? parseFloat(nilai) : null),
       },
@@ -50,7 +50,7 @@ export async function PUT(req: NextRequest) {
       where: { id },
       data: {
         nama,
-        programOnlineId: isMusyarokah ? null : programOnlineId,
+        programOnlineId,
         isMusyarokah: !!isMusyarokah,
         nilai: isMusyarokah ? null : (nilai !== undefined && nilai !== null && nilai !== "" ? parseFloat(nilai) : null),
       },
