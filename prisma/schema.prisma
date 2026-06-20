@@ -388,3 +388,30 @@ model ReminderLog {
 
   @@unique([userId, tanggal, sesi])
 }
+
+// ===== SYAHADAH ONLINE (Temporary) =====
+
+model ProgramOnline {
+  id           String   @id @default(cuid())
+  namaIndo     String   @unique
+  namaArab     String
+  tglCetakArab String?
+  periodeAwal  String?
+  periodeAkhir String?
+  createdAt    DateTime @default(now())
+
+  syahadahList SyahadahOnline[]
+}
+
+model SyahadahOnline {
+  id              String          @id @default(cuid())
+  nama            String
+  programOnlineId String?
+  isMusyarokah    Boolean         @default(false)
+  nilai           Float?
+  layoutData      Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  programOnline ProgramOnline? @relation(fields: [programOnlineId], references: [id], onDelete: SetNull)
+}

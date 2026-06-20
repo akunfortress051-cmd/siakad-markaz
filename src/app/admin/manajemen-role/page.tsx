@@ -56,6 +56,7 @@ const AVAILABLE_PERMISSIONS = [
   // Divisi Syahadah
   { id: "data_syahadah", label: "Data Syahadah (Lihat)", desc: "Akses melihat data syahadah & profil santri", category: "Divisi Syahadah", type: "lihat" },
   { id: "data_syahadah_edit", label: "Data Syahadah (Aksi)", desc: "Akses mengedit data syahadah & profil santri", category: "Divisi Syahadah", type: "aksi" },
+  { id: "syahadah_online", label: "Syahadah Online", desc: "Akses melihat, menambah, mengubah, mengatur dan mencetak syahadah online", category: "Divisi Syahadah", type: "aksi" },
   { id: "martabah_ula", label: "Martabah Ula (Lihat)", desc: "Akses melihat data santri Martabah Ula", category: "Divisi Syahadah", type: "lihat" },
   { id: "martabah_ula_edit", label: "Martabah Ula (Aksi)", desc: "Akses memproses data Martabah Ula", category: "Divisi Syahadah", type: "aksi" },
   { id: "haflah_wada", label: "Haflah Wada' (Lihat)", desc: "Akses melihat data Haflah Wada'", category: "Divisi Syahadah", type: "lihat" },
