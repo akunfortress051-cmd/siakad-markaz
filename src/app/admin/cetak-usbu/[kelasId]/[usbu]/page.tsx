@@ -63,7 +63,10 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
 
     // Include ALL mapels for display — MC, Dubbing, Taqdimul Qishah etc.
     // Akumulatif calculation still only uses masuk_akumulasi mapels (handled below)
-    const allMapels = kelas.program.programMapels;
+    const allMapels = kelas.program.programMapels.filter(pm => {
+      if (targetUsbu !== 4 && pm.mapel.jumlah_tes === 1) return false;
+      return true;
+    });
 
     // Group riwayat by santriId
     const riwayatBySantri = new Map<string, typeof allAkbarnasRiwayat>();
@@ -177,6 +180,7 @@ export default async function CetakUsbuPrintPage(props: { params: Promise<{ kela
   });
 
   const activeMapels = kelas.program.programMapels.filter(pm => {
+    if (targetUsbu !== 4 && pm.mapel.jumlah_tes === 1) return false;
     if (!isAkbarnas) return true;
     if (isMonth2) {
       return (pm.mapel as any).bulan_aktif !== 1;

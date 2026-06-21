@@ -56,6 +56,8 @@ export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ 
     });
 
     const activeMapels = kelas.program.programMapels.filter(pm => {
+      // Untuk usbu 1/2/3 (pekanan): sembunyikan mapel yang hanya 1x tes
+      if (targetUsbu !== 4 && pm.mapel.jumlah_tes === 1) return false;
       // For Akbarnas usbu=4 (Semua Usbu'): show ALL mapels including MC, Dubbing, etc.
       if (isAkbarnas && targetUsbu === 4) return true;
       if (!isAkbarnas) return true;
