@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Bed, BookOpen, Activity, Settings, BarChart3 } from "lucide-react";
+import { Bed, BookOpen, Activity, Settings, BarChart3, FileText, ClipboardList } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +48,22 @@ const menus = [
     icon: Settings,
     color: "bg-[var(--color-surface)] text-[var(--color-text)]",
     accent: "group-hover:border-slate-300",
+  },
+  {
+    title: "Perizinan Santri",
+    description: "Pembuatan tasrih (surat izin) harian, berhari-hari, dan keluar Pare.",
+    href: "/admin/absensi/perizinan",
+    icon: FileText,
+    color: "bg-teal-100 text-teal-700",
+    accent: "group-hover:border-teal-200",
+  },
+  {
+    title: "Data Santri Izin",
+    description: "Monitoring status santri yang sedang izin dan konfirmasi kehadiran.",
+    href: "/admin/absensi/perizinan/data",
+    icon: ClipboardList,
+    color: "bg-orange-100 text-orange-700",
+    accent: "group-hover:border-orange-200",
   },
 ];
 

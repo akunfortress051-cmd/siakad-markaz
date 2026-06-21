@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Send } from "lucide-react";
+import { Send, FileText } from "lucide-react";
+import TasrihModal, { TasrihDetail } from "./tasrih-modal";
 
 type SantriAbsenTarget = {
   riwayatId: string;
@@ -29,6 +30,8 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
   const [isSaving, setIsSaving] = useState(false);
   const [sendToWa, setSendToWa] = useState(true);
   const [isSendingWa, setIsSendingWa] = useState(false);
+  const [unconfirmedIds, setUnconfirmedIds] = useState<Set<string>>(new Set());
+  const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
 
   useEffect(() => {
     // Set default tanggal to today WIB (timezone-safe)
@@ -41,17 +44,17 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
 
   useEffect(() => {
     if (!tanggal) return;
-    
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const res = await fetch(`/api/admin/absensi/sakan?tanggal=${tanggal}&sakan=${sakan}`);
         const data = await res.json();
-        
+
         if (data.santriList) {
           setSantriList(data.santriList);
         }
-        
+
         const newMap: Record<string, any> = {};
         if (data.absenData) {
           data.absenData.forEach((a: any) => {
@@ -59,6 +62,12 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
           });
         }
         setAbsenMap(newMap);
+
+        if (data.unconfirmedIds) {
+          setUnconfirmedIds(new Set(data.unconfirmedIds));
+        } else {
+          setUnconfirmedIds(new Set());
+        }
       } catch (error) {
         toast.error("Gagal memuat data absensi");
       } finally {
@@ -68,6 +77,16 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
 
     fetchData();
   }, [tanggal, sakan]);
+  const viewTasrih = async (nomorTasrih: string) => {
+    try {
+      const res = await fetch(`/api/admin/perizinan/tasrih/${nomorTasrih}`);
+      if (!res.ok) throw new Error("Gagal load tasrih");
+      const json = await res.json();
+      setSelectedTasrih(json);
+    } catch (error) {
+      toast.error("Gagal memuat detail tasrih");
+    }
+  };
 
   const handleStatusChange = (riwayatId: string, status: AbsenStatus) => {
     setAbsenMap(prev => ({
@@ -126,7 +145,7 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tanggal, absenList }),
       });
-      
+
       const result = await res.json();
       if (result.success) {
         toast.success(`Berhasil menyimpan ${result.count} data absensi`);
@@ -171,7 +190,7 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                 className="rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-text)] outline-none transition focus:border-blue-500"
               />
             </div>
-            
+
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
                 Filter Sakan
@@ -231,25 +250,25 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
 
         {/* Stats */}
         <div className="flex flex-wrap gap-4 border-b border-[var(--color-surface-dark)] px-6 py-4 bg-white">
-           <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]"></span>
-             <span className="text-[var(--color-text)]">Hadir: {statHadir}</span>
-           </div>
-           <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
-             <span className="text-[var(--color-text)]">Izin: {statIzin}</span>
-           </div>
-           <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-[var(--color-warning)]"></span>
-             <span className="text-[var(--color-text)]">Sakit: {statSakit}</span>
-           </div>
-           <div className="flex items-center gap-2 text-sm font-bold">
-             <span className="h-2 w-2 rounded-full bg-[var(--color-danger)]"></span>
-             <span className="text-[var(--color-text)]">Alpha: {statAlpha}</span>
-           </div>
-           <div className="flex items-center gap-2 text-sm font-bold pl-4 border-l border-[var(--color-surface-dark)]">
-             <span className="text-[var(--color-text-subtle)]">Belum Diabsen: {belumDiabsen}</span>
-           </div>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]"></span>
+            <span className="text-[var(--color-text)]">Hadir: {statHadir}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
+            <span className="text-[var(--color-text)]">Izin: {statIzin}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <span className="h-2 w-2 rounded-full bg-[var(--color-warning)]"></span>
+            <span className="text-[var(--color-text)]">Sakit: {statSakit}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <span className="h-2 w-2 rounded-full bg-[var(--color-danger)]"></span>
+            <span className="text-[var(--color-text)]">Alpha: {statAlpha}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-bold pl-4 border-l border-[var(--color-surface-dark)]">
+            <span className="text-[var(--color-text-subtle)]">Belum Diabsen: {belumDiabsen}</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -269,12 +288,36 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                 {santriList.map((santri, index) => {
                   const currentStatus = absenMap[santri.riwayatId]?.status;
                   const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
-                  
+
                   return (
                     <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)]">
                       <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
                       <td className="px-6 py-4">
-                        <p className="font-bold text-[var(--color-text)]">{santri.nama}</p>
+                        <p className="font-bold text-[var(--color-text)]">
+                          {santri.nama}
+                          {unconfirmedIds.has(santri.riwayatId) && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                              ⚠️ Belum Kembali
+                            </span>
+                          )}
+                          {currentKet.includes("[TRS-") && currentStatus === "IZIN" && (() => {
+                            const match = currentKet.match(/\[(TRS-[\d-]+)\]/);
+                            const nomorTasrih = match ? match[1] : null;
+                            return nomorTasrih ? (
+                              <button
+                                onClick={() => viewTasrih(nomorTasrih)}
+                                className="ml-2 inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 uppercase tracking-wider hover:bg-blue-200 transition-colors"
+                                title="Lihat Detail Tasrih"
+                              >
+                                <FileText size={12} /> Tasrih
+                              </button>
+                            ) : (
+                              <span className="ml-2 inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                📋 Tasrih
+                              </span>
+                            );
+                          })()}
+                        </p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-muted)]">
                             {santri.sakan ?? "-"}
@@ -296,14 +339,13 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                             <button
                               key={st}
                               onClick={() => handleStatusChange(santri.riwayatId, st)}
-                              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
-                                currentStatus === st
+                              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
                                   ? st === "HADIR" ? "bg-[var(--color-primary)] text-white shadow-[var(--color-primary-100)] shadow-sm"
-                                  : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
-                                  : st === "SAKIT" ? "bg-[var(--color-warning)] text-white shadow-amber-200 shadow-sm"
-                                  : "bg-[var(--color-danger)] text-white shadow-rose-200 shadow-sm"
-                                : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
-                              }`}
+                                    : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
+                                      : st === "SAKIT" ? "bg-[var(--color-warning)] text-white shadow-amber-200 shadow-sm"
+                                        : "bg-[var(--color-danger)] text-white shadow-rose-200 shadow-sm"
+                                  : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
+                                }`}
                             >
                               {st}
                             </button>
@@ -334,6 +376,10 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
           )}
         </div>
       </section>
+
+      {selectedTasrih && (
+        <TasrihModal tasrih={selectedTasrih} onClose={() => setSelectedTasrih(null)} />
+      )}
     </div>
   );
 }

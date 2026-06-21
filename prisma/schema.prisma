@@ -106,6 +106,7 @@ model RiwayatSantri {
   absenKegiatanList AbsenKegiatan[]
   riwayatUsbuList   RiwayatUsbu[]
   syahadahLayout    SyahadahLayout?
+  perizinanList     Perizinan[]
 
   @@unique([santriId, dufahNama])
 }
@@ -417,4 +418,45 @@ model SyahadahOnline {
   updatedAt       DateTime        @updatedAt
 
   programOnline ProgramOnline? @relation(fields: [programOnlineId], references: [id], onDelete: SetNull)
+}
+
+// ===== PERIZINAN =====
+
+enum TipeIzin {
+  HARIAN
+  BERHARI_HARI
+  KELUAR_PARE
+}
+
+enum StatusIzin {
+  MENUNGGU
+  AKTIF
+  SUDAH_KEMBALI
+  SELESAI
+  DITOLAK
+}
+
+model Perizinan {
+  id               String     @id @default(cuid())
+  riwayatId        String
+  tipeIzin         TipeIzin
+  alasan           String
+  tanggalMulai     DateTime   @db.Date
+  tanggalSelesai   DateTime?  @db.Date
+  statusIzin       StatusIzin @default(AKTIF)
+  tanggalKembali   DateTime?
+  nomorTasrih      String     @unique
+  createdAt        DateTime   @default(now())
+  createdBy        String?
+  isFromPublic     Boolean    @default(false)
+  
+  riwayat          RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  
+  @@index([riwayatId])
+  @@index([tipeIzin, statusIzin])
+}
+
+model PengaturanPerizinan {
+  id                  Int  @id @default(1)
+  batasJamKeluarPare  Int  @default(12)
 }

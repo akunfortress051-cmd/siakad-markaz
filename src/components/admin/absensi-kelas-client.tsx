@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { toast } from "react-hot-toast";
-import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle, RefreshCw, Copy } from "lucide-react";
+import { Clock, Lock, CheckCircle2, UserPlus, X, Save, AlertCircle, RefreshCw, Copy, FileText } from "lucide-react";
+import TasrihModal, { TasrihDetail } from "./tasrih-modal";
 
 // Helper: Hitung sesi aktif, sesi berikutnya, dan status libur
 function computeSessionState(jadwalConfig: any, programList: any[], targetKelasIds: string[] | null, tanggal: string, includeAllSesiTambahan: boolean = false) {
@@ -234,10 +235,23 @@ export function AbsensiKelasClient({
   const [nextSessionInfo, setNextSessionInfo] = useState<any | null>(null);
   const [isResting, setIsResting] = useState(false);
   const [activeSessionLabels, setActiveSessionLabels] = useState<Record<string, string>>({});
+  const [unconfirmedIds, setUnconfirmedIds] = useState<Set<string>>(new Set());
+  const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
 
   // Sync ref dengan state
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
   useEffect(() => { isBadalModeRef.current = isBadalMode; }, [isBadalMode]);
+
+  const viewTasrih = async (nomorTasrih: string) => {
+    try {
+      const res = await fetch(`/api/admin/perizinan/tasrih/${nomorTasrih}`);
+      if (!res.ok) throw new Error("Gagal load tasrih");
+      const json = await res.json();
+      setSelectedTasrih(json);
+    } catch (error) {
+      toast.error("Gagal memuat detail tasrih");
+    }
+  };
 
   useEffect(() => {
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -540,6 +554,12 @@ export function AbsensiKelasClient({
           }
         }
         setAbsenMap(newMap);
+        
+        if (data.unconfirmedIds) {
+          setUnconfirmedIds(new Set(data.unconfirmedIds));
+        } else {
+          setUnconfirmedIds(new Set());
+        }
 
         // Tandai bahwa data untuk sesi ini sudah selesai dimuat (mengizinkan auto-save)
         loadedSessionRef.current = { sesi, kelasId };
@@ -1113,7 +1133,14 @@ export function AbsensiKelasClient({
                                   <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)] transition-colors">
                                     <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
                                     <td className="px-6 py-4">
-                                      <p className="font-bold text-[var(--color-text)]">{santri.nama}</p>
+                                      <p className="font-bold text-[var(--color-text)]">
+                                        {santri.nama}
+                                        {unconfirmedIds.has(santri.riwayatId) && (
+                                          <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                                            ⚠️ Belum Kembali
+                                          </span>
+                                        )}
+                                      </p>
                                       <div className="mt-1 flex flex-wrap items-center gap-2">
                                         {santri.gender === "BANIN" ? (
                                           <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">BANIN</span>
@@ -1153,13 +1180,40 @@ export function AbsensiKelasClient({
                                       </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                      <input
-                                        type="text"
-                                        placeholder="Catatan..."
-                                        value={currentKet}
-                                        onChange={(e) => handleKeteranganChange(santri.riwayatId, e.target.value)}
-                                        className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)]"
-                                      />
+                                      <div className="relative flex items-center gap-2">
+                                        {(() => {
+                                          const match = currentKet.match(/\[(TRS-[\d-]+)\]/);
+                                          const nomorTasrih = match ? match[1] : null;
+                                          const displayKet = currentKet.replace(/\s*\[TRS-[\d-]+\]\s*/, '');
+                                          
+                                          return (
+                                            <>
+                                              <input
+                                                type="text"
+                                                placeholder="Catatan..."
+                                                value={displayKet}
+                                                onChange={(e) => {
+                                                  let val = e.target.value;
+                                                  if (nomorTasrih) {
+                                                    val = `[${nomorTasrih}] ${val.replace(/\s*\[TRS-[\d-]+\]\s*/g, '')}`;
+                                                  }
+                                                  handleKeteranganChange(santri.riwayatId, val);
+                                                }}
+                                                className={`w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)] ${nomorTasrih && currentStatus === "IZIN" ? "pl-28 bg-blue-50/50" : ""}`}
+                                              />
+                                              {nomorTasrih && currentStatus === "IZIN" && (
+                                                <button 
+                                                  onClick={() => viewTasrih(nomorTasrih)}
+                                                  className="absolute left-1.5 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider hover:bg-[var(--color-primary-dark)] transition-colors shadow-sm"
+                                                  title="Lihat Surat Izin Santri"
+                                                >
+                                                  <FileText size={12} /> Detail
+                                                </button>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
                                     </td>
                                   </tr>
                                 )
@@ -1535,6 +1589,10 @@ export function AbsensiKelasClient({
         <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
         <span className="hidden sm:inline">{isRefreshing ? "Memuat..." : "Refresh"}</span>
       </button>
+
+      {selectedTasrih && (
+        <TasrihModal tasrih={selectedTasrih} onClose={() => setSelectedTasrih(null)} />
+      )}
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
+import { Loader2, FileText } from "lucide-react";
+import TasrihModal, { TasrihDetail } from "./tasrih-modal";
 
 type SantriAbsenTarget = {
   riwayatId: string;
@@ -43,6 +45,8 @@ export function AbsensiKegiatanClient({
   const [absenMap, setAbsenMap] = useState<Record<string, { status: AbsenStatus; keterangan: string }>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [unconfirmedIds, setUnconfirmedIds] = useState<Set<string>>(new Set());
+  const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
 
   const activeKegiatanList = kegiatanList.filter((k) => k.aktif);
 
@@ -76,6 +80,12 @@ export function AbsensiKegiatanClient({
           });
         }
         setAbsenMap(newMap);
+
+        if (data.unconfirmedIds) {
+          setUnconfirmedIds(new Set(data.unconfirmedIds));
+        } else {
+          setUnconfirmedIds(new Set());
+        }
       } catch {
         toast.error("Gagal memuat data absensi kegiatan");
       } finally {
@@ -84,6 +94,17 @@ export function AbsensiKegiatanClient({
     };
     fetchData();
   }, [tanggal, kategoriId, sakan, kelasId]);
+
+  const viewTasrih = async (nomorTasrih: string) => {
+    try {
+      const res = await fetch(`/api/admin/perizinan/tasrih/${nomorTasrih}`);
+      if (!res.ok) throw new Error("Gagal load tasrih");
+      const json = await res.json();
+      setSelectedTasrih(json);
+    } catch (error) {
+      toast.error("Gagal memuat detail tasrih");
+    }
+  };
 
   const handleStatusChange = (riwayatId: string, status: AbsenStatus) => {
     setAbsenMap((prev) => ({
@@ -283,7 +304,31 @@ export function AbsensiKegiatanClient({
                       <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)]">
                         <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
                         <td className="px-6 py-4">
-                          <p className="font-bold text-[var(--color-text)]">{santri.nama}</p>
+                          <p className="font-bold text-[var(--color-text)]">
+                            {santri.nama}
+                            {unconfirmedIds.has(santri.riwayatId) && (
+                              <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                                ⚠️ Belum Kembali
+                              </span>
+                            )}
+                            {currentKet.includes("[TRS-") && currentStatus === "IZIN" && (() => {
+                              const match = currentKet.match(/\[(TRS-[\d-]+)\]/);
+                              const nomorTasrih = match ? match[1] : null;
+                              return nomorTasrih ? (
+                                <button
+                                  onClick={() => viewTasrih(nomorTasrih)}
+                                  className="ml-2 inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 uppercase tracking-wider hover:bg-blue-200 transition-colors"
+                                  title="Lihat Detail Tasrih"
+                                >
+                                  <FileText size={12} /> Tasrih
+                                </button>
+                              ) : (
+                                <span className="ml-2 inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                  📋 Tasrih
+                                </span>
+                              );
+                            })()}
+                          </p>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-muted)]">
                               {santri.sakan ?? "-"}
@@ -312,17 +357,16 @@ export function AbsensiKegiatanClient({
                               <button
                                 key={st}
                                 onClick={() => handleStatusChange(santri.riwayatId, st)}
-                                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
-                                  currentStatus === st
+                                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
                                     ? st === "HADIR"
                                       ? "bg-[var(--color-primary)] text-white"
                                       : st === "IZIN"
-                                      ? "bg-indigo-500 text-white"
-                                      : st === "SAKIT"
-                                      ? "bg-[var(--color-warning)] text-white"
-                                      : "bg-[var(--color-danger)] text-white"
+                                        ? "bg-indigo-500 text-white"
+                                        : st === "SAKIT"
+                                          ? "bg-[var(--color-warning)] text-white"
+                                          : "bg-[var(--color-danger)] text-white"
                                     : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
-                                }`}
+                                  }`}
                               >
                                 {st}
                               </button>
@@ -353,6 +397,10 @@ export function AbsensiKegiatanClient({
             )}
           </div>
         </section>
+      )}
+
+      {selectedTasrih && (
+        <TasrihModal tasrih={selectedTasrih} onClose={() => setSelectedTasrih(null)} />
       )}
     </div>
   );

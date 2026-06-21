@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     const absenRecords = await prisma.absenSakan.findMany({
       where: { tanggal: parsedDate },
       select: {
+        riwayatId: true,
         status: true,
         keterangan: true,
         riwayat: {
@@ -58,6 +59,23 @@ export async function POST(request: Request) {
     // Tentukan sakan mana yang sudah absen + kumpulkan keterangan per sakan
     const sakanSudahAbsen = new Set<string>();
     const keteranganPerSakan = new Map<string, { nama: string; keterangan: string }[]>();
+    const unconfirmedPerSakan = new Map<string, { nama: string }[]>();
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const unconfirmedIzin = await prisma.perizinan.findMany({
+      where: {
+        statusIzin: "AKTIF",
+        tipeIzin: { not: "HARIAN" },
+        OR: [
+          { tanggalSelesai: { lt: today } },
+          { tipeIzin: "KELUAR_PARE", tanggalMulai: { lt: today } }
+        ]
+      }
+    });
+
+    const unconfirmedMap = new Set(unconfirmedIzin.map((u: any) => u.riwayatId));
 
     for (const record of absenRecords) {
       const activeDufah = activeSantriMap.get(record.riwayat.santriId);
@@ -76,6 +94,19 @@ export async function POST(request: Request) {
               keterangan: record.keterangan.trim(),
             });
           }
+          
+          // Kumpulkan unconfirmed Izin
+          if (unconfirmedMap.has(record.riwayatId)) {
+            if (!unconfirmedPerSakan.has(ms.sakan)) {
+              unconfirmedPerSakan.set(ms.sakan, []);
+            }
+            // Cegah duplikat notifikasi unconfirmed jika record absen ganda (walau tidak mungkin krn db constraint)
+            if (!unconfirmedPerSakan.get(ms.sakan)!.find(u => u.nama === ms.nama)) {
+              unconfirmedPerSakan.get(ms.sakan)!.push({
+                nama: ms.nama
+              });
+            }
+          }
         }
       }
     }
@@ -89,6 +120,7 @@ export async function POST(request: Request) {
       sakanList,
       sudahAbsen,
       keteranganPerSakan,
+      unconfirmedPerSakan
     );
 
     const result = await sendWhatsAppMessage(groupId, message);

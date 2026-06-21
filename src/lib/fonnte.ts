@@ -215,6 +215,7 @@ export function formatSakanStatusReport(
   allSakan: string[],
   sudahAbsen: string[],
   keteranganPerSakan: Map<string, { nama: string; keterangan: string }[]>,
+  unconfirmedPerSakan: Map<string, { nama: string }[]> = new Map()
 ): string {
   const header = formatTanggalWa(tanggalStr);
   const sudahSet = new Set(sudahAbsen);
@@ -230,6 +231,13 @@ export function formatSakanStatusReport(
     if (ketList && ketList.length > 0) {
       for (const ket of ketList) {
         lines.push(`  📝 ${ket.nama}: _${ket.keterangan}_`);
+      }
+    }
+
+    const unconfList = unconfirmedPerSakan.get(sakanName);
+    if (unconfList && unconfList.length > 0) {
+      for (const unconf of unconfList) {
+        lines.push(`  ⚠️ ${unconf.nama}: _Belum Konfirmasi Kehadiran Izin_`);
       }
     }
   }

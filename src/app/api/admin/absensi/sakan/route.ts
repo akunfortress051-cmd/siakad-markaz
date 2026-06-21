@@ -23,9 +23,27 @@ export async function GET(request: Request) {
     },
   });
 
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  const unconfirmedIzin = await prisma.perizinan.findMany({
+    where: {
+      riwayatId: { in: santriIds },
+      statusIzin: "AKTIF",
+      tipeIzin: { not: "HARIAN" },
+      OR: [
+        { tanggalSelesai: { lt: today } },
+        { tipeIzin: "KELUAR_PARE", tanggalMulai: { lt: today } }
+      ]
+    }
+  });
+
+  const unconfirmedIds = unconfirmedIzin.map((u: any) => u.riwayatId);
+
   return NextResponse.json({
     santriList,
     absenData: existingAbsen,
+    unconfirmedIds,
   });
 }
 

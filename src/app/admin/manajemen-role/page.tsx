@@ -45,6 +45,16 @@ const AVAILABLE_PERMISSIONS = [
   { id: "pengaturan_kegiatan", label: "Pengaturan Kegiatan (Lihat)", desc: "Akses melihat jenis kegiatan absensi", category: "Divisi Absensi", type: "lihat" },
   { id: "pengaturan_kegiatan_edit", label: "Pengaturan Kegiatan (Aksi)", desc: "Akses menambah/mengedit jenis kegiatan absensi", category: "Divisi Absensi", type: "aksi" },
 
+  // Divisi Perizinan
+  { id: "perizinan_harian", label: "Izin Harian (Lihat)", desc: "Akses melihat & membuat izin harian kelas", category: "Divisi Perizinan", type: "lihat" },
+  { id: "perizinan_harian_edit", label: "Izin Harian (Aksi)", desc: "Akses membuat/mengedit izin harian", category: "Divisi Perizinan", type: "aksi" },
+  { id: "perizinan_berhari", label: "Izin Berhari-hari (Lihat)", desc: "Akses melihat izin berhari-hari", category: "Divisi Perizinan", type: "lihat" },
+  { id: "perizinan_berhari_edit", label: "Izin Berhari-hari (Aksi)", desc: "Akses membuat/mengedit izin berhari-hari", category: "Divisi Perizinan", type: "aksi" },
+  { id: "perizinan_keluar_pare", label: "Izin Keluar Pare (Lihat)", desc: "Akses melihat izin keluar Pare", category: "Divisi Perizinan", type: "lihat" },
+  { id: "perizinan_keluar_pare_edit", label: "Izin Keluar Pare (Aksi)", desc: "Akses membuat/mengedit izin keluar Pare", category: "Divisi Perizinan", type: "aksi" },
+  { id: "perizinan_data", label: "Data Santri Izin (Lihat)", desc: "Akses melihat data santri izin", category: "Divisi Perizinan", type: "lihat" },
+  { id: "perizinan_data_edit", label: "Data Santri Izin (Aksi)", desc: "Akses konfirmasi kehadiran & approve request", category: "Divisi Perizinan", type: "aksi" },
+
   // Divisi Kelas
   { id: "alokasi_kelas", label: "Alokasi Kelas (Lihat)", desc: "Akses melihat alokasi kelas santri", category: "Divisi Kelas", type: "lihat" },
   { id: "alokasi_kelas_edit", label: "Alokasi Kelas (Aksi)", desc: "Akses memplotting kelas santri", category: "Divisi Kelas", type: "aksi" },
