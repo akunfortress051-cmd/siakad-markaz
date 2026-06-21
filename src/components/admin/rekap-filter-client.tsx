@@ -106,6 +106,9 @@ export function RekapFilterClient({ type, title, useUsbu }: { type: string, titl
             params.set("title", title);
             params.set("dari", tDari);
             params.set("sampai", tSampai);
+            if (useUsbu) {
+              params.set("usbu", activeUsbuVal);
+            }
             router.replace(`?${params.toString()}`);
           }
         }
@@ -165,6 +168,7 @@ export function RekapFilterClient({ type, title, useUsbu }: { type: string, titl
     params.set("title", title);
     params.set("dari", tDari);
     params.set("sampai", tSampai);
+    params.set("usbu", selectedUsbu);
     router.push(`?${params.toString()}`);
   };
 

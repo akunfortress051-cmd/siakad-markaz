@@ -43,6 +43,7 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
   const searchParams = useSearchParams();
   const dari = searchParams.get("dari");
   const sampai = searchParams.get("sampai");
+  const usbuVal = searchParams.get("usbu");
 
   const [data, setData] = useState<PengajarRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,8 +129,8 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
   const uniquePengajar = useMemo(() => Array.from(new Set(data.map(d => d.pengajar))).sort(), [data]);
 
   // Grouped by Tanggal → pengajar rows
-  const groupedData = useMemo(() => {
-    const filtered = data.filter(d => {
+  const filteredData = useMemo(() => {
+    return data.filter(d => {
       const matchSearch =
         d.pengajar.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.kelas.toLowerCase().includes(searchQuery.toLowerCase());
@@ -141,10 +142,12 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
 
       return matchSearch && matchHari && matchKelas && matchPengajar;
     });
+  }, [data, searchQuery, filterHari, filterKelas, filterPengajar]);
 
+  const groupedData = useMemo(() => {
     // Group by tanggal
     const groups: Record<string, PengajarRecord[]> = {};
-    filtered.forEach(d => {
+    filteredData.forEach(d => {
       if (!groups[d.tanggal]) groups[d.tanggal] = [];
       groups[d.tanggal].push(d);
     });
@@ -158,39 +161,20 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
         return a.pengajar.localeCompare(b.pengajar);
       })
     }));
-  }, [data, searchQuery, filterHari, filterKelas, filterPengajar]);
+  }, [filteredData]);
 
   const exportToExcel = async () => {
-    if (!dari || !data.length) return;
-
-    // Selalu gunakan bulan berjalan WIB untuk penentuan periode export (12 s.d 5)
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Jakarta',
-      year: 'numeric', month: '2-digit', day: '2-digit'
-    });
-    const todayStr = formatter.format(new Date());
-    const [tYearStr, tMonthStr, tDayStr] = todayStr.split('-');
-    
-    let startYear = parseInt(tYearStr, 10);
-    let startMonth = parseInt(tMonthStr, 10) - 1; // 0-indexed month
-    const tDay = parseInt(tDayStr, 10);
-    
-    // Jika tanggal sekarang <= 5, maka ini masih periode bulan sebelumnya
-    if (tDay <= 5) {
-      startMonth -= 1;
-    }
-
-    const exportStart = new Date(startYear, startMonth, 12);
-    const exportEnd = new Date(startYear, startMonth + 1, 5);
-
-    const dStartStr = format(exportStart, "yyyy-MM-dd");
-    const dEndStr = format(exportEnd, "yyyy-MM-dd");
+    if (!dari || !sampai || !data.length) return;
 
     try {
-      // Ambil data untuk seluruh range export, jangan hanya dari table view
-      const params = new URLSearchParams({ dari: dStartStr, sampai: dEndStr });
-      const res = await fetch(`/api/admin/absensi/rekap/pengajar?${params}`);
-      const exportData: PengajarRecord[] = await res.json();
+      // Gunakan rentang tanggal dari filter (dari - sampai)
+      const [sYear, sMonth, sDay] = dari.split("-").map(Number);
+      const [eYear, eMonth, eDay] = sampai.split("-").map(Number);
+      const exportStart = new Date(sYear, sMonth - 1, sDay);
+      const exportEnd = new Date(eYear, eMonth - 1, eDay);
+
+      // Gunakan data yang sedang difilter aktif di view
+      const exportData = filteredData;
 
       const datesArray: Date[] = [];
       let curr = new Date(exportStart);
@@ -307,11 +291,24 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
 
       html += `</tbody></table></body></html>`;
 
+      let fileName = "Rekap";
+      if (filterPengajar !== "ALL") {
+        fileName += `_${filterPengajar.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_')}`;
+      } else {
+        fileName += `_Pengajar`;
+      }
+      
+      fileName += `_${format(exportStart, "MMMM_yyyy", { locale: id })}`;
+      
+      if (usbuVal && usbuVal !== "ALL") {
+        fileName += `_Usbu_${usbuVal}`;
+      }
+
       const blob = new Blob([html], { type: "application/vnd.ms-excel" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Rekap_Pengajar_${format(exportStart, "MMM_yyyy")}.xls`;
+      a.download = `${fileName}.xls`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
