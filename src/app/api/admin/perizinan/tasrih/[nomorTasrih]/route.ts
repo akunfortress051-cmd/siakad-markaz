@@ -23,8 +23,8 @@ export async function GET(request: Request, props: { params: Promise<{ nomorTasr
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // Fetch batas jam for KELUAR_PARE
-    let batasJam = null;
-    if (data.tipeIzin === "KELUAR_PARE") {
+    let batasJam = data.batasJam;
+    if (data.tipeIzin === "KELUAR_PARE" && !batasJam) {
       const setting = await prisma.pengaturanPerizinan.findUnique({ where: { id: 1 } });
       batasJam = setting?.batasJamKeluarPare || 12;
     }

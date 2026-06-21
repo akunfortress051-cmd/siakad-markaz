@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { riwayatIds, tipeIzin, alasan, tanggalMulai, tanggalSelesai } = body;
+    const { riwayatIds, tipeIzin, alasan, tanggalMulai, tanggalSelesai, batasJam } = body;
 
     if (!riwayatIds || riwayatIds.length === 0 || !tipeIzin || !alasan || !tanggalMulai) {
       return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
@@ -73,7 +73,8 @@ export async function POST(request: Request) {
           statusIzin: "AKTIF",
           nomorTasrih,
           createdBy: session.userId,
-          isFromPublic: false
+          isFromPublic: false,
+          batasJam: tipeIzin === "KELUAR_PARE" && batasJam ? parseInt(batasJam.toString()) : null
         }
       });
       

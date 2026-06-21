@@ -40,6 +40,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const [alasan, setAlasan] = useState("");
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalSelesai, setTanggalSelesai] = useState("");
+  const [batasJam, setBatasJam] = useState("12");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -100,7 +101,8 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
           tipeIzin: activeTab,
           alasan,
           tanggalMulai,
-          tanggalSelesai: activeTab === "BERHARI_HARI" ? tanggalSelesai : null
+          tanggalSelesai: activeTab === "BERHARI_HARI" ? tanggalSelesai : null,
+          batasJam: activeTab === "KELUAR_PARE" ? parseInt(batasJam) : null
         })
       });
 
@@ -113,6 +115,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
       setAlasan("");
       setTanggalMulai("");
       setTanggalSelesai("");
+      setBatasJam("12");
       if (mode === "INDIVIDU") {
         setSelectedSantri(null);
         setSearch("");
@@ -288,9 +291,17 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
                 </div>
               </div>
             ) : (
-              <div>
-                <label className="block text-sm font-bold text-[var(--color-text)] mb-1">Tanggal Izin</label>
-                <input type="date" required value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} className="w-full px-4 py-3 border border-[var(--color-surface-dark)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-sm font-medium" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className={activeTab === "KELUAR_PARE" ? "col-span-1" : "col-span-2"}>
+                  <label className="block text-sm font-bold text-[var(--color-text)] mb-1">Tanggal Izin</label>
+                  <input type="date" required value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} className="w-full px-4 py-3 border border-[var(--color-surface-dark)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-sm font-medium" />
+                </div>
+                {activeTab === "KELUAR_PARE" && (
+                  <div className="col-span-1">
+                    <label className="block text-sm font-bold text-[var(--color-text)] mb-1">Batas Waktu (Jam)</label>
+                    <input type="number" min="1" max="168" required value={batasJam} onChange={(e) => setBatasJam(e.target.value)} className="w-full px-4 py-3 border border-[var(--color-surface-dark)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-sm font-medium" />
+                  </div>
+                )}
               </div>
             )}
 

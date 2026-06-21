@@ -449,6 +449,7 @@ model Perizinan {
   createdAt        DateTime   @default(now())
   createdBy        String?
   isFromPublic     Boolean    @default(false)
+  batasJam         Int?
   
   riwayat          RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
   
