@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { processAutoAbsensiIzin, rollbackAutoAbsensiIzin } from "@/lib/perizinan-utils";
+import { getActiveRiwayatListForAbsen } from "@/lib/absensi";
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -25,9 +26,11 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 
     // Fetch batas jam for KELUAR_PARE
     let batasJam = null;
+    let batasJamAkhir = null;
     if (data.tipeIzin === "KELUAR_PARE") {
       const setting = await prisma.pengaturanPerizinan.findUnique({ where: { id: 1 } });
       batasJam = setting?.batasJamKeluarPare || 12;
+      batasJamAkhir = setting?.batasJamAkhirKeluarPare || "19:00";
     }
 
     // Fetch petugas name if available
@@ -37,7 +40,17 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
       if (user) petugasNama = user.nama;
     }
 
-    return NextResponse.json({ ...data, batasJam, petugasNama });
+    // Fetch sakan from master santri API
+    let sakan = "-";
+    try {
+      const masterList = await getActiveRiwayatListForAbsen();
+      const match = masterList.find(s => s.riwayatId === data.riwayatId);
+      if (match) sakan = match.sakan;
+    } catch (e) {
+      // Non-fatal
+    }
+
+    return NextResponse.json({ ...data, batasJam, batasJamAkhir, petugasNama, sakan });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch perizinan detail" }, { status: 500 });
   }
@@ -77,31 +90,36 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     const izin = await prisma.perizinan.findUnique({ where: { id: params.id } });
     if (!izin) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    // Update status
-    const updated = await prisma.perizinan.update({
-      where: { id: params.id },
-      data: { statusIzin }
-    });
+    const targetRecords = izin.grupTasrihId
+      ? await prisma.perizinan.findMany({ where: { grupTasrihId: izin.grupTasrihId } })
+      : [izin];
 
-    // Jika approve (dari MENUNGGU ke AKTIF)
-    if (izin.statusIzin === "MENUNGGU" && statusIzin === "AKTIF") {
-      await processAutoAbsensiIzin(
-        izin.riwayatId,
-        izin.tipeIzin,
-        izin.tanggalMulai,
-        izin.tanggalSelesai,
-        izin.alasan,
-        izin.nomorTasrih
-      );
-      
-      // Update createdBy to the user who approved it
+    for (const record of targetRecords) {
       await prisma.perizinan.update({
-        where: { id: params.id },
-        data: { createdBy: session.userId }
+        where: { id: record.id },
+        data: { statusIzin }
       });
+
+      // Jika approve (dari MENUNGGU ke AKTIF)
+      if (record.statusIzin === "MENUNGGU" && statusIzin === "AKTIF") {
+        await processAutoAbsensiIzin(
+          record.riwayatId,
+          record.tipeIzin,
+          record.tanggalMulai,
+          record.tanggalSelesai,
+          record.alasan,
+          record.nomorTasrih
+        );
+        
+        // Update createdBy to the user who approved it
+        await prisma.perizinan.update({
+          where: { id: record.id },
+          data: { createdBy: session.userId }
+        });
+      }
     }
 
-    return NextResponse.json({ success: true, updated });
+    return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update perizinan" }, { status: 500 });
   }

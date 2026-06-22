@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     const tglSelesai = tanggalSelesai ? parseWibDateString(tanggalSelesai) : null;
 
     const operations = [];
+    const grupTasrihId = crypto.randomUUID();
 
     for (const riwayatId of riwayatIds) {
       const nomorTasrih = await generateNomorTasrih(tglMulai);
@@ -50,14 +51,15 @@ export async function POST(request: Request) {
           statusIzin: "MENUNGGU", // Status menunggu approval dari keamanan
           nomorTasrih,
           isFromPublic: true,
-          createdBy: null // self-service
+          createdBy: null, // self-service
+          grupTasrihId
         }
       });
       
       operations.push(newIzin);
     }
 
-    return NextResponse.json({ success: true, count: operations.length });
+    return NextResponse.json({ success: true, count: operations.length, grupTasrihId });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Gagal memproses perizinan" }, { status: 500 });

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { riwayatIds, tipeIzin, alasan, tanggalMulai, tanggalSelesai, batasJam } = body;
+    const { riwayatIds, tipeIzin, alasan, tanggalMulai, tanggalSelesai } = body;
 
     if (!riwayatIds || riwayatIds.length === 0 || !tipeIzin || !alasan || !tanggalMulai) {
       return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     const tglSelesai = tanggalSelesai ? parseWibDateString(tanggalSelesai) : null;
 
     const operations = [];
+    const grupTasrihId = crypto.randomUUID();
 
     for (const riwayatId of riwayatIds) {
       const nomorTasrih = await generateNomorTasrih(tglMulai);
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
           nomorTasrih,
           createdBy: session.userId,
           isFromPublic: false,
-          batasJam: tipeIzin === "KELUAR_PARE" && batasJam ? parseInt(batasJam.toString()) : null
+          grupTasrihId
         }
       });
       
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ success: true, count: operations.length });
+    return NextResponse.json({ success: true, count: operations.length, grupTasrihId });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Gagal membuat perizinan" }, { status: 500 });

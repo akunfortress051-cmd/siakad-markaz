@@ -20,7 +20,10 @@ type Perizinan = {
     kelas: { nama: string } | null;
   };
   batasJam?: number;
+  batasJamAkhir?: string;
   petugasNama?: string | null;
+  grupTasrihId: string | null;
+  _isRombongan?: boolean;
 };
 
 export default function PerizinanDataClient({ permissions }: { permissions: string[] }) {
@@ -46,6 +49,14 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
       const res = await fetch(`/api/admin/perizinan?tipe=${filterTipe}&status=${filterStatus}`);
       if (!res.ok) throw new Error("Gagal load data");
       const json = await res.json();
+      // Mark rombongan: count how many records share the same grupTasrihId
+      const grupCounts: Record<string, number> = {};
+      json.forEach((d: Perizinan) => {
+        if (d.grupTasrihId) grupCounts[d.grupTasrihId] = (grupCounts[d.grupTasrihId] || 0) + 1;
+      });
+      json.forEach((d: Perizinan) => {
+        d._isRombongan = !!(d.grupTasrihId && grupCounts[d.grupTasrihId] > 1);
+      });
       setData(json);
     } catch (error) {
       toast.error("Gagal memuat data perizinan");
@@ -54,10 +65,14 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
     }
   };
 
-  const handleAction = async (id: string, action: "APPROVE" | "REJECT" | "KONFIRMASI" | "DELETE") => {
-    if (action === "DELETE" && !confirm("Yakin ingin menghapus izin ini? Absensi yang sudah di-set akan di-rollback.")) return;
+  const handleAction = async (id: string, action: "APPROVE" | "REJECT" | "KONFIRMASI" | "DELETE", grupTasrihId: string | null) => {
+    const isBatch = !!grupTasrihId;
+    const batchMsg = isBatch ? " (Semua santri dalam batch akan terpengaruh)" : "";
+    
+    if (action === "DELETE" && !confirm(`Yakin ingin menghapus izin ini? Absensi yang sudah di-set akan di-rollback.${batchMsg}`)) return;
     if (action === "KONFIRMASI" && !confirm("Konfirmasi santri sudah kembali?")) return;
-    if (action === "REJECT" && !confirm("Tolak request izin ini?")) return;
+    if (action === "REJECT" && !confirm(`Tolak request izin ini?${batchMsg}`)) return;
+    if (action === "APPROVE" && !confirm(`Setujui request izin ini?${batchMsg}`)) return;
 
     try {
       let res;
@@ -160,7 +175,10 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
                 <tr key={d.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-[var(--color-primary-dark)] font-bold">{d.nomorTasrih}</td>
                   <td className="px-4 py-3">
-                    <div className="font-bold text-[var(--color-text)]">{d.riwayat.santri.nama}</div>
+                    <div className="font-bold text-[var(--color-text)] flex items-center gap-2">
+                      {d.riwayat.santri.nama}
+                      {d._isRombongan && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] uppercase font-bold border border-purple-200">Rombongan</span>}
+                    </div>
                     <div className="text-xs text-[var(--color-text-subtle)]">{d.riwayat.kelas?.nama || "Tanpa Kelas"}</div>
                   </td>
                   <td className="px-4 py-3">
@@ -180,17 +198,17 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
                     
                     {canEdit && d.statusIzin === "MENUNGGU" && (
                       <>
-                        <button onClick={() => handleAction(d.id, "APPROVE")} className="p-1.5 text-green-600 bg-green-50 rounded hover:bg-green-100" title="Setujui"><CheckCircle size={16} /></button>
-                        <button onClick={() => handleAction(d.id, "REJECT")} className="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100" title="Tolak"><XCircle size={16} /></button>
+                        <button onClick={() => handleAction(d.id, "APPROVE", d.grupTasrihId)} className="p-1.5 text-green-600 bg-green-50 rounded hover:bg-green-100" title="Setujui"><CheckCircle size={16} /></button>
+                        <button onClick={() => handleAction(d.id, "REJECT", d.grupTasrihId)} className="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100" title="Tolak"><XCircle size={16} /></button>
                       </>
                     )}
                     
                     {canEdit && d.statusIzin === "AKTIF" && d.tipeIzin !== "HARIAN" && (
-                      <button onClick={() => handleAction(d.id, "KONFIRMASI")} className="p-1.5 text-emerald-600 bg-emerald-50 rounded hover:bg-emerald-100" title="Konfirmasi Kehadiran (Kembali)"><Check size={16} /></button>
+                      <button onClick={() => handleAction(d.id, "KONFIRMASI", d.grupTasrihId)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded hover:bg-emerald-100" title="Konfirmasi Kehadiran (Kembali)"><Check size={16} /></button>
                     )}
 
                     {canDelete && (
-                      <button onClick={() => handleAction(d.id, "DELETE")} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus Izin"><Trash2 size={16} /></button>
+                      <button onClick={() => handleAction(d.id, "DELETE", d.grupTasrihId)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus Izin"><Trash2 size={16} /></button>
                     )}
                   </td>
                 </tr>

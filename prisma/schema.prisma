@@ -450,14 +450,17 @@ model Perizinan {
   createdBy        String?
   isFromPublic     Boolean    @default(false)
   batasJam         Int?
+  grupTasrihId     String?
   
   riwayat          RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
   
   @@index([riwayatId])
   @@index([tipeIzin, statusIzin])
+  @@index([grupTasrihId])
 }
 
 model PengaturanPerizinan {
-  id                  Int  @id @default(1)
-  batasJamKeluarPare  Int  @default(12)
+  id                      Int     @id @default(1)
+  batasJamKeluarPare      Int     @default(12)
+  batasJamAkhirKeluarPare String  @default("19:00")
 }

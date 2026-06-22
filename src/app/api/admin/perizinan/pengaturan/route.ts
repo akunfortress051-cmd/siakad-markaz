@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     // Auto-create if not exists
     if (!setting) {
       setting = await prisma.pengaturanPerizinan.create({
-        data: { id: 1, batasJamKeluarPare: 12 }
+        data: { id: 1, batasJamKeluarPare: 12, batasJamAkhirKeluarPare: "19:00" }
       });
     }
 
@@ -27,16 +27,16 @@ export async function PUT(request: Request) {
   if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { batasJamKeluarPare } = await request.json();
+    const { batasJamAkhirKeluarPare } = await request.json();
 
-    if (batasJamKeluarPare === undefined) {
+    if (batasJamAkhirKeluarPare === undefined) {
       return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
     }
 
     const updated = await prisma.pengaturanPerizinan.upsert({
       where: { id: 1 },
-      update: { batasJamKeluarPare: Number(batasJamKeluarPare) },
-      create: { id: 1, batasJamKeluarPare: Number(batasJamKeluarPare) }
+      update: { batasJamAkhirKeluarPare: String(batasJamAkhirKeluarPare) },
+      create: { id: 1, batasJamAkhirKeluarPare: String(batasJamAkhirKeluarPare), batasJamKeluarPare: 12 }
     });
 
     return NextResponse.json({ success: true, updated });

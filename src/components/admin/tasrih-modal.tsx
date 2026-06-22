@@ -8,7 +8,9 @@ export type TasrihDetail = {
   tanggalMulai: string;
   tanggalSelesai: string | null;
   batasJam?: number;
+  batasJamAkhir?: string;
   petugasNama?: string | null;
+  sakan?: string | null;
   createdAt: string;
   riwayat: {
     santri: { nama: string };
@@ -53,6 +55,9 @@ export default function TasrihModal({
             <span className="text-slate-500 font-bold">Kelas</span>
             <span className="font-bold text-slate-900">{tasrih.riwayat.kelas?.nama || "-"}</span>
 
+            <span className="text-slate-500 font-bold">Sakan</span>
+            <span className="font-bold text-slate-900">{tasrih.sakan && tasrih.sakan !== "-" ? tasrih.sakan : "-"}</span>
+
             <span className="text-slate-500 font-bold">Tipe Izin</span>
             <span className="font-bold text-slate-900">{tasrih.tipeIzin.replace("_", " ")}</span>
 
@@ -62,10 +67,10 @@ export default function TasrihModal({
               {tasrih.tanggalSelesai && ` s/d ${new Date(tasrih.tanggalSelesai).toLocaleDateString("id-ID", { dateStyle: "long" })}`}
             </span>
 
-            {tasrih.tipeIzin === "KELUAR_PARE" && tasrih.batasJam && (
+            {tasrih.tipeIzin === "KELUAR_PARE" && tasrih.batasJamAkhir && (
               <>
                 <span className="text-slate-500 font-bold">Batas Jam</span>
-                <span className="font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 rounded text-yellow-800 w-fit">Maks. {tasrih.batasJam} Jam</span>
+                <span className="font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 rounded text-yellow-800 w-fit">Maks. {tasrih.batasJamAkhir} WIB</span>
               </>
             )}
 

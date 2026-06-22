@@ -11,6 +11,10 @@ type SantriOption = {
   sakan: string;
 };
 
+import TataTertibModal from "./tata-tertib-modal";
+import TasrihDigital from "./tasrih-digital";
+import Swal from "sweetalert2";
+
 export default function PerizinanPublicClient() {
   const [santriOptions, setSantriOptions] = useState<SantriOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,12 +28,16 @@ export default function PerizinanPublicClient() {
   const [batchSakan, setBatchSakan] = useState("ALL");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  const getTodayWIB = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+
   const [alasan, setAlasan] = useState("");
-  const [tanggalMulai, setTanggalMulai] = useState("");
+  const [tanggalMulai, setTanggalMulai] = useState(getTodayWIB());
   const [tanggalSelesai, setTanggalSelesai] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [tasrihData, setTasrihData] = useState<any>(null);
+  const [showSOP, setShowSOP] = useState(false);
 
   useEffect(() => {
     fetch("/api/public/perizinan")
@@ -100,36 +108,44 @@ export default function PerizinanPublicClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengirim request");
 
+      const tasrihRes = await fetch(`/api/public/perizinan/tasrih/${data.grupTasrihId}`);
+      if (tasrihRes.ok) {
+        const fetchedTasrihData = await tasrihRes.json();
+        fetchedTasrihData.grupId = data.grupTasrihId;
+        setTasrihData(fetchedTasrihData);
+      }
+
+      Swal.fire({
+        title: "Terkirim!",
+        text: "Permohonan izin berhasil dikirim dan tasrih sedang di-download.",
+        icon: "success",
+        confirmButtonColor: "#059669"
+      });
+
       setIsSuccess(true);
     } catch (error: any) {
-      toast.error(error.message);
+      Swal.fire("Gagal", error.message, "error");
       setIsSubmitting(false);
     }
   };
 
-  if (isSuccess) {
+  if (isSuccess && tasrihData) {
     return (
-      <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in zoom-in duration-500">
-        <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
-          <CheckCircle2 className="h-10 w-10 text-green-600" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-800">Request Berhasil Dikirim!</h2>
-          <p className="text-slate-500 mt-2 max-w-md mx-auto">
-            Pengajuan izin sedang menunggu persetujuan dari Divisi Keamanan. Silakan konfirmasi ke pihak keamanan.
-          </p>
-        </div>
+      <div className="py-8 animate-in fade-in zoom-in duration-500 flex flex-col items-center">
+        <TasrihDigital data={tasrihData} autoDownload={true} />
         <button 
           onClick={() => {
             setIsSuccess(false);
+            setIsSubmitting(false);
+            setTasrihData(null);
             setAlasan("");
-            setTanggalMulai("");
+            setTanggalMulai(getTodayWIB());
             setTanggalSelesai("");
             setSelectedSantri(null);
             setSelectedIds(new Set());
             setSearch("");
           }}
-          className="mt-6 px-6 py-3 bg-[var(--color-primary)] text-white rounded-xl font-bold hover:bg-[var(--color-primary-dark)] transition-colors"
+          className="mt-6 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
         >
           Buat Izin Lainnya
         </button>
@@ -144,8 +160,19 @@ export default function PerizinanPublicClient() {
   return (
     <>
       <Toaster position="bottom-center" />
-      <div className="space-y-8">
+      {showSOP && <TataTertibModal onClose={() => setShowSOP(false)} />}
+      <div className="space-y-6">
         
+        <div className="flex justify-end">
+          <button 
+            type="button" 
+            onClick={() => setShowSOP(true)}
+            className="text-sm font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+          >
+            Baca Tata Tertib Perizinan
+          </button>
+        </div>
+
         {/* TABS */}
         <div className="flex gap-2">
           <button 

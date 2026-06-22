@@ -61,34 +61,47 @@ export async function processAutoAbsensiIzin(
   // Lakukan proses untuk setiap hari
   for (const date of datesToProcess) {
     // 1. Absen Kelas (semua sesi)
-    const kelasOps = sesiList.map(sesi => 
-      prisma.absenKelas.upsert({
-        where: { riwayatId_tanggal_sesi: { riwayatId, tanggal: date, sesi } },
-        update: { status: "IZIN", keterangan },
-        create: { riwayatId, tanggal: date, sesi, status: "IZIN", keterangan }
-      })
-    );
-    await prisma.$transaction(kelasOps);
+    for (const sesi of sesiList) {
+      const existingKelas = await prisma.absenKelas.findUnique({
+        where: { riwayatId_tanggal_sesi: { riwayatId, tanggal: date, sesi } }
+      });
+      if (!existingKelas || existingKelas.status !== "HADIR") {
+        await prisma.absenKelas.upsert({
+          where: { riwayatId_tanggal_sesi: { riwayatId, tanggal: date, sesi } },
+          update: { status: "IZIN", keterangan },
+          create: { riwayatId, tanggal: date, sesi, status: "IZIN", keterangan }
+        });
+      }
+    }
 
     // 2. Absen Sakan (Hanya untuk tipe Berhari-hari dan Keluar Pare)
     if (tipeIzin === "BERHARI_HARI" || tipeIzin === "KELUAR_PARE") {
-      await prisma.absenSakan.upsert({
-        where: { riwayatId_tanggal: { riwayatId, tanggal: date } },
-        update: { status: "IZIN", keterangan },
-        create: { riwayatId, tanggal: date, status: "IZIN", keterangan }
+      const existingSakan = await prisma.absenSakan.findUnique({
+        where: { riwayatId_tanggal: { riwayatId, tanggal: date } }
       });
+      if (!existingSakan || existingSakan.status !== "HADIR") {
+        await prisma.absenSakan.upsert({
+          where: { riwayatId_tanggal: { riwayatId, tanggal: date } },
+          update: { status: "IZIN", keterangan },
+          create: { riwayatId, tanggal: date, status: "IZIN", keterangan }
+        });
+      }
 
       // 3. Absen Kegiatan (Yang sudah ada diabsen diubah jadi IZIN, atau auto isi untuk semua kategori aktif)
       // Ambil semua kategori aktif
       const kategoriAktif = await prisma.kategoriKegiatan.findMany({ where: { aktif: true } });
-      const kegiatanOps = kategoriAktif.map(kat => 
-        prisma.absenKegiatan.upsert({
-          where: { riwayatId_kategoriId_tanggal: { riwayatId, tanggal: date, kategoriId: kat.id } },
-          update: { status: "IZIN", keterangan },
-          create: { riwayatId, tanggal: date, kategoriId: kat.id, status: "IZIN", keterangan }
-        })
-      );
-      await prisma.$transaction(kegiatanOps);
+      for (const kat of kategoriAktif) {
+        const existingKegiatan = await prisma.absenKegiatan.findUnique({
+          where: { riwayatId_kategoriId_tanggal: { riwayatId, tanggal: date, kategoriId: kat.id } }
+        });
+        if (!existingKegiatan || existingKegiatan.status !== "HADIR") {
+          await prisma.absenKegiatan.upsert({
+            where: { riwayatId_kategoriId_tanggal: { riwayatId, tanggal: date, kategoriId: kat.id } },
+            update: { status: "IZIN", keterangan },
+            create: { riwayatId, tanggal: date, kategoriId: kat.id, status: "IZIN", keterangan }
+          });
+        }
+      }
     }
   }
 }
