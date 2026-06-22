@@ -6,7 +6,7 @@ export default async function PublicTasrihPage(props: { params: Promise<{ grupId
   const params = await props.params;
 
   // We fetch directly from the database here or we can call our own API
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/public/perizinan/tasrih/${params.grupId}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "https://siakad.markazarabiyah.site"}/api/public/perizinan/tasrih/${params.grupId}`, {
     cache: "no-store"
   });
 
