@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Users, User, Save, Search, CheckSquare, Send, CheckCircle2 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { Loader2, Users, User, Search, CheckSquare, Send, BookOpen } from "lucide-react";
 
 type SantriOption = {
   riwayatId: string;
@@ -38,14 +37,19 @@ export default function PerizinanPublicClient() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [tasrihData, setTasrihData] = useState<any>(null);
   const [showSOP, setShowSOP] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
 
   useEffect(() => {
+    // First-visit gate: show agreement modal if not yet agreed
+    const agreed = localStorage.getItem("perizinan_agreed");
+    if (!agreed) setShowAgreement(true);
+
     fetch("/api/public/perizinan")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setSantriOptions(data);
       })
-      .catch(() => toast.error("Gagal memuat daftar santri"))
+      .catch(() => Swal.fire("Error", "Gagal memuat daftar santri", "error"))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -80,15 +84,18 @@ export default function PerizinanPublicClient() {
       : Array.from(selectedIds);
 
     if (riwayatIds.length === 0) {
-      return toast.error("Pilih minimal satu santri");
+      Swal.fire("Perhatian", "Pilih minimal satu santri", "warning");
+      return;
     }
 
     if (activeTab === "BERHARI_HARI" && (!tanggalMulai || !tanggalSelesai)) {
-      return toast.error("Pilih tanggal mulai dan sampai");
+      Swal.fire("Perhatian", "Pilih tanggal mulai dan sampai", "warning");
+      return;
     }
 
     if (activeTab === "BERHARI_HARI" && new Date(tanggalMulai) > new Date(tanggalSelesai)) {
-      return toast.error("Tanggal selesai tidak boleh sebelum tanggal mulai");
+      Swal.fire("Perhatian", "Tanggal selesai tidak boleh sebelum tanggal mulai", "warning");
+      return;
     }
 
     setIsSubmitting(true);
@@ -159,17 +166,27 @@ export default function PerizinanPublicClient() {
 
   return (
     <>
-      <Toaster position="bottom-center" />
-      {showSOP && <TataTertibModal onClose={() => setShowSOP(false)} />}
+      {/* First-visit agreement modal */}
+      {showAgreement && (
+        <TataTertibModal
+          requireAgreement={true}
+          onClose={() => setShowAgreement(false)}
+        />
+      )}
+      {/* Re-read SOP modal */}
+      {showSOP && !showAgreement && (
+        <TataTertibModal onClose={() => setShowSOP(false)} />
+      )}
       <div className="space-y-6">
         
         <div className="flex justify-end">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setShowSOP(true)}
-            className="text-sm font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+            className="text-sm font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5"
           >
-            Baca Tata Tertib Perizinan
+            <BookOpen size={15} />
+            Lihat Tata Tertib Perizinan
           </button>
         </div>
 
