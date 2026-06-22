@@ -80,7 +80,7 @@ export async function getMasterSantriList(): Promise<MasterSantri[]> {
   try {
     const apiKey = process.env.PPDB_API_KEY || "markaz-siakad-api-2026";
     const response = await fetch(`${PPDB_URL}/api/santri/siakad?key=${apiKey}&filter=AKTIF`, {
-      next: { revalidate: 86400, tags: ["santri-data"] },
+      next: { revalidate: 0, tags: ["santri-data"] },
     });
 
     if (!response.ok) {
