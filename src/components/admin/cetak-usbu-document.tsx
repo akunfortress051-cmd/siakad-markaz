@@ -181,27 +181,88 @@ export function CetakUsbuDocument({
     try {
       const XLSX = await import("xlsx");
 
-      // Build headers: No, Nama, ...mapelHeaders, Nilai Akumulatif, Peringkat, Gender
-      const headers = ["No", "NAMA PESERTA DIDIK", ...mapelHeaders, "NILAI AKUMULATIF", "PERINGKAT", "GENDER"];
+      const totalCols = mapelHeaders.length + 5; // No, Nama, ...mapels, Akumulatif, Peringkat, Gender
+      const todayStr = format(new Date(), "dd MMMM yyyy", { locale: id });
 
-      // Build data rows
-      const dataRows = rows.map((row, idx) => [
-        idx + 1,
-        row.nama,
-        ...row.mapelScores.map(score => typeof score === "number" ? Math.round(score) : score),
-        Math.round(row.nilaiAkumulatif),
-        row.peringkat,
-        row.gender,
-      ]);
+      // === Build rows: header section matching the PDF ===
+      const sheetData: any[][] = [];
 
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+      // Row 1: "DAFTAR NILAI UJIAN AKHIR PEKAN"
+      sheetData.push(["DAFTAR NILAI UJIAN AKHIR PEKAN"]);
+      // Row 2: Institution name
+      sheetData.push(["MARKAZ ARABIYAH BERBASIS MULTIPLE INTELLIGENCES"]);
+      // Row 3: Address
+      sheetData.push(["Jl. Cempaka 32B, Tegalsari, Tulungrejo, Pare, Kediri, Jawa Timur"]);
+      // Row 4: Empty spacer
+      sheetData.push([]);
+      // Row 5: Kelas + Wali Kelas + Pekan
+      sheetData.push([`Kelas: ${kelasNama}`, "", "", "", `Wali Kelas: ${waliKelas}`, "", `Pekan: ${usbuLabel}`]);
+      // Row 6: Empty spacer
+      sheetData.push([]);
+
+      // Row 7: Table header
+      const tableHeaders = ["No", "NAMA PESERTA DIDIK", ...mapelHeaders, "NILAI AKUMULATIF", "PERINGKAT", "GENDER"];
+      sheetData.push(tableHeaders);
+
+      // Row 8+: Data rows
+      rows.forEach((row, idx) => {
+        sheetData.push([
+          idx + 1,
+          row.nama,
+          ...row.mapelScores.map(score => typeof score === "number" ? Math.round(score) : score),
+          Math.round(row.nilaiAkumulatif),
+          row.peringkat,
+          row.gender,
+        ]);
+      });
+
+      // Footer spacer
+      sheetData.push([]);
+      // Footer: NB
+      sheetData.push(["NB: Setiap ketidakhadiran dikarenakan absen tanpa alasan, maka mendapatkan pengurangan poin (-3) pada nilai presensi"]);
+      sheetData.push([]);
+      // Footer: Tanggal & TTD
+      const ttdColIdx = Math.max(totalCols - 3, 4);
+      const ttdRow: any[] = new Array(totalCols).fill("");
+      ttdRow[ttdColIdx] = `Pare, ${todayStr}`;
+      sheetData.push(ttdRow);
+
+      const gmRow: any[] = new Array(totalCols).fill("");
+      gmRow[ttdColIdx] = "General Manager Markaz Arabiyah";
+      sheetData.push(gmRow);
+
+      // Empty rows for signature space
+      sheetData.push([]);
+      sheetData.push([]);
+
+      const nameRow: any[] = new Array(totalCols).fill("");
+      nameRow[ttdColIdx] = "Rico Andrian S. Hum";
+      sheetData.push(nameRow);
+
+      // === Create worksheet ===
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
       // Auto-fit column widths
-      const colWidths = headers.map((h, i) => {
-        const maxLen = Math.max(String(h).length, ...dataRows.map((row) => String(row[i] ?? "").length));
-        return { wch: Math.min(maxLen + 2, 50) };
+      const colWidths = tableHeaders.map((h, i) => {
+        let maxLen = String(h).length;
+        rows.forEach(row => {
+          const dataRow = [row.nama, ...row.mapelScores.map(s => typeof s === "number" ? Math.round(s) : s), Math.round(row.nilaiAkumulatif), row.peringkat, row.gender];
+          // offset: col 0 = No (number), col 1+ = dataRow
+          const val = i === 0 ? String(rows.length) : String(dataRow[i - 1] ?? "");
+          maxLen = Math.max(maxLen, val.length);
+        });
+        return { wch: Math.min(maxLen + 3, 50) };
       });
+      // Make "Nama" column wider
+      if (colWidths.length > 1) colWidths[1].wch = Math.max(colWidths[1].wch, 30);
       ws["!cols"] = colWidths;
+
+      // Merge cells for header rows (span across all columns)
+      ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Row 1: Title
+        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Row 2: Institution
+        { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } }, // Row 3: Address
+      ];
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, `Rapor ${kelasNama}`.slice(0, 31));
