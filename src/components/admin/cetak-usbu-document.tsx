@@ -7,6 +7,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { toast } from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
+import { Download } from "lucide-react";
 
 interface RowData {
   nama: string;
@@ -175,6 +176,44 @@ export function CetakUsbuDocument({
     }
   };
 
+  const handleDownloadExcel = async () => {
+    const loadingToast = toast.loading("Menyiapkan file Excel...");
+    try {
+      const XLSX = await import("xlsx");
+
+      // Build headers: No, Nama, ...mapelHeaders, Nilai Akumulatif, Peringkat, Gender
+      const headers = ["No", "NAMA PESERTA DIDIK", ...mapelHeaders, "NILAI AKUMULATIF", "PERINGKAT", "GENDER"];
+
+      // Build data rows
+      const dataRows = rows.map((row, idx) => [
+        idx + 1,
+        row.nama,
+        ...row.mapelScores.map(score => typeof score === "number" ? Math.round(score) : score),
+        Math.round(row.nilaiAkumulatif),
+        row.peringkat,
+        row.gender,
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+
+      // Auto-fit column widths
+      const colWidths = headers.map((h, i) => {
+        const maxLen = Math.max(String(h).length, ...dataRows.map((row) => String(row[i] ?? "").length));
+        return { wch: Math.min(maxLen + 2, 50) };
+      });
+      ws["!cols"] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Rapor ${kelasNama}`.slice(0, 31));
+      XLSX.writeFile(wb, `Rapor_${kelasNama.replace(/\s+/g, "_")}_Pekan_${usbuLabel}.xlsx`);
+
+      toast.success("File Excel berhasil diunduh!", { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal membuat file Excel", { id: loadingToast });
+    }
+  };
+
   return (
     <div id={containerId} className="mx-auto w-[310mm] bg-[#ffffff] min-h-[195.9mm] flex flex-col justify-between md:p-12 p-4 text-[#000000] print:shadow-none print:w-full print:p-0" style={{ pageBreakAfter: "always", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)" }}>
 
@@ -190,14 +229,24 @@ export function CetakUsbuDocument({
 
       {/* Header Print Control */}
       <div className="print-hidden mb-8 flex items-center justify-between border-b border-[#e2e8f0] pb-4">
-        <h2 className="text-xl font-bold">Data Rapor Usbu'</h2>
-        <button
-          onClick={handleDownloadPdf}
-          className="rounded-full bg-[#dc2626] px-6 py-2 font-bold text-[#ffffff] hover:bg-[#b91c1c]"
-          style={{ boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)" }}
-        >
-          Download PDF
-        </button>
+        <h2 className="text-xl font-bold">Data Rapor Usbu&apos;</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleDownloadExcel}
+            className="flex items-center gap-2 rounded-full bg-[#16a34a] px-6 py-2 font-bold text-[#ffffff] hover:bg-[#15803d]"
+            style={{ boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)" }}
+          >
+            <Download size={16} />
+            Export Excel
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            className="rounded-full bg-[#dc2626] px-6 py-2 font-bold text-[#ffffff] hover:bg-[#b91c1c]"
+            style={{ boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)" }}
+          >
+            Download PDF
+          </button>
+        </div>
       </div>
 
       <div className="flex-1">
