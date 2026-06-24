@@ -60,7 +60,7 @@ const navigationGroups = [
       { href: "/admin/input-nilai-kelas", label: "Input Nilai", icon: BookOpen, permissionId: "input_nilai" },
       { href: "/admin/nilai-kosong", label: "Nilai Kosong", icon: AlertTriangle, permissionId: "monitor_nilai_kosong" },
       { href: "/admin/cetak-usbu", label: "Cetak Nilai Pekanan", icon: Printer, permissionId: "cetak_nilai_pekanan" },
-      { href: "/admin/thalib-mitsali", label: "Thalib Mitsali", icon: Trophy, permissionId: "cetak_nilai_pekanan" },
+      { href: "/admin/thalib-mitsali", label: "Thalib Mitsali", icon: Trophy, permissionId: "thalib_mitsali" },
       { href: "/layout-editor", label: "Layout Syahadah", icon: Palette, permissionId: "layout_syahadah" },
       { href: "/admin/riwayat", label: "Riwayat Santri", icon: History, permissionId: "riwayat_santri" },
       { href: "/admin/master-data", label: "Pengaturan Syahadah", icon: Settings, permissionId: "pengaturan_syahadah" },

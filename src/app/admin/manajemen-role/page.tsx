@@ -77,6 +77,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: "monitor_nilai_kosong_edit", label: "Nilai Kosong (Aksi)", desc: "Akses menindaklanjuti nilai kosong", category: "Divisi Syahadah", type: "aksi" },
   { id: "cetak_nilai_pekanan", label: "Cetak Nilai Pekanan (Lihat)", desc: "Akses melihat cetakan nilai pekanan", category: "Divisi Syahadah", type: "lihat" },
   { id: "cetak_nilai_pekanan_edit", label: "Cetak Nilai Pekanan (Aksi)", desc: "Akses mencetak nilai pekanan", category: "Divisi Syahadah", type: "aksi" },
+  { id: "thalib_mitsali", label: "Thalib Mitsali (Lihat)", desc: "Akses melihat halaman Thalib Mitsali (Peringkat 1)", category: "Divisi Syahadah", type: "lihat" },
   { id: "layout_syahadah", label: "Layout Syahadah (Lihat)", desc: "Akses melihat layout syahadah", category: "Divisi Syahadah", type: "lihat" },
   { id: "layout_syahadah_edit", label: "Layout Syahadah (Aksi)", desc: "Akses mendesain layout syahadah", category: "Divisi Syahadah", type: "aksi" },
   { id: "riwayat_santri", label: "Riwayat Santri (Lihat)", desc: "Akses melihat riwayat historis santri", category: "Divisi Syahadah", type: "lihat" },
