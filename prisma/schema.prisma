@@ -66,6 +66,17 @@ model SantriInternal {
   tempat_lahir   String?
   tanggal_lahir  String?
   alamat         String?
+  gender         String?
+  sakan          String?
+  kamar          String?
+  nomorLemari    String?
+  dufahNama      String?
+  kategori       String?
+  noWaSantri     String?
+  kabupaten      String?
+  bulanKe        Int             @default(0)
+  isAktif        Boolean         @default(true)
+  lastSyncedAt   DateTime?
   riwayatRecords RiwayatSantri[]
 }
 

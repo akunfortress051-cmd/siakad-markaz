@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { syncDufahTable } from "@/lib/absensi";
 import { getSession } from "@/lib/auth";
 import { checkPermission } from "@/lib/permission";
 
 export async function GET() {
   try {
-    const validDufahNames = await syncDufahTable();
-
     const dufahList = await prisma.dufah.findMany({
       orderBy: { nama: "desc" },
     });
-
-    // Jika validDufahNames ada isinya, kita filter agar hanya menampilkan Dufah yang ada di PPDB
-    if (validDufahNames.size > 0) {
-      const filteredDufahList = dufahList.filter(d => validDufahNames.has(d.nama));
-      return NextResponse.json(filteredDufahList);
-    }
 
     return NextResponse.json(dufahList);
   } catch (error) {

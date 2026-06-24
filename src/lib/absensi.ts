@@ -1,112 +1,39 @@
 import prisma from "@/lib/prisma";
-import { getMasterSantriList } from "@/lib/santri-api";
 
 export { getTodayWibString, parseWibDateString } from "./jadwal-sesi";
 
-export async function syncDufahTable(): Promise<Set<string>> {
-  let validDufahNames = new Set<string>();
-
-  try {
-    const response = await fetch("https://ppdb.markazarabiyah.site/api/dufah", { next: { revalidate: 86400, tags: ["santri-data"] } });
-    if (response.ok) {
-      const data = await response.json();
-      data.forEach((d: any) => {
-        if (d.nama && d.nama !== "-") validDufahNames.add(d.nama);
-      });
-    } else {
-      throw new Error("Failed to fetch dufah API");
-    }
-  } catch (err) {
-    // Fallback to reading from master santri
-    const masterList = await getMasterSantriList();
-    if (masterList.length === 0) {
-      console.error("[CRITICAL] API Master Santri kosong/gagal! Membatalkan sinkronisasi Dufah untuk mencegah terhapusnya data nilai & absen secara permanen.");
-      return validDufahNames;
-    }
-    masterList.forEach(m => {
-      if (m.dufahNama && m.dufahNama !== "-") {
-        validDufahNames.add(m.dufahNama);
-      }
-    });
-  }
-
-  // 2. Ambil dufah yang ada di DB lokal
-  const existingDufahs = await prisma.dufah.findMany({ select: { nama: true } });
-  const existingNames = new Set(existingDufahs.map(d => d.nama));
-
-  // 3. Tambahkan dufah baru dari PPDB yang belum ada di DB (Hanya MENAMBAH, pantang MENGHAPUS)
-  const missingDufahs = Array.from(validDufahNames).filter(name => !existingNames.has(name));
-  if (missingDufahs.length > 0) {
-    await prisma.dufah.createMany({
-      data: missingDufahs.map(nama => ({ nama })),
-      skipDuplicates: true
-    });
-
-    // Otomatis ubah status Bulan 1 -> Bulan 2 -> Bulan 1 untuk kelas Akbarnas setiap ada Dufah baru
-    try {
-      const akbarnasPrograms = await prisma.program.findMany({
-        where: { nama_indo: { contains: "akbarnas", mode: "insensitive" } },
-        select: { id: true }
-      });
-      const akbarnasIds = akbarnasPrograms.map(p => p.id);
-
-      if (akbarnasIds.length > 0) {
-        // Toggle is_akbarnas_b2 field
-        // Prisma tidak memiliki dukungan native untuk toggle boolean di updateMany (seperti SET field = NOT field)
-        // Jadi kita harus melakukan ini secara manual atau query terpisah
-        const classes = await prisma.kelas.findMany({
-          where: { programId: { in: akbarnasIds } },
-          select: { id: true, is_akbarnas_b2: true }
-        });
-
-        for (const cls of classes) {
-          await prisma.kelas.update({
-            where: { id: cls.id },
-            data: { is_akbarnas_b2: !cls.is_akbarnas_b2 }
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Gagal auto-toggle kelas Akbarnas saat sync Dufah", err);
-    }
-  }
-
-  return validDufahNames;
-}
-
+/**
+ * Mendapatkan nama Dufah yang sedang aktif.
+ * Sekarang dibaca dari database lokal (SantriInternal) — TIDAK menembak API PPDB.
+ */
 export async function getActiveDufahName(): Promise<string | null> {
-  // 1. Mencoba mengambil dari API PPDB langsung untuk Single Source of Truth
-  try {
-    const response = await fetch("https://ppdb.markazarabiyah.site/api/dufah", { next: { revalidate: 86400, tags: ["santri-data"] } });
-    if (response.ok) {
-      const data = await response.json();
-      const activeDufah = data.find((d: any) => d.isActive === true);
-      if (activeDufah && activeDufah.nama && activeDufah.nama !== "-") {
-        return activeDufah.nama;
-      }
-    }
-  } catch (err) {
-    console.error("Failed to fetch active dufah from API, falling back to dynamic calculation", err);
-  }
-
-  // 2. Fallback: Hitung dinamis dari master santri jika API gagal atau tidak ada yang aktif
-  const masterList = await getMasterSantriList();
-  const activeDufahs = new Map<string, Date>(); // dufahNama -> date
-  masterList.forEach(m => {
-    if (m.isAktif && m.dufahNama && m.dufahNama !== "-") {
-      const dateVal = m.tanggalMulaiDufah ? new Date(m.tanggalMulaiDufah) : new Date(0);
-      if (!activeDufahs.has(m.dufahNama) || dateVal > activeDufahs.get(m.dufahNama)!) {
-        activeDufahs.set(m.dufahNama, dateVal);
-      }
-    }
+  // Hitung dinamis dari data santri aktif di database lokal
+  const activeSantri = await prisma.santriInternal.findMany({
+    where: {
+      isAktif: true,
+      dufahNama: { not: null },
+      sakan: { not: "-" },
+    },
+    select: { dufahNama: true },
   });
 
-  if (activeDufahs.size === 0) return null;
+  const dufahCounts = new Map<string, number>();
+  for (const s of activeSantri) {
+    if (s.dufahNama && s.dufahNama !== "-") {
+      dufahCounts.set(s.dufahNama, (dufahCounts.get(s.dufahNama) || 0) + 1);
+    }
+  }
 
-  const sorted = Array.from(activeDufahs.entries()).sort((a, b) => {
-    const timeDiff = b[1].getTime() - a[1].getTime();
-    if (timeDiff !== 0) return timeDiff;
-    return b[0].localeCompare(a[0], undefined, { numeric: true, sensitivity: 'base' });
+  if (dufahCounts.size === 0) return null;
+
+  // Dufah dengan santri aktif terbanyak = Dufah aktif saat ini
+  const sorted = Array.from(dufahCounts.entries()).sort((a, b) => {
+    const countDiff = b[1] - a[1];
+    if (countDiff !== 0) return countDiff;
+    return b[0].localeCompare(a[0], undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   });
 
   return sorted[0][0];
@@ -128,92 +55,35 @@ export type SantriAbsenTarget = {
 
 /**
  * Mendapatkan daftar riwayat aktif untuk dilakukan absensi.
- * Saat ini diambil dari RiwayatSantri yang memiliki isAktif di master, dsb.
- * Kita akan mengambil berdasarkan kelas jika diberikan kelasId.
+ * Sekarang MURNI dari database lokal — TIDAK ada API call.
  */
-export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filterSakan?: string): Promise<SantriAbsenTarget[]> {
-  // Ambil data santri aktif dari API
-  const masterSantriList = await getMasterSantriList();
-  const activeSantriMap = new Map<string, string>(); // santriId -> active dufahNama
+export async function getActiveRiwayatListForAbsen(
+  filterKelasId?: string,
+  filterSakan?: string
+): Promise<SantriAbsenTarget[]> {
+  // Ambil data santri aktif dari database lokal
+  const activeSantriList = await prisma.santriInternal.findMany({
+    where: {
+      isAktif: true,
+      dufahNama: { not: null },
+      sakan: { not: "-" },
+    },
+  });
 
-  for (const ms of masterSantriList) {
-    if (ms.isAktif) {
-      activeSantriMap.set(ms.id, ms.dufahNama);
-    }
-  }
-
-  // PENTING: Sinkronkan dulu Dufah table agar tidak memicu P2003 (Foreign Key Constraint Failed)
-  await syncDufahTable();
-
-  // SINKRONISASI OTOMATIS: Pastikan santri aktif memiliki RiwayatSantri di DB lokal
-  const activeMasterSantri = masterSantriList.filter(ms => ms.isAktif && ms.dufahNama && ms.dufahNama !== "-");
-  if (activeMasterSantri.length > 0) {
-    const activeSantriIds = activeMasterSantri.map(s => s.id);
-    const existingRiwayat = await prisma.riwayatSantri.findMany({
-      where: { santriId: { in: activeSantriIds } },
-      select: { santriId: true, dufahNama: true }
-    });
-
-    const riwayatSet = new Set(existingRiwayat.map(r => `${r.santriId}_${r.dufahNama}`));
-    const missingRiwayat = activeMasterSantri.filter(ms => !riwayatSet.has(`${ms.id}_${ms.dufahNama}`));
-
-    if (missingRiwayat.length > 0) {
-      // Upsert SantriInternal
-      const existingInternal = await prisma.santriInternal.findMany({
-        where: { id: { in: missingRiwayat.map(m => m.id) } },
-        select: { id: true }
-      });
-      const internalIds = new Set(existingInternal.map(s => s.id));
-      const newInternals = missingRiwayat.filter(ms => !internalIds.has(ms.id));
-
-      if (newInternals.length > 0) {
-        await prisma.santriInternal.createMany({
-          data: newInternals.map(ms => ({ id: ms.id, nama: ms.nama })),
-          skipDuplicates: true
-        });
-      }
-
-      // Fetch previous riwayats to auto-assign Akbarnas
-      const previousRiwayats = await prisma.riwayatSantri.findMany({
-        where: { santriId: { in: missingRiwayat.map(ms => ms.id) } },
-        include: { program: true, kelas: true },
-        orderBy: { id: 'desc' }
-      });
-
-      const santriToAkbarnasClass = new Map<string, { programId: string, kelasId: string }>();
-
-      for (const pr of previousRiwayats) {
-        if (!santriToAkbarnasClass.has(pr.santriId) && pr.program && pr.program.nama_indo.toLowerCase().includes("akbarnas")) {
-          // HANYA auto-carryover jika sebelumnya mereka di Bulan 1
-          // Jika sebelumnya mereka di Bulan 2 (is_akbarnas_b2 === true), berarti mereka sudah lulus Akbarnas
-          const wasBulan2 = pr.kelas?.is_akbarnas_b2;
-          if (pr.kelasId && pr.programId && !wasBulan2) {
-            santriToAkbarnasClass.set(pr.santriId, { programId: pr.programId, kelasId: pr.kelasId });
-          }
-        }
-      }
-
-      // Create missing RiwayatSantri
-      await prisma.riwayatSantri.createMany({
-        data: missingRiwayat.map(ms => {
-          const pastAkbarnas = santriToAkbarnasClass.get(ms.id);
-          return {
-            santriId: ms.id,
-            dufahNama: ms.dufahNama,
-            programId: pastAkbarnas ? pastAkbarnas.programId : null,
-            kelasId: pastAkbarnas ? pastAkbarnas.kelasId : null,
-            is_tasmi: false,
-            status_kelulusan: "TIDAK_LULUS"
-          };
-        }),
-        skipDuplicates: true
-      });
+  const activeSantriMap = new Map<string, typeof activeSantriList[0]>();
+  for (const s of activeSantriList) {
+    if (s.dufahNama && s.dufahNama !== "-") {
+      activeSantriMap.set(s.id, s);
     }
   }
 
   // Gunakan Prisma untuk mendapatkan data riwayat
   const whereClause: any = {};
-  if (filterKelasId && filterKelasId !== "ALL" && filterKelasId !== "UNASSIGNED") {
+  if (
+    filterKelasId &&
+    filterKelasId !== "ALL" &&
+    filterKelasId !== "UNASSIGNED"
+  ) {
     if (filterKelasId.startsWith("PROGRAM_")) {
       whereClause.programId = filterKelasId.replace("PROGRAM_", "");
     } else {
@@ -232,22 +102,22 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
     },
   });
 
-  // Filter HANYA riwayat yang dufah-nya sama dengan dufah master santri yang isAktif
+  // Filter HANYA riwayat yang dufah-nya sama dengan dufah santri yang isAktif
   const activeRiwayatList = allRiwayatList.filter((r) => {
-    const activeDufah = activeSantriMap.get(r.santriId);
-    return activeDufah && activeDufah === r.dufahNama;
+    const activeSantri = activeSantriMap.get(r.santriId);
+    return activeSantri && activeSantri.dufahNama === r.dufahNama;
   });
 
   let mappedList = activeRiwayatList.map((r) => {
-    const ms = masterSantriList.find(m => m.id === r.santriId);
+    const s = activeSantriMap.get(r.santriId);
     return {
       riwayatId: r.id,
       santriId: r.santriId,
-      nama: ms ? ms.nama : (r.santri?.nama ?? "Tanpa Nama"),
-      sakan: ms ? ms.sakan : "-",
-      kamar: ms ? ms.kamar : "-",
-      gender: ms ? ms.gender : "-",
-      kategori: ms ? ms.kategori : "-",
+      nama: s?.nama ?? r.santri?.nama ?? "Tanpa Nama",
+      sakan: s?.sakan ?? "-",
+      kamar: s?.kamar ?? "-",
+      gender: s?.gender ?? "-",
+      kategori: s?.kategori ?? "-",
       kelasId: r.kelasId,
       kelasNama: r.kelas?.nama ?? null,
       programId: r.programId,
@@ -256,7 +126,7 @@ export async function getActiveRiwayatListForAbsen(filterKelasId?: string, filte
   });
 
   if (filterSakan && filterSakan !== "ALL") {
-    mappedList = mappedList.filter(s => s.sakan === filterSakan);
+    mappedList = mappedList.filter((s) => s.sakan === filterSakan);
   }
 
   return mappedList.sort((a, b) => a.nama.localeCompare(b.nama, "id"));

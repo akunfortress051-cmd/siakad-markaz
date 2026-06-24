@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette, UserCog, LogOut, ShieldCheck, Calendar, Medal, Armchair, ChevronDown, AlertTriangle, FileText, ClipboardList, Trophy } from "lucide-react";
 import { useState, useEffect } from "react";
+import { SyncSantriButton } from "./sync-santri-button";
 
 const navigationGroups = [
   {
@@ -284,13 +285,19 @@ export function Sidebar({ user, permissions = [] }: { user: any, permissions?: s
                     })}
                   </ul>
                 </div>
+
               </div>
             );
           })}
         </nav>
 
+        {/* Sync Button */}
+        <div className="px-4 mt-auto pt-2">
+          <SyncSantriButton />
+        </div>
+
         {/* User Card */}
-        <div className="p-4">
+        <div className="p-4 pt-0">
           <div className="neu-inset p-4 rounded-xl">
             <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>{user?.nama}</p>
             <p className="text-xs mt-0.5 mb-3" style={{ color: "var(--color-text-subtle)" }}>{user?.role}</p>
