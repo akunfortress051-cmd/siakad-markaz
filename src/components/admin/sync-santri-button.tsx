@@ -32,7 +32,7 @@ export function SyncSantriButton() {
 
       setLastSynced(data.timestamp);
       toast.success(
-        `Sinkronisasi berhasil! ${data.syncedCount} santri & ${data.newDufahCount} angkatan diperbarui.`
+        `Sinkronisasi berhasil! ${data.syncedCount} diperbarui, ${data.deactivatedCount || 0} dinonaktifkan, ${data.newDufahCount} angkatan baru.`
       );
       
       // Refresh halaman agar data baru ter-load

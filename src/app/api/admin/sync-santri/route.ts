@@ -147,6 +147,32 @@ export async function POST() {
       syncedCount++;
     }
 
+    // ===== 2.5 Deactivate santri yang sudah tidak ada di PPDB (tidak aktif) =====
+    // ValidSantri berisi semua santri yang masih aktif di PPDB.
+    // Jika ada santri di lokal yang isAktif = true, tapi ID-nya tidak ada di validSantri, berarti dia sudah nonaktif.
+    const activeSantriIdsInPpdb = new Set(validSantri.map(s => s.nis as string));
+    
+    const localActiveSantri = await prisma.santriInternal.findMany({
+      where: { isAktif: true },
+      select: { id: true }
+    });
+
+    const santriToDeactivate = localActiveSantri
+      .filter(s => !activeSantriIdsInPpdb.has(s.id))
+      .map(s => s.id);
+
+    let deactivatedCount = 0;
+    if (santriToDeactivate.length > 0) {
+      const updateResult = await prisma.santriInternal.updateMany({
+        where: { id: { in: santriToDeactivate } },
+        data: { 
+          isAktif: false,
+          lastSyncedAt: now 
+        }
+      });
+      deactivatedCount = updateResult.count;
+    }
+
     // ===== 3. Auto-create RiwayatSantri untuk santri aktif yang belum ada =====
     const activeSantriList = await prisma.santriInternal.findMany({
       where: {
@@ -263,6 +289,7 @@ export async function POST() {
       syncedCount,
       newRiwayatCount,
       newDufahCount: missingDufahs.length,
+      deactivatedCount,
       timestamp: now.toISOString(),
     });
   } catch (error: any) {
