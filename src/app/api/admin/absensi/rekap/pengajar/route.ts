@@ -68,15 +68,40 @@ export async function GET(request: Request) {
 
     // Fetch SesiTambahanProgram untuk mendeteksi keterlambatan sesi 7-10
     const sesiTambahanList = await prisma.sesiTambahanProgram.findMany({ where: { isActive: true } });
+    
+    // Fetch SesiTaqwim untuk mendeteksi keterlambatan program Taqwim
+    const sesiTaqwimList = await prisma.sesiTaqwim.findMany({ where: { isActive: true } });
 
     const formatted = records.map(r => {
+      // Cek apakah guru ini di-assign via program level di sesi ini
+      const isProgramLevel = pengajarSesiProgramList.some(
+        psp => psp.userId === r.userId && psp.programId === r.kelas.program?.id && psp.sesi === r.sesi
+      );
+
       let terlambatMenit = 0;
+      let toleransi = 5; // Default grace period 5 menit
+      
       // Badal: tidak dihitung keterlambatan berapapun menitnya
       if (r.terlambatMenit !== null) {
         terlambatMenit = r.terlambatMenit;
       } else if (!r.isBadal && r.waktuMulai && r.waktuMulai !== "-") {
-        // Cari jadwal: prioritas global JadwalSesi, fallback ke SesiTambahanProgram (sesi 7-10)
-        let jadwalBuka: string | null = jadwalMap.get(r.sesi)?.jamBuka ?? null;
+        let jadwalBuka: string | null = null;
+        
+        // 1. Cek SesiTaqwim dulu jika program ini memiliki SesiTaqwim
+        if (r.kelas.program?.id) {
+          const taqwim = sesiTaqwimList.find(t => t.programId === r.kelas.program!.id);
+          if (taqwim) {
+            jadwalBuka = taqwim.jamBuka;
+            toleransi = taqwim.toleransiMenit;
+          }
+        }
+        
+        // 2. Jika tidak ada Taqwim, cek JadwalSesi global
+        if (!jadwalBuka) {
+          jadwalBuka = jadwalMap.get(r.sesi)?.jamBuka ?? null;
+        }
+
+        // 3. Fallback ke SesiTambahanProgram (sesi 7-10)
         if (!jadwalBuka && r.kelas.program?.id) {
           const tambahan = sesiTambahanList.find(
             s => s.sesi === r.sesi && s.programId === r.kelas.program!.id
@@ -96,24 +121,21 @@ export async function GET(request: Request) {
           }
 
           const diff = totalMinutesMulai - totalMinutesBuka;
-          // Grace period 5 menit: baru dianggap terlambat jika lebih dari 5 menit sejak jadwal buka
-          if (diff > 5) {
-            terlambatMenit = diff - 5;
+          // Grace period: baru dianggap terlambat jika lebih dari toleransi sejak jadwal buka
+          if (diff > toleransi) {
+            terlambatMenit = diff - toleransi;
           }
         }
       }
 
-      // Cek apakah guru ini di-assign via program level di sesi ini
-      const isProgramLevel = pengajarSesiProgramList.some(
-        psp => psp.userId === r.userId && psp.programId === r.kelas.program?.id && psp.sesi === r.sesi
-      );
+      const isTaqwimClass = r.kelas.program?.id && sesiTaqwimList.some(t => t.programId === r.kelas.program!.id);
 
       return {
         id: r.id,
         pengajar: r.user.nama,
         kelas: isProgramLevel ? `Program ${r.kelas.program?.nama_indo}` : r.kelas.nama,
         tanggal: r.tanggal.toISOString().split("T")[0],
-        sesi: r.sesi,
+        sesi: isTaqwimClass ? "SESI_TAQWIM" : r.sesi,
         materi: r.materi || "-",
         waktuMulai: r.waktuMulai,
         waktuSelesai: r.waktuSelesai,
@@ -172,12 +194,16 @@ export async function GET(request: Request) {
       where: isTeacher ? { userId: session.userId } : undefined,
       include: { 
         user: { select: { id: true, nama: true, username: true } },
-        kelas: { select: { nama: true } }
+        kelas: { select: { nama: true, programId: true } }
       }
     });
 
     for (const tgl of activeDates) {
       for (const teacher of pengajarSesi) {
+        // Jika kelas ini adalah bagian dari program Taqwim, jangan generate ALPHA
+        const isTaqwimClass = sesiTaqwimList.some(t => t.programId === teacher.kelas.programId);
+        if (isTaqwimClass) continue;
+
         // Jika kelas sudah diajar (baik oleh guru asli maupun badal), jangan anggap guru asli ALPHA
         const classWasTaught = records.some(r => r.kelasId === teacher.kelasId && r.sesi === teacher.sesi && r.tanggal.toISOString().split("T")[0] === tgl);
         if (!classWasTaught) {
