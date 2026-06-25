@@ -292,7 +292,7 @@ export function Sidebar({ user, permissions = [] }: { user: any, permissions?: s
         </nav>
 
         {/* Sync Button */}
-        {user?.role === "SUPER_ADMIN" && (
+        {user?.role === "ADMIN" && (
           <div className="px-4 mt-auto pt-2">
             <SyncSantriButton />
           </div>
