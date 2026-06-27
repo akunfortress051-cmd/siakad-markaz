@@ -193,10 +193,20 @@ export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: 
   const generateRekapAlfaMingguan = useCallback(() => {
     const alphaRecords = data.filter((r) => r.status === "ALPHA");
     if (alphaRecords.length === 0) return "";
+    
     // Tentukan usbu label dari data
     const usbuLabels = Array.from(new Set(data.map(r => r.usbu)));
-    const usbuTitle = usbuLabels.length === 1 ? usbuLabels[0] : usbuLabels.join(" & ");
-    let result = `*REKAP ALFA ${usbuTitle.toUpperCase()}*\n`;
+    const rawTitle = usbuLabels.length === 1 ? usbuLabels[0] : usbuLabels.join(" & ");
+    
+    let usbuTitle = rawTitle.toUpperCase();
+    if (rawTitle.toLowerCase().includes("usbu")) {
+      const num = rawTitle.replace(/\D/g, "");
+      usbuTitle = `PEKAN KE-${num}`;
+    } else if (rawTitle.toLowerCase() === "nihai") {
+      usbuTitle = "PEKAN NIHAI";
+    }
+    
+    let result = `REKAP ALPA ${usbuTitle}\n`;
 
     // Group alpha by kelas
     const byKelas: Record<string, typeof alphaRecords> = {};
@@ -206,7 +216,7 @@ export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: 
     });
 
     Object.keys(byKelas).sort().forEach((kelas) => {
-      result += `\n*${kelas.toUpperCase()}*\n`;
+      result += ` ${kelas.toUpperCase()}\n`;
       // Group by tanggal
       const byTanggal: Record<string, typeof alphaRecords> = {};
       byKelas[kelas].forEach((r) => {
@@ -214,11 +224,45 @@ export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: 
         byTanggal[r.tanggal].push(r);
       });
       Object.keys(byTanggal).sort().forEach((tgl) => {
-        const dateFormatted = format(new Date(tgl), "EEEE, d MMMM yyyy", { locale: id });
-        result += `📖${dateFormatted}\n`;
+        const dateFormatted = format(new Date(tgl), "EEEE, dd MMMM yyyy", { locale: id });
+        result += `📚${dateFormatted}\n`;
+        
+        // Group by namaSantri to combine sessions
+        const bySantri: Record<string, string[]> = {};
         byTanggal[tgl].forEach((r) => {
-          const sesiLabel = r.sesi ? r.sesi.replace("SESI_", "sesi ") : "";
-          result += `- ${r.namaSantri}${sesiLabel ? `, ${sesiLabel}` : ""}\n`;
+          if (!bySantri[r.namaSantri]) bySantri[r.namaSantri] = [];
+          if (r.sesi) bySantri[r.namaSantri].push(r.sesi);
+        });
+
+        Object.keys(bySantri).sort().forEach((nama) => {
+          const sessions = Array.from(new Set(bySantri[nama]));
+          if (sessions.length > 0) {
+            const nums = sessions
+              .map(s => parseInt(s.replace("SESI_", "")))
+              .filter(n => !isNaN(n))
+              .sort((a, b) => a - b);
+            
+            let sesiStr = "";
+            if (nums.length > 0) {
+              let res = [];
+              let start = nums[0];
+              let end = nums[0];
+              for (let i = 1; i < nums.length; i++) {
+                if (nums[i] === end + 1) {
+                  end = nums[i];
+                } else {
+                  res.push(start === end ? `${start}` : `${start}-${end}`);
+                  start = nums[i];
+                  end = nums[i];
+                }
+              }
+              res.push(start === end ? `${start}` : `${start}-${end}`);
+              sesiStr = res.join(", ");
+            }
+            result += `* ${nama}, sesi ${sesiStr}\n`;
+          } else {
+            result += `* ${nama}\n`;
+          }
         });
         result += "\n";
       });

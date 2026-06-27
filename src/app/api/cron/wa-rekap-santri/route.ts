@@ -95,9 +95,17 @@ export async function GET(request: NextRequest) {
 
     // Format the message (sama seperti copy web)
     const usbuLabelsFromData = Array.from(new Set(alphaRecords.map((r: any) => r.usbu)));
-    const finalUsbuTitle = usbuLabelsFromData.length === 1 ? usbuLabelsFromData[0] : (usbuLabelsFromData.length > 1 ? usbuLabelsFromData.join(" & ") : usbuLabel);
+    const rawTitle = usbuLabelsFromData.length === 1 ? usbuLabelsFromData[0] : (usbuLabelsFromData.length > 1 ? usbuLabelsFromData.join(" & ") : usbuLabel);
     
-    let message = `*REKAP ALFA ${String(finalUsbuTitle).toUpperCase()}*\n*${format(new Date(dari!), "dd/MM/yyyy")} - ${format(new Date(sampai!), "dd/MM/yyyy")}*\n`;
+    let usbuTitle = String(rawTitle).toUpperCase();
+    if (String(rawTitle).toLowerCase().includes("usbu")) {
+      const num = String(rawTitle).replace(/\D/g, "");
+      usbuTitle = `PEKAN KE-${num}`;
+    } else if (String(rawTitle).toLowerCase() === "nihai") {
+      usbuTitle = "PEKAN NIHAI";
+    }
+    
+    let message = `REKAP ALPA ${usbuTitle}\n`;
 
     // Group alpha by kelas
     const byKelas: Record<string, any[]> = {};
@@ -107,7 +115,7 @@ export async function GET(request: NextRequest) {
     });
 
     Object.keys(byKelas).sort().forEach((kelas) => {
-      message += `\n*${kelas.toUpperCase()}*\n`;
+      message += ` ${kelas.toUpperCase()}\n`;
       // Group by tanggal
       const byTanggal: Record<string, any[]> = {};
       byKelas[kelas].forEach((r: any) => {
@@ -116,11 +124,45 @@ export async function GET(request: NextRequest) {
       });
       
       Object.keys(byTanggal).sort().forEach((tgl) => {
-        const dateFormatted = format(new Date(tgl), "EEEE, d MMMM yyyy", { locale: id });
-        message += `📖${dateFormatted}\n`;
+        const dateFormatted = format(new Date(tgl), "EEEE, dd MMMM yyyy", { locale: id });
+        message += `📚${dateFormatted}\n`;
+        
+        // Group by namaSantri to combine sessions
+        const bySantri: Record<string, string[]> = {};
         byTanggal[tgl].forEach((r: any) => {
-          const sesiLabel = r.sesi ? r.sesi.replace("SESI_", "sesi ") : "";
-          message += `- ${r.namaSantri}${sesiLabel ? `, ${sesiLabel}` : ""}\n`;
+          if (!bySantri[r.namaSantri]) bySantri[r.namaSantri] = [];
+          if (r.sesi) bySantri[r.namaSantri].push(r.sesi);
+        });
+
+        Object.keys(bySantri).sort().forEach((nama) => {
+          const sessions = Array.from(new Set(bySantri[nama]));
+          if (sessions.length > 0) {
+            const nums = sessions
+              .map(s => parseInt(s.replace("SESI_", "")))
+              .filter(n => !isNaN(n))
+              .sort((a, b) => a - b);
+            
+            let sesiStr = "";
+            if (nums.length > 0) {
+              let res = [];
+              let start = nums[0];
+              let end = nums[0];
+              for (let i = 1; i < nums.length; i++) {
+                if (nums[i] === end + 1) {
+                  end = nums[i];
+                } else {
+                  res.push(start === end ? `${start}` : `${start}-${end}`);
+                  start = nums[i];
+                  end = nums[i];
+                }
+              }
+              res.push(start === end ? `${start}` : `${start}-${end}`);
+              sesiStr = res.join(", ");
+            }
+            message += `* ${nama}, sesi ${sesiStr}\n`;
+          } else {
+            message += `* ${nama}\n`;
+          }
         });
         message += "\n";
       });
