@@ -39,7 +39,7 @@ const STATUS_CONFIG = [
   { key: "ALPHA", label: "Alpha", color: "#f43f5e", light: "bg-[var(--color-danger-light)] text-[var(--color-danger)] border-[var(--color-danger)]" },
 ];
 
-export function AbsensiRekapDetailClient() {
+export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: string | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -62,6 +62,7 @@ export function AbsensiRekapDetailClient() {
       try {
         const params = new URLSearchParams({ type, dari, sampai });
         if (kategoriId) params.append("kategoriId", kategoriId);
+        if (allowedKelasId) params.append("kelasId", allowedKelasId);
 
         const res = await fetch(`/api/admin/absensi/rekap/detail?${params}`);
         const result = await res.json();

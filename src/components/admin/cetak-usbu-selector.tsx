@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Save, Printer } from "lucide-react";
 
-export function CetakUsbuSelector({ kelasList }: { kelasList: { id: string, nama: string, programNama: string }[] }) {
+export function CetakUsbuSelector({ kelasList, isRestricted = false }: { kelasList: { id: string, nama: string, programNama: string }[], isRestricted?: boolean }) {
   const router = useRouter();
   const [kelasId, setKelasId] = useState<string>("");
   const [usbu, setUsbu] = useState<string>("1");
@@ -38,7 +38,9 @@ export function CetakUsbuSelector({ kelasList }: { kelasList: { id: string, nama
           className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-[var(--color-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         >
           <option value="" disabled>Pilih Ruangan Kelas...</option>
-          <option value="ALL" className="font-bold text-[var(--color-warning)]">-- Semua Ruangan Kelas (Cetak Bulk) --</option>
+          {!isRestricted && (
+            <option value="ALL" className="font-bold text-[var(--color-warning)]">-- Semua Ruangan Kelas (Cetak Bulk) --</option>
+          )}
           {kelasList.map(k => (
             <option key={k.id} value={k.id}>
               {k.nama} ({k.programNama})

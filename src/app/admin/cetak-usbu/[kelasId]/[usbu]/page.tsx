@@ -5,14 +5,24 @@ import { redirect } from "next/navigation";
 import { CetakUsbuDocument } from "@/components/admin/cetak-usbu-document";
 import { getActiveDufahName } from "@/lib/absensi";
 import { calcAkumulatif, calcAkbarnasMapelAverage, applyNilaiTambahan } from "@/lib/grade-calculator";
+import { getSession } from "@/lib/auth";
 
 export default async function CetakUsbuPrintPage(props: { params: Promise<{ kelasId: string, usbu: string }>, searchParams: Promise<{ bulan?: string }> }) {
   await requirePermission("cetak_nilai_pekanan");
+  const session = await getSession();
+  const isAdmin = session?.role === "ADMIN";
+  const allowedKelasId = session?.kelasId ?? null;
+  const isRestricted = !isAdmin && !!allowedKelasId;
+
   const { kelasId, usbu } = await props.params;
   const { bulan } = await props.searchParams;
   const targetUsbu = parseInt(usbu);
 
   if (targetUsbu < 1 || targetUsbu > 4) redirect("/admin/cetak-usbu");
+
+  if (isRestricted && allowedKelasId !== kelasId) {
+    redirect("/admin/cetak-usbu");
+  }
 
   const kelas = await prisma.kelas.findUnique({
     where: { id: kelasId },

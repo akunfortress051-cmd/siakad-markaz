@@ -5,9 +5,15 @@ import { redirect } from "next/navigation";
 import { CetakUsbuDocument } from "@/components/admin/cetak-usbu-document";
 import { getActiveDufahName } from "@/lib/absensi";
 import { calcAkumulatif, applyNilaiTambahan } from "@/lib/grade-calculator";
+import { getSession } from "@/lib/auth";
 
 export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ usbu: string }> }) {
   await requirePermission("cetak_nilai_pekanan");
+  const session = await getSession();
+  if (session?.role !== "ADMIN") {
+    redirect("/admin/cetak-usbu");
+  }
+
   const { usbu } = await params;
   const targetUsbu = parseInt(usbu);
 

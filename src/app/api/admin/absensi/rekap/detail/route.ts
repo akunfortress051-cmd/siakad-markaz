@@ -39,8 +39,12 @@ export async function GET(request: Request) {
         include: riwayatInclude,
       });
     } else if (type === "kelas") {
+      const kelasIdFilter = searchParams.get("kelasId");
       records = await prisma.absenKelas.findMany({
-        where: tanggalWhere,
+        where: {
+          ...tanggalWhere,
+          ...(kelasIdFilter ? { riwayat: { kelasId: kelasIdFilter } } : {}),
+        },
         include: riwayatInclude,
       });
     } else if (type === "kegiatan") {

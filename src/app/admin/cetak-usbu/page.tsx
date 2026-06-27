@@ -2,10 +2,18 @@ import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { CetakUsbuSelector } from "@/components/admin/cetak-usbu-selector";
 import { requirePermission } from "@/lib/permission";
+import { getSession } from "@/lib/auth";
 
 export default async function CetakUsbuPage() {
   await requirePermission("cetak_nilai_pekanan");
+  
+  const session = await getSession();
+  const isAdmin = session?.role === "ADMIN";
+  const allowedKelasId = session?.kelasId ?? null;
+  const isRestricted = !isAdmin && !!allowedKelasId;
+
   const kelasList = await prisma.kelas.findMany({
+    where: isRestricted ? { id: allowedKelasId } : undefined,
     include: {
       program: true,
     },
@@ -27,7 +35,10 @@ export default async function CetakUsbuPage() {
       </div>
 
       <div className="rounded-[2.5rem] bg-white p-8 shadow-sm border border-[var(--color-surface-dark)]/60 w-full max-w-2xl">
-        <CetakUsbuSelector kelasList={kelasList.map(k => ({ id: k.id, nama: k.nama, programNama: k.program.nama_indo }))} />
+        <CetakUsbuSelector 
+          kelasList={kelasList.map(k => ({ id: k.id, nama: k.nama, programNama: k.program.nama_indo }))} 
+          isRestricted={isRestricted}
+        />
       </div>
     </div>
   );
