@@ -336,6 +336,7 @@ model AbsenPengajar {
   kecerdasan           String?
   terlambatMenit       Int?
   isBadal              Boolean   @default(false)
+  isAsisten            Boolean   @default(false)
   pengajarDigantikanId String?
   pengajarDigantikan   User?     @relation("PengajarDigantikan", fields: [pengajarDigantikanId], references: [id], onDelete: SetNull)
 

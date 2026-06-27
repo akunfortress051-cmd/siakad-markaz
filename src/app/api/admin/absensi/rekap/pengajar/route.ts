@@ -141,6 +141,7 @@ export async function GET(request: Request) {
         waktuSelesai: r.waktuSelesai,
         status: "HADIR",
         isBadal: r.isBadal,
+        isAsisten: r.isAsisten,
         pengajarDigantikan: r.pengajarDigantikan?.nama || null,
         atribut: {
           nametag: r.atributNametag,
@@ -218,6 +219,7 @@ export async function GET(request: Request) {
             waktuSelesai: "-",
             status: "ALPHA",
             isBadal: false,
+            isAsisten: false,
             pengajarDigantikan: null,
             atribut: { nametag: false, kopiah: false, bros: false },
             terlambatMenit: 0,
@@ -244,6 +246,7 @@ export async function GET(request: Request) {
             waktuSelesai: "-",
             status: "ALPHA",
             isBadal: false,
+            isAsisten: false,
             pengajarDigantikan: null,
             atribut: { nametag: false, kopiah: false, bros: false },
             terlambatMenit: 0,
@@ -273,7 +276,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, materi, waktuMulai, waktuSelesai, atributKopiah, atributNametag, atributBros, terlambatMenit, isBadal, pengajarBadalId } = body;
+    const { id, materi, waktuMulai, waktuSelesai, atributKopiah, atributNametag, atributBros, terlambatMenit, isBadal, isAsisten, pengajarBadalId } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
@@ -321,6 +324,7 @@ export async function PUT(request: Request) {
           atributBros: Boolean(atributBros),
           terlambatMenit: terlambatMenit !== undefined && terlambatMenit !== "" ? Number(terlambatMenit) : null,
           isBadal: Boolean(isBadal),
+          isAsisten: Boolean(isAsisten),
           pengajarDigantikanId: finalPengajarDigantikanId,
         }
       });

@@ -18,6 +18,7 @@ type PengajarRecord = {
   waktuSelesai: string;
   status?: string;
   isBadal?: boolean;
+  isAsisten?: boolean;
   pengajarDigantikan?: string | null;
   atribut: {
     nametag: boolean;
@@ -483,6 +484,11 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
                               <div className="mt-1 ml-9">
                                 <span className="inline-flex items-center rounded-md bg-[var(--color-warning-light)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-warning)]">BADAL</span>
                                 {r.pengajarDigantikan && <span className="ml-1 text-[10px] text-[var(--color-text-muted)] font-medium">menggantikan {r.pengajarDigantikan}</span>}
+                              </div>
+                            )}
+                            {r.isAsisten && (
+                              <div className="mt-1 ml-9">
+                                <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-600 border border-teal-200">ASISTEN</span>
                               </div>
                             )}
                           </td>

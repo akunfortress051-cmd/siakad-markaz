@@ -166,7 +166,7 @@ export async function POST(request: Request) {
 
       // === Hitung terlambatMenit server-side ===
       let terlambatMenit: number | null = null;
-      if (!absenPengajar.isBadal && absenPengajar.waktuMulai && absenPengajar.waktuMulai !== "-") {
+      if (!absenPengajar.isBadal && !absenPengajar.isAsisten && absenPengajar.waktuMulai && absenPengajar.waktuMulai !== "-") {
         // Resolve jadwal buka dari JadwalSesi / SesiTambahanProgram
         const jadwalSesi = await prisma.jadwalSesi.findUnique({ where: { sesi: sesi as any } });
         let jadwalBuka: string | null = jadwalSesi?.jamBuka ?? null;
@@ -210,6 +210,7 @@ export async function POST(request: Request) {
             atributBros: absenPengajar.atributBros,
             kecerdasan: absenPengajar.kecerdasan || null,
             isBadal: absenPengajar.isBadal ?? false,
+            isAsisten: absenPengajar.isAsisten ?? false,
             pengajarDigantikanId: absenPengajar.pengajarDigantikanId || null,
           },
           create: {
@@ -226,6 +227,7 @@ export async function POST(request: Request) {
             atributBros: absenPengajar.atributBros,
             kecerdasan: absenPengajar.kecerdasan || null,
             isBadal: absenPengajar.isBadal ?? false,
+            isAsisten: absenPengajar.isAsisten ?? false,
             pengajarDigantikanId: absenPengajar.pengajarDigantikanId || null,
           }
         })
