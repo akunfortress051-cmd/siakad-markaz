@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { GabunganTable } from "./gabungan-table";
-import { calcMapelNilaiAkhir, calcAkumulatif } from "@/lib/grade-calculator";
+import { calcMapelNilaiAkhir, calcAkumulatif, calcMapelNilaiAkhirUsbuain2 } from "@/lib/grade-calculator";
 
 type MapelOption = {
   id: string;
@@ -43,11 +43,13 @@ type SantriRow = {
   santriId: string;
   nama: string;
   is_tasmi: boolean;
+  jumlah_kolom_usbu: number;
   nilai: Record<string, NilaiData>;
 };
 
 type ChangesRow = {
   is_tasmi?: boolean;
+  jumlah_kolom_usbu?: number;
   nilai?: Record<string, Partial<NilaiData>>;
 };
 
@@ -55,12 +57,14 @@ export function InputNilaiBulkClient({
   programList,
   allowedKelasId,
   isAdmin,
-  activeFlags
+  activeFlags,
+  hasUsbuainPermission
 }: {
   programList: ProgramOption[];
   allowedKelasId: string | null;
   isAdmin: boolean;
   activeFlags: { u1: boolean; u2: boolean; u3: boolean };
+  hasUsbuainPermission?: boolean;
 }) {
   const router = useRouter();
   const [selectedKelasId, setSelectedKelasId] = useState<string>("");
@@ -125,6 +129,29 @@ export function InputNilaiBulkClient({
         is_tasmi: checked
       }
     }));
+  };
+
+  const handleUsbuainChange = (riwayatId: string, value: number) => {
+    setChanges(prev => ({
+      ...prev,
+      [riwayatId]: {
+        ...(prev[riwayatId] || {}),
+        jumlah_kolom_usbu: value
+      }
+    }));
+  };
+
+  const handleSetAllUsbuain = (value: number) => {
+    setChanges(prev => {
+      const newChanges = { ...prev };
+      santriList.forEach(s => {
+        newChanges[s.riwayatId] = {
+          ...(newChanges[s.riwayatId] || {}),
+          jumlah_kolom_usbu: value
+        };
+      });
+      return newChanges;
+    });
   };
 
   const handleNilaiChange = (riwayatId: string, mapelId: string, field: keyof NilaiData, value: number | null) => {
@@ -226,10 +253,18 @@ export function InputNilaiBulkClient({
     mapels = mapels.filter(m => m.masuk_akumulasi !== false);
   }
 
+  const getUsbuainVal = (row: SantriRow) => {
+    if (changes[row.riwayatId] && changes[row.riwayatId].jumlah_kolom_usbu !== undefined) {
+      return changes[row.riwayatId].jumlah_kolom_usbu;
+    }
+    return row.jumlah_kolom_usbu;
+  };
+
   // Helper: compute summary for a santri row (used in both normal and gabungan mode)
   const computeSummary = (row: SantriRow) => {
     const mapelSummaries: { mapelId: string; nilaiAkhir: number; tambahan: number; final: number; belowKkm: boolean }[] = [];
     const akumulatifItems: { score: number; bobot: number }[] = [];
+    const currentRowUsbuain = getUsbuainVal(row) ?? 0;
 
     const accMapels = (selectedProgram?.mapelList || []).filter(m => m.masuk_akumulasi !== false);
 
@@ -242,11 +277,22 @@ export function InputNilaiBulkClient({
 
       // For non-gabungan: compute from U1/U2/Nihai if nilaiAkhir not set
       if (!isGabunganMode && nilaiAkhir === 0) {
-        const u1 = changes[row.riwayatId]?.nilai?.[m.id]?.u1 !== undefined ? changes[row.riwayatId].nilai![m.id].u1 as number : (nd?.u1 ?? null);
-        const u2 = changes[row.riwayatId]?.nilai?.[m.id]?.u2 !== undefined ? changes[row.riwayatId].nilai![m.id].u2 as number : (nd?.u2 ?? null);
-        const n = changes[row.riwayatId]?.nilai?.[m.id]?.n !== undefined ? changes[row.riwayatId].nilai![m.id].n as number : (nd?.n ?? null);
-        const calculated = calcMapelNilaiAkhir({ u1, u2, n }, isAkbarnas);
-        if (calculated !== null) nilaiAkhir = calculated;
+        if (m.jumlah_tes === 1 || currentRowUsbuain === 1) {
+          nilaiAkhir = changes[row.riwayatId]?.nilai?.[m.id]?.n !== undefined 
+            ? (changes[row.riwayatId].nilai![m.id].n as number) 
+            : (nd?.n ?? 0);
+        } else if (currentRowUsbuain === 2) {
+          const u1 = changes[row.riwayatId]?.nilai?.[m.id]?.u1 !== undefined ? changes[row.riwayatId].nilai![m.id].u1 as number : (nd?.u1 ?? null);
+          const u2 = changes[row.riwayatId]?.nilai?.[m.id]?.u2 !== undefined ? changes[row.riwayatId].nilai![m.id].u2 as number : (nd?.u2 ?? null);
+          const calculated = calcMapelNilaiAkhirUsbuain2({ u1, u2 });
+          if (calculated !== null) nilaiAkhir = calculated;
+        } else {
+          const u1 = changes[row.riwayatId]?.nilai?.[m.id]?.u1 !== undefined ? changes[row.riwayatId].nilai![m.id].u1 as number : (nd?.u1 ?? null);
+          const u2 = changes[row.riwayatId]?.nilai?.[m.id]?.u2 !== undefined ? changes[row.riwayatId].nilai![m.id].u2 as number : (nd?.u2 ?? null);
+          const n = changes[row.riwayatId]?.nilai?.[m.id]?.n !== undefined ? changes[row.riwayatId].nilai![m.id].n as number : (nd?.n ?? null);
+          const calculated = calcMapelNilaiAkhir({ u1, u2, n }, isAkbarnas);
+          if (calculated !== null) nilaiAkhir = calculated;
+        }
       }
 
       const final_ = nilaiAkhir + tambahan;
@@ -313,7 +359,7 @@ export function InputNilaiBulkClient({
       {/* Table Section */}
       {selectedKelasId && selectedProgram && (
         <section className="neu-card-white overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-[var(--color-surface)] flex items-center justify-between">
+          <div className="p-6 border-b border-[var(--color-surface)] flex items-center justify-between flex-wrap gap-4">
             <div>
               <h3 className="text-xl font-bold text-[var(--color-text)]">
                 {isGabunganMode ? "📊 Ledger Final — Gabungan & Nilai Tambahan" : "Master Sheet Penilaian Kelas"}
@@ -322,13 +368,30 @@ export function InputNilaiBulkClient({
                 {isGabunganMode ? `KKM: ${kkm} — Klik kolom tambahan untuk menambah nilai (maks +5)` : "Gunakan tombol Tab untuk berpindah antar kolom secara cepat."}
               </p>
             </div>
-            <button
-              onClick={handleSave}
-              disabled={isSaving || Object.keys(changes).length === 0}
-              className="rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
-            >
-              {isSaving ? "Menyimpan..." : "Simpan Semua Perubahan"}
-            </button>
+            <div className="flex items-center gap-3">
+              {!isGabunganMode && hasUsbuainPermission && (
+                <div className="flex items-center gap-2 border border-[var(--color-surface-dark)] bg-white rounded-full px-3 py-1.5 shrink-0">
+                  <span className="text-xs font-bold text-[var(--color-text-muted)]">Set Sekelas:</span>
+                  <select 
+                    onChange={(e) => handleSetAllUsbuain(Number(e.target.value))}
+                    className="text-xs font-bold bg-transparent outline-none cursor-pointer text-[var(--color-primary)]"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>-- Pilih Mode --</option>
+                    <option value={0}>Normal (3)</option>
+                    <option value={2}>Usbuain (2)</option>
+                    <option value={1}>Usbuain (1)</option>
+                  </select>
+                </div>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={isSaving || Object.keys(changes).length === 0}
+                className="rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+              >
+                {isSaving ? "Menyimpan..." : "Simpan Semua Perubahan"}
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto w-full custom-scrollbar">
@@ -397,7 +460,22 @@ export function InputNilaiBulkClient({
                     return (
                       <tr key={row.riwayatId} className={`transition hover:bg-[var(--color-secondary)]/80 ${hasChange ? 'bg-[var(--color-warning-light)]/10' : ''}`}>
                         <td className="px-2 md:px-4 py-2 text-center font-medium text-[var(--color-text-subtle)] sticky left-0 bg-white z-10 border-r border-[var(--color-surface)] shadow-[1px_0_0_0_#f1f5f9] min-w-[40px] md:min-w-[50px]">{index + 1}</td>
-                        <td className="px-3 md:px-4 py-2 font-bold text-[var(--color-text)] sticky left-[40px] md:left-[50px] bg-white z-10 border-r border-[var(--color-surface)] shadow-[1px_0_0_0_#f1f5f9] min-w-[140px] w-[140px] md:min-w-[250px] md:w-[250px] whitespace-normal leading-snug text-xs md:text-sm">{row.nama}</td>
+                        <td className="px-3 md:px-4 py-2 font-bold text-[var(--color-text)] sticky left-[40px] md:left-[50px] bg-white z-10 border-r border-[var(--color-surface)] shadow-[1px_0_0_0_#f1f5f9] min-w-[140px] w-[140px] md:min-w-[250px] md:w-[250px] whitespace-normal leading-snug text-xs md:text-sm">
+                          <div className="flex flex-col gap-1">
+                            <span>{row.nama}</span>
+                            {hasUsbuainPermission && (
+                              <select 
+                                value={getUsbuainVal(row) ?? 0}
+                                onChange={(e) => handleUsbuainChange(row.riwayatId, Number(e.target.value))}
+                                className="text-[10px] bg-slate-100 border border-slate-200 rounded px-1 py-0.5 outline-none max-w-[120px] text-[var(--color-text-muted)] cursor-pointer hover:bg-slate-200 focus:border-[var(--color-primary)]"
+                              >
+                                <option value={0}>Mode: Normal</option>
+                                <option value={2}>Mode: Usbuain (2)</option>
+                                <option value={1}>Mode: Usbuain (1)</option>
+                              </select>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-2 text-center md:sticky md:left-[300px] bg-white md:z-10 border-r border-[var(--color-surface-dark)] md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] min-w-[80px]">
                           {activeFlags.u3 ? (
                             <label className="inline-flex cursor-pointer items-center justify-center w-full h-full">
@@ -418,10 +496,13 @@ export function InputNilaiBulkClient({
                             const u1 = getNilaiVal(row, m.id, "u1");
                             const u2 = getNilaiVal(row, m.id, "u2");
                             const n = getNilaiVal(row, m.id, "n");
+                            const curRowMode = getUsbuainVal(row) ?? 0;
                             return (
                               <Fragment key={`td_${m.id}`}>
                                 <td className="px-1 py-2">
-                                  {activeFlags.u1 ? (
+                                  {curRowMode === 1 ? (
+                                    <div className="w-full rounded-lg bg-gray-50/50 px-2 py-1.5 text-center font-bold text-gray-300">X</div>
+                                  ) : activeFlags.u1 ? (
                                     <input 
                                       type="number" min={0} max={100} 
                                       value={u1 === null ? "" : u1}
@@ -433,7 +514,9 @@ export function InputNilaiBulkClient({
                                   )}
                                 </td>
                                 <td className="px-1 py-2">
-                                  {activeFlags.u2 ? (
+                                  {curRowMode === 1 ? (
+                                    <div className="w-full rounded-lg bg-gray-50/50 px-2 py-1.5 text-center font-bold text-gray-300">X</div>
+                                  ) : activeFlags.u2 ? (
                                     <input 
                                       type="number" min={0} max={100} 
                                       value={u2 === null ? "" : u2}
@@ -445,26 +528,32 @@ export function InputNilaiBulkClient({
                                   )}
                                 </td>
                                 <td className="px-1 py-2">
-                                  {activeFlags.u3 ? (
+                                  {curRowMode === 1 || curRowMode === 2 ? (
+                                    <div className="w-full rounded-lg bg-gray-50/50 px-2 py-1.5 text-center font-bold text-gray-300">X</div>
+                                  ) : activeFlags.u3 ? (
                                     <input 
-                                      type="number" min={0} max={100} 
-                                      value={n === null ? "" : n}
+                                      type="number" min={0} max={100}
+                                      value={n !== null ? n : ""}
                                       onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "n", e.target.value === "" ? null : Number(e.target.value))}
-                                      className="w-full rounded-lg border border-[var(--color-surface-dark)] bg-white px-2 py-1.5 text-center font-bold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-emerald-100 focus:bg-[var(--color-primary-50)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                      onFocus={(e) => e.target.select()}
+                                      className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-bold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] bg-white"
                                     />
                                   ) : (
-                                    <div className="w-full rounded-lg border border-[var(--color-surface)] bg-[var(--color-secondary)] px-2 py-1.5 text-center font-bold text-[var(--color-text-subtle)]">{n === null ? "-" : n}</div>
+                                    <div className="w-full rounded-lg bg-gray-50/50 px-2 py-1.5 text-center font-bold text-gray-300">X</div>
                                   )}
                                 </td>
                                 {/* Rata + Tambahan column */}
                                 {(() => {
                                   let avg = row.nilai?.[m.id]?.a ?? null;
                                   
-                                  if (avg === null) {
+                                  if (avg === null && curRowMode !== 1) {
                                     const u1 = getNilaiVal(row, m.id, "u1");
                                     const u2 = getNilaiVal(row, m.id, "u2");
                                     const n = getNilaiVal(row, m.id, "n");
-                                    if (u1 !== null && u2 !== null && n !== null) {
+                                    
+                                    if (curRowMode === 2 && u1 !== null && u2 !== null) {
+                                      avg = Number(((u1 * 0.4) + (u2 * 0.6)).toFixed(2));
+                                    } else if (curRowMode === 0 && u1 !== null && u2 !== null && n !== null) {
                                       if (isAkbarnas) {
                                         avg = Number(((u1 + u2 + n) / 3).toFixed(2));
                                       } else {
@@ -478,9 +567,28 @@ export function InputNilaiBulkClient({
                                   const maxTambahan = avg !== null ? Math.max(0, 100 - Math.round(avg)) : 100;
                                   return (
                                     <td className="px-0.5 py-1 border-r border-[var(--color-surface-dark)] bg-amber-50/30">
-                                      <div className={`text-center text-[10px] font-bold mb-0.5 ${avg !== null && (avg + curTambahan) < kkm ? 'text-red-600' : 'text-[var(--color-text)]'}`}>
-                                        {avg !== null ? Math.round(avg + curTambahan) : '-'}
-                                      </div>
+                                      {curRowMode === 1 ? (
+                                        <div className="mb-0.5 px-0.5 text-center">
+                                          {/* In mode 1, Nilai Akhir is determined entirely by Nihai */}
+                                          <div className="w-full rounded px-1 py-1 text-xs font-bold text-gray-400">
+                                            {getNilaiVal(row, m.id, "n") ?? "-"}
+                                          </div>
+                                        </div>
+                                      ) : curRowMode === 2 ? (
+                                        <div className="mb-0.5 px-0.5 text-center">
+                                          <input 
+                                            type="number" min={0} max={100}
+                                            value={avg === null ? "" : Math.round(avg)}
+                                            onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "a", e.target.value === "" ? null : Number(e.target.value))}
+                                            placeholder="Nilai"
+                                            className="w-full rounded border border-emerald-300 bg-white px-1 py-1 text-center text-[10px] font-bold text-emerald-800 outline-none focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className={`text-center text-[10px] font-bold mb-0.5 ${avg !== null && (avg + curTambahan) < kkm ? 'text-red-600' : 'text-[var(--color-text)]'}`}>
+                                          {avg !== null ? Math.round(avg + curTambahan) : '-'}
+                                        </div>
+                                      )}
                                       {avg !== null && (
                                         <input type="number" min={0} max={maxTambahan}
                                           value={curTambahan || ""}

@@ -21,6 +21,7 @@ export async function PUT(
     const payload = (await request.json()) as {
       kelasId?: string;
       is_tasmi?: boolean;
+      jumlah_kolom_usbu?: number | null;
       nilaiList: Array<{
         mapelId: string;
         nilaiUsbu1: number | null;
@@ -138,6 +139,7 @@ export async function PUT(
             kelasId: kelas.id,
             is_tasmi: payload.is_tasmi ?? false,
             status_kelulusan: statusKelulusan,
+            jumlah_kolom_usbu: payload.jumlah_kolom_usbu,
           },
         });
       } else {
@@ -153,6 +155,7 @@ export async function PUT(
             kelasId: kelas.id,
             is_tasmi: payload.is_tasmi ?? false,
             status_kelulusan: statusKelulusan,
+            jumlah_kolom_usbu: payload.jumlah_kolom_usbu,
           },
           create: {
             santriId: santriId,
@@ -161,6 +164,7 @@ export async function PUT(
             kelasId: kelas.id,
             is_tasmi: payload.is_tasmi ?? false,
             status_kelulusan: statusKelulusan,
+            jumlah_kolom_usbu: payload.jumlah_kolom_usbu,
           },
         });
       }

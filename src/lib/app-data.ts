@@ -4,7 +4,7 @@ import { calculateStatus } from "@/lib/kelulusan";
 import { formatDateIndo, getPredikat, translateDateToArabic } from "@/lib/formatters";
 import { getMasterSantriById, getMasterSantriList } from "@/lib/santri-api";
 import { getActiveDufahName } from "@/lib/absensi";
-import { calcAkbarnasGabungan, calcAkbarnasMapelAverage, calcAkumulatif, calcMapelNilaiAkhir, applyNilaiTambahan } from "@/lib/grade-calculator";
+import { calcAkbarnasGabungan, calcAkbarnasMapelAverage, calcAkumulatif, calcMapelNilaiAkhir, calcMapelNilaiAkhirUsbuain2, applyNilaiTambahan } from "@/lib/grade-calculator";
 
 const programInclude = {
   programMapels: {
@@ -275,21 +275,35 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
 
         nilaiList = mergedNilaiList as any[];
       } else if (!isAkbarnas && riwayat) {
+        const effectiveUsbuainMode = riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0;
         for (const n of nilaiList) {
           if (n.nilaiAkhir === null && (n.nilaiUsbu1 !== null || n.nilaiUsbu2 !== null || n.nilaiNihai !== null)) {
-            n.nilaiAkhir = calcMapelNilaiAkhir(
-              { u1: n.nilaiUsbu1, u2: n.nilaiUsbu2, n: n.nilaiNihai },
-              false
-            );
+            const m = program?.programMapels.find((pm: any) => pm.mapelId === n.mapelId)?.mapel;
+            if (m?.jumlah_tes === 3 && effectiveUsbuainMode === 2) {
+              n.nilaiAkhir = calcMapelNilaiAkhirUsbuain2({ u1: n.nilaiUsbu1, u2: n.nilaiUsbu2 });
+            } else if (m?.jumlah_tes === 3 && effectiveUsbuainMode === 1) {
+              n.nilaiAkhir = n.nilaiNihai;
+            } else {
+              n.nilaiAkhir = calcMapelNilaiAkhir(
+                { u1: n.nilaiUsbu1, u2: n.nilaiUsbu2, n: n.nilaiNihai },
+                false
+              );
+            }
           }
         }
       }
+
+      const effectiveUsbuainMode = riwayat ? (riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0) : 0;
 
       const hasCompleteNilai = totalMapel > 0 && nilaiList.length === totalMapel &&
         nilaiList.every((n: any) => {
           if (isAkbarnas) return n.nilaiAkhir !== null;
           const m = program?.programMapels.find((pm: any) => pm.mapelId === n.mapelId)?.mapel;
           if (m?.jumlah_tes === 1) return n.nilaiAkhir !== null;
+          // Usbuain modes: check only the relevant columns
+          if (effectiveUsbuainMode === 1 && m?.jumlah_tes === 3) return n.nilaiNihai !== null;
+          if (effectiveUsbuainMode === 2 && m?.jumlah_tes === 3) return n.nilaiUsbu1 !== null && n.nilaiUsbu2 !== null;
+          // Normal 3 kolom
           return n.nilaiUsbu1 !== null && n.nilaiUsbu2 !== null && n.nilaiNihai !== null;
         });
 
@@ -357,6 +371,7 @@ export async function getSantriFormData(id: string) {
             program: {
               include: programInclude,
             },
+            kelas: true,
             nilaiList: {
               include: {
                 mapel: true,
@@ -425,6 +440,8 @@ export async function getSantriFormData(id: string) {
         kelasId: activeRiwayat.kelasId,
         is_tasmi: activeRiwayat.is_tasmi,
         status_kelulusan: activeRiwayat.status_kelulusan,
+        jumlah_kolom_usbu: activeRiwayat.jumlah_kolom_usbu,
+        kelas: activeRiwayat.kelas,
         nilaiList: activeRiwayat.nilaiList.map((nilai: any) => ({
           id: nilai.id,
           mapelId: nilai.mapelId,
@@ -745,21 +762,34 @@ export async function getRiwayatSantriRows() {
     const nilaiList = riwayat.nilaiList ?? [];
     
     if (!isAkbarnas) {
+      const effectiveUsbuainMode = riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0;
       for (const n of nilaiList) {
         if (n.nilaiAkhir === null && (n.nilaiUsbu1 !== null || n.nilaiUsbu2 !== null || n.nilaiNihai !== null)) {
-          n.nilaiAkhir = calcMapelNilaiAkhir(
-            { u1: n.nilaiUsbu1, u2: n.nilaiUsbu2, n: n.nilaiNihai },
-            false
-          );
+          const m = program?.programMapels.find((pm: any) => pm.mapelId === n.mapelId)?.mapel;
+          if (m?.jumlah_tes === 3 && effectiveUsbuainMode === 2) {
+            n.nilaiAkhir = calcMapelNilaiAkhirUsbuain2({ u1: n.nilaiUsbu1, u2: n.nilaiUsbu2 });
+          } else if (m?.jumlah_tes === 3 && effectiveUsbuainMode === 1) {
+            n.nilaiAkhir = n.nilaiNihai;
+          } else {
+            n.nilaiAkhir = calcMapelNilaiAkhir(
+              { u1: n.nilaiUsbu1, u2: n.nilaiUsbu2, n: n.nilaiNihai },
+              false
+            );
+          }
         }
       }
     }
 
     const totalMapel = program?.programMapels.length ?? 0;
+    const effectiveUsbuainMode2 = riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0;
     const hasCompleteNilai = totalMapel > 0 && nilaiList.length === totalMapel &&
       nilaiList.every((n: any) => {
         const m = program?.programMapels.find((pm: any) => pm.mapelId === n.mapelId)?.mapel;
         if (m?.jumlah_tes === 1) return n.nilaiAkhir !== null;
+        // Usbuain modes
+        if (effectiveUsbuainMode2 === 1 && m?.jumlah_tes === 3) return n.nilaiNihai !== null;
+        if (effectiveUsbuainMode2 === 2 && m?.jumlah_tes === 3) return n.nilaiUsbu1 !== null && n.nilaiUsbu2 !== null;
+        // Normal
         return n.nilaiUsbu1 !== null && n.nilaiUsbu2 !== null && n.nilaiNihai !== null;
       });
     const accumulativeNilai = nilaiList.filter((n: any) => {

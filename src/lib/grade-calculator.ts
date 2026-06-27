@@ -41,6 +41,19 @@ export function calcMapelNilaiAkhir(
   }
 }
 
+// ─── Per-Mapel NilaiAkhir (Usbuain) ──────────────────────────────
+
+/**
+ * Hitung nilaiAkhir untuk mode Usbuain 2 kolom.
+ * Formula: U1×40% + U2×60%
+ */
+export function calcMapelNilaiAkhirUsbuain2(
+  scores: { u1: number | null; u2: number | null }
+): number | null {
+  if (scores.u1 === null || scores.u2 === null) return null;
+  return Number((scores.u1 * 0.4 + scores.u2 * 0.6).toFixed(2));
+}
+
 // ─── Nilai Tambahan ──────────────────────────────────────────────
 
 /**

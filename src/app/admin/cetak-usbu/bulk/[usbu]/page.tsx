@@ -84,15 +84,32 @@ export default async function CetakBulkUsbuPage({ params }: { params: Promise<{ 
       const mapelScores: (number | "-")[] = [];
       const akumulatifItems: { score: number; bobot: number }[] = [];
 
+      const effectiveMode = riwayat.jumlah_kolom_usbu ?? kelas.jumlah_kolom_usbu ?? 0;
+
       for (const pm of activeMapels) {
         const match = riwayat.nilaiList.find((n: any) => n.mapelId === pm.mapelId);
 
         let score: number | null = null;
         if (match) {
-          if (targetUsbu === 1) score = match.nilaiUsbu1 ?? match.nilaiAkhir;
-          if (targetUsbu === 2) score = match.nilaiUsbu2 ?? match.nilaiAkhir;
-          if (targetUsbu === 3) score = match.nilaiNihai ?? match.nilaiAkhir;
-          if (targetUsbu === 4) {
+          if (targetUsbu === 1) {
+            if (effectiveMode === 1 && pm.mapel.jumlah_tes === 3) {
+              score = match.nilaiNihai ?? null;
+            } else {
+              score = match.nilaiUsbu1 ?? match.nilaiAkhir;
+            }
+          } else if (targetUsbu === 2) {
+            if (effectiveMode === 1 && pm.mapel.jumlah_tes === 3) {
+              score = null;
+            } else {
+              score = match.nilaiUsbu2 ?? match.nilaiAkhir;
+            }
+          } else if (targetUsbu === 3) {
+            if ((effectiveMode === 1 || effectiveMode === 2) && pm.mapel.jumlah_tes === 3) {
+              score = null;
+            } else {
+              score = match.nilaiNihai ?? match.nilaiAkhir;
+            }
+          } else if (targetUsbu === 4) {
             const base = match.nilaiAkhir;
             const tmb = match.nilaiTambahan ?? 0;
             score = base !== null && base !== undefined ? applyNilaiTambahan(base, tmb) : null;

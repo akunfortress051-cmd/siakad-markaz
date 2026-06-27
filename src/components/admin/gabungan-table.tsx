@@ -21,6 +21,7 @@ type SantriRow = {
   santriId: string;
   nama: string;
   is_tasmi: boolean;
+  jumlah_kolom_usbu: number;
   nilai: Record<string, NilaiData>;
 };
 

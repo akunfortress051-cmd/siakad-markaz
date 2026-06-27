@@ -1,4 +1,4 @@
-import { requirePermission } from "@/lib/permission";
+import { requirePermission, checkPermission } from "@/lib/permission";
 import { getProgramCatalog } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { InputNilaiBulkClient } from "@/components/admin/input-nilai-bulk-client";
@@ -16,6 +16,7 @@ export default async function InputNilaiKelasPage() {
 
   const isAdmin = session?.role === "ADMIN";
   const allowedKelasId = session?.kelasId ?? null;
+  const hasUsbuainPermission = await checkPermission("setting_usbuain");
 
   let activeFlags = { u1: true, u2: true, u3: true };
   const activeDufahName = await getActiveDufahName();
@@ -69,6 +70,7 @@ export default async function InputNilaiKelasPage() {
         allowedKelasId={allowedKelasId}
         isAdmin={isAdmin}
         activeFlags={activeFlags}
+        hasUsbuainPermission={hasUsbuainPermission}
       />
     </div>
   );

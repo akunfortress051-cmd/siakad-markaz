@@ -95,6 +95,7 @@ export default async function InputNilaiPage({
         internalSantri={data.internalSantri} 
         activeRiwayat={data.activeRiwayat} 
         allRiwayat={data.allRiwayat}
+        jumlahKolomUsbu={data.activeRiwayat?.jumlah_kolom_usbu ?? data.activeRiwayat?.kelas?.jumlah_kolom_usbu ?? 0}
       />
     </div>
   );

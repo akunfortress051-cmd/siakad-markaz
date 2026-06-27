@@ -62,6 +62,8 @@ type ActiveRiwayat = {
     nilaiAkhir: number | null;
     skor: number;
   }>;
+  jumlah_kolom_usbu?: number | null;
+  kelas?: any;
 } | null;
 
 function statusBadgeClass(status: string) {
@@ -83,6 +85,7 @@ export function InputNilaiForm({
   activeRiwayat,
   activeFlags,
   allRiwayat,
+  jumlahKolomUsbu: initialJumlahKolomUsbu,
 }: {
   santri: MasterSantri;
   programList: ProgramOption[];
@@ -90,6 +93,7 @@ export function InputNilaiForm({
   activeRiwayat: ActiveRiwayat;
   activeFlags: { u1: boolean; u2: boolean; u3: boolean };
   allRiwayat: any[];
+  jumlahKolomUsbu: number;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -97,7 +101,8 @@ export function InputNilaiForm({
   const [selectedKelasId, setSelectedKelasId] = useState(
     activeRiwayat?.kelasId ?? "",
   );
-  const [isTasmi, setIsTasmi] = useState(activeRiwayat?.is_tasmi ?? false);
+  const [isTasmi, setIsTasmi] = useState<boolean>(activeRiwayat?.is_tasmi ?? false);
+  const [jumlahKolomUsbu, setJumlahKolomUsbu] = useState<number>(activeRiwayat?.jumlah_kolom_usbu ?? initialJumlahKolomUsbu);
   const [nilaiByMapel, setNilaiByMapel] = useState<Record<string, { u1: string, u2: string, n: string, a: string }>>(() => {
     return Object.fromEntries(
       (activeRiwayat?.nilaiList ?? []).map((nilai) => [
@@ -143,16 +148,23 @@ export function InputNilaiForm({
     const currU2 = val.u2 === "" ? null : Number(val.u2);
     const currN = val.n === "" ? null : Number(val.n);
 
-
-
-    const currA = mapel.jumlah_tes === 1 ? (val.a === "" ? null : Number(val.a)) :
-      calcMapelNilaiAkhir({ u1: currU1, u2: currU2, n: currN }, isAkbarnas);
+    let currA = null;
+    if (mapel.jumlah_tes === 1 || jumlahKolomUsbu === 1) {
+      // mode 1: use Nihai instead of direct a
+      currA = currN;
+    } else if (jumlahKolomUsbu === 2) {
+      if (currU1 !== null && currU2 !== null) {
+        currA = Number((currU1 * 0.4 + currU2 * 0.6).toFixed(2));
+      }
+    } else {
+      currA = calcMapelNilaiAkhir({ u1: currU1, u2: currU2, n: currN }, isAkbarnas);
+    }
 
     return {
       mapelId: mapel.id,
-      u1: mapel.jumlah_tes === 1 ? null : currU1,
-      u2: mapel.jumlah_tes === 1 ? null : currU2,
-      n: mapel.jumlah_tes === 1 ? null : currN,
+      u1: (mapel.jumlah_tes === 1 || jumlahKolomUsbu === 1) ? null : currU1,
+      u2: (mapel.jumlah_tes === 1 || jumlahKolomUsbu === 1) ? null : currU2,
+      n: (mapel.jumlah_tes === 1 || jumlahKolomUsbu === 2) ? null : currN,
       a: currA,
       skor: currA || 0,
       masuk_akumulasi: mapel.masuk_akumulasi,
@@ -164,9 +176,15 @@ export function InputNilaiForm({
     activeMapelList.some((mapel) => {
       const val = nilaiByMapel[mapel.id];
       if (!val) return true;
-      if (mapel.jumlah_tes === 1) {
-        return val.a.trim() === "";
+      if (mapel.jumlah_tes === 1 || jumlahKolomUsbu === 1) {
+        return val.n.trim() === ""; // now using n
       }
+      if (jumlahKolomUsbu === 2) {
+        if (activeFlags.u1 && val.u1.trim() === "") return true;
+        if (activeFlags.u2 && val.u2.trim() === "") return true;
+        return false;
+      }
+      // Normal 3 columns
       if (activeFlags.u1 && val.u1.trim() === "") return true;
       if (activeFlags.u2 && val.u2.trim() === "") return true;
       if (activeFlags.u3 && val.n.trim() === "") return true;
@@ -212,6 +230,7 @@ export function InputNilaiForm({
         body: JSON.stringify({
           kelasId: selectedKelasId,
           is_tasmi: isTasmi,
+          jumlah_kolom_usbu: jumlahKolomUsbu,
           nilaiList: parsedNilai.map((mapel) => ({
             mapelId: mapel.mapelId,
             nilaiUsbu1: mapel.u1,
@@ -328,6 +347,18 @@ export function InputNilaiForm({
               />
               Sudah Tasmi&apos;
             </label>
+            <label className="flex items-center gap-3 rounded-3xl border border-[var(--color-surface-dark)] bg-[var(--color-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-text)]">
+              <span className="shrink-0">Mode Usbuain:</span>
+              <select
+                value={jumlahKolomUsbu}
+                onChange={(e) => setJumlahKolomUsbu(Number(e.target.value))}
+                className="w-full bg-transparent outline-none cursor-pointer text-[var(--color-primary)] font-bold"
+              >
+                <option value={0}>Normal (3 Kolom)</option>
+                <option value={2}>Usbuain (2 Kolom)</option>
+                <option value={1}>Usbuain (1 Kolom)</option>
+              </select>
+            </label>
           </div>
         </div>
       </section>
@@ -379,7 +410,7 @@ export function InputNilaiForm({
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 mt-auto">
-                    {mapel.jumlah_tes === 3 ? (
+                    {mapel.jumlah_tes === 3 && jumlahKolomUsbu === 0 ? (
                       <>
                         <div>
                           <p className={`text-[10px] uppercase font-bold text-center mb-1 ${activeFlags.u1 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>Usbu' 1</p>
@@ -418,12 +449,40 @@ export function InputNilaiForm({
                           )}
                         </div>
                       </>
+                    ) : mapel.jumlah_tes === 3 && jumlahKolomUsbu === 2 ? (
+                      <>
+                        <div className="col-span-1"></div>
+                        <div>
+                          <p className={`text-[10px] uppercase font-bold text-center mb-1 ${activeFlags.u1 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>Usbu' 1</p>
+                          {activeFlags.u1 ? (
+                          <input
+                            type="number" min={0} max={100} value={val.u1}
+                            onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, u1: e.target.value } }))}
+                            className="w-full rounded-xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)]/50 px-2 py-2 text-center text-sm font-black text-[var(--color-primary-dark)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
+                          />
+                          ) : (
+                            <div className="w-full rounded-xl border border-[var(--color-surface)] bg-[var(--color-secondary)] px-2 py-2 text-center text-sm font-bold text-[var(--color-text-subtle)]">{val.u1 || "-"}</div>
+                          )}
+                        </div>
+                        <div>
+                          <p className={`text-[10px] uppercase font-bold text-center mb-1 ${activeFlags.u2 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>Usbu' 2</p>
+                          {activeFlags.u2 ? (
+                          <input
+                            type="number" min={0} max={100} value={val.u2}
+                            onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, u2: e.target.value } }))}
+                            className="w-full rounded-xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)]/50 px-2 py-2 text-center text-sm font-black text-[var(--color-primary-dark)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
+                          />
+                          ) : (
+                            <div className="w-full rounded-xl border border-[var(--color-surface)] bg-[var(--color-secondary)] px-2 py-2 text-center text-sm font-bold text-[var(--color-text-subtle)]">{val.u2 || "-"}</div>
+                          )}
+                        </div>
+                      </>
                     ) : (
                       <div className="col-span-3">
-                        <p className={`text-[10px] uppercase font-bold text-center mb-1 text-[var(--color-primary)]`}>Nilai Langsung</p>
+                        <p className={`text-[10px] uppercase font-bold text-center mb-1 text-[var(--color-primary)]`}>{mapel.jumlah_tes === 1 ? "Nilai Langsung" : "Nihai"}</p>
                         <input
-                          type="number" min={0} max={100} value={val.a}
-                          onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, a: e.target.value } }))}
+                          type="number" min={0} max={100} value={mapel.jumlah_tes === 1 ? val.a : val.n}
+                          onChange={(e) => setNilaiByMapel(c => ({ ...c, [mapel.id]: { ...c[mapel.id] || val, [mapel.jumlah_tes === 1 ? "a" : "n"]: e.target.value } }))}
                           className="w-full rounded-xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)]/50 px-2 py-2 text-center text-sm font-black text-[var(--color-primary-dark)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
                         />
                       </div>

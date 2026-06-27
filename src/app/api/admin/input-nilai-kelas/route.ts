@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getActiveRiwayatListForAbsen } from "@/lib/absensi";
 import { getMasterSantriList } from "@/lib/santri-api";
 import { PROGRAM_SEED_DATA } from "@/lib/academic-config";
-import { calcMapelNilaiAkhir, calcAkbarnasMapelAverage } from "@/lib/grade-calculator";
+import { calcMapelNilaiAkhir, calcAkbarnasMapelAverage, calcMapelNilaiAkhirUsbuain2 } from "@/lib/grade-calculator";
 
 export const dynamic = "force-dynamic";
 
@@ -147,6 +147,7 @@ export async function GET(request: Request) {
       select: {
         id: true,
         is_tasmi: true,
+        jumlah_kolom_usbu: true,
         nilaiList: true // Ambil semua nilai
       }
     });
@@ -174,6 +175,7 @@ export async function GET(request: Request) {
         santriId: santri.santriId,
         nama: santri.nama,
         is_tasmi: dbData?.is_tasmi ?? false,
+        jumlah_kolom_usbu: dbData?.jumlah_kolom_usbu ?? kelasInfo?.jumlah_kolom_usbu ?? 0,
         nilai: nilaiMap,
       };
     });
@@ -199,11 +201,15 @@ export async function POST(request: Request) {
 
     await prisma.$transaction(async (tx) => {
       for (const update of updates) {
-        // Update is_tasmi di tabel RiwayatSantri
-        if (update.is_tasmi !== undefined) {
+        // Update is_tasmi & jumlah_kolom_usbu di tabel RiwayatSantri
+        if (update.is_tasmi !== undefined || update.jumlah_kolom_usbu !== undefined) {
+          const riwayatData: any = {};
+          if (update.is_tasmi !== undefined) riwayatData.is_tasmi = update.is_tasmi;
+          if (update.jumlah_kolom_usbu !== undefined) riwayatData.jumlah_kolom_usbu = update.jumlah_kolom_usbu;
+
           await tx.riwayatSantri.update({
             where: { id: update.riwayatId },
-            data: { is_tasmi: update.is_tasmi }
+            data: riwayatData
           });
         }
 
@@ -251,22 +257,29 @@ export async function POST(request: Request) {
                       currentNilai.nilaiUsbu2 !== null && 
                       currentNilai.nilaiNihai !== null) {
                     
-                    // Cek apakah program ini Akbarnas
                     const riwayat = await tx.riwayatSantri.findUnique({
                       where: { id: update.riwayatId },
-                      include: { program: true }
+                      include: { program: true, kelas: true }
                     });
                     const isAkbarnas = riwayat?.program?.nama_indo?.toLowerCase().includes("akbarnas") ?? false;
+                    const effectiveJumlahKolomUsbu = riwayat?.jumlah_kolom_usbu ?? riwayat?.kelas?.jumlah_kolom_usbu ?? 0;
 
-                    const nilaiAkhir = calcMapelNilaiAkhir(
-                      { u1: currentNilai.nilaiUsbu1, u2: currentNilai.nilaiUsbu2, n: currentNilai.nilaiNihai },
-                      isAkbarnas
-                    );
+                    let nilaiAkhir = null;
+                    if (effectiveJumlahKolomUsbu === 2) {
+                      nilaiAkhir = calcMapelNilaiAkhirUsbuain2({ u1: currentNilai.nilaiUsbu1, u2: currentNilai.nilaiUsbu2 });
+                    } else if (effectiveJumlahKolomUsbu === 0) {
+                      nilaiAkhir = calcMapelNilaiAkhir(
+                        { u1: currentNilai.nilaiUsbu1, u2: currentNilai.nilaiUsbu2, n: currentNilai.nilaiNihai },
+                        isAkbarnas
+                      );
+                    }
 
-                    await tx.nilai.update({
-                      where: { riwayatId_mapelId: { riwayatId: update.riwayatId, mapelId } },
-                      data: { nilaiAkhir }
-                    });
+                    if (nilaiAkhir !== null) {
+                      await tx.nilai.update({
+                        where: { riwayatId_mapelId: { riwayatId: update.riwayatId, mapelId } },
+                        data: { nilaiAkhir }
+                      });
+                    }
                   }
                 }
               }

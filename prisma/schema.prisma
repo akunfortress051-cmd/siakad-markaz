@@ -32,6 +32,7 @@ model Kelas {
   pengajarSesiList  PengajarSesi[]
   absenPengajarList AbsenPengajar[]
   is_akbarnas_b2    Boolean         @default(false)
+  jumlah_kolom_usbu Int             @default(0) // 0=normal, 1=satu kolom, 2=dua kolom
 }
 
 model Mapel {
@@ -118,6 +119,7 @@ model RiwayatSantri {
   riwayatUsbuList   RiwayatUsbu[]
   syahadahLayout    SyahadahLayout?
   perizinanList     Perizinan[]
+  jumlah_kolom_usbu Int?            // null=ikut kelas, 0=normal, 1=satu kolom, 2=dua kolom
 
   @@unique([santriId, dufahNama])
 }
