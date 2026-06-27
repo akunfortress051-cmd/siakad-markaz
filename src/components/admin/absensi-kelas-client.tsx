@@ -145,6 +145,38 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   return { activeSesis: uniqueActiveSesis, nextSession, isResting: uniqueActiveSesis.length === 0 && !nextSession, activeSessionLabels };
 }
 
+function getWibTimeNow(): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+  const parts = formatter.formatToParts(new Date());
+  const h = parts.find(p => p.type === 'hour')?.value || '00';
+  const m = parts.find(p => p.type === 'minute')?.value || '00';
+  return `${h}:${m}`;
+}
+
+function resolveJamTutup(jadwalSesiList: any, activeSession: string | null, activeClassId: string | null, kelasId: string, programList: any[], tanggal: string): string {
+  if (!jadwalSesiList || !activeSession) return "";
+  const resolvedClassId = activeClassId || kelasId;
+  let pId: string | null = null;
+  if (resolvedClassId && resolvedClassId !== "ALL" && resolvedClassId !== "UNASSIGNED") {
+    if (resolvedClassId.startsWith("PROGRAM_")) pId = resolvedClassId.replace("PROGRAM_", "");
+    else {
+      const prog = programList.find(p => p.kelasList.some((k:any) => k.id === resolvedClassId));
+      if (prog) pId = prog.id;
+    }
+  }
+  let j: any = null;
+  if (activeSession === "SESI_1" && pId) {
+    const isTaqwim = jadwalSesiList.taqwim?.tanggalList?.some((t:any) => t.programId === pId && t.tanggal.startsWith(tanggal));
+    if (isTaqwim) j = jadwalSesiList.taqwim?.configs?.find((c:any) => c.programId === pId && c.isActive);
+  }
+  if (!j && pId && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x:any) => x.sesi === activeSession && x.programId === pId);
+  if (!j) j = jadwalSesiList.globalSesi?.find((x:any) => x.sesi === activeSession);
+  return j?.jamTutup || "";
+}
+
 // Helper: Cache key untuk form pengajar
 function getCacheKey(tanggal: string, sesi: string, kelasId: string): string {
   return `absen_pengajar_${tanggal}_${sesi}_${kelasId}`;
@@ -480,9 +512,9 @@ export function AbsensiKelasClient({
     if (!isTeacher || !tanggal || !sesi || !kelasId) return;
     // Cegah save data lama ke sesi baru sebelum data sesi baru selesai di-fetch
     if (loadedSessionRef.current.sesi !== sesi || loadedSessionRef.current.kelasId !== kelasId) return;
-    const data = { materi, waktuMulai, waktuSelesai, atribut, kecerdasan };
+    const data = { materi, atribut, kecerdasan };
     saveFormCache(tanggal, sesi, kelasId, data);
-  }, [isTeacher, tanggal, sesi, kelasId, materi, waktuMulai, waktuSelesai, atribut, kecerdasan]);
+  }, [isTeacher, tanggal, sesi, kelasId, materi, atribut, kecerdasan]);
 
   useEffect(() => {
     if (!tanggal || !sesi) return;
@@ -515,8 +547,13 @@ export function AbsensiKelasClient({
         // Prioritas: data dari server > cache localStorage
         if (data.absenPengajarData) {
           setMateri(data.absenPengajarData.materi || "");
-          setWaktuMulai(data.absenPengajarData.waktuMulai || "");
-          setWaktuSelesai(data.absenPengajarData.waktuSelesai || "");
+          if (isTeacher) {
+            setWaktuMulai(data.absenPengajarData.waktuMulai || "");
+            setWaktuSelesai(resolveJamTutup(jadwalSesiList, activeSession, activeClassId, kelasId, programList, tanggal));
+          } else {
+            setWaktuMulai(data.absenPengajarData.waktuMulai || "");
+            setWaktuSelesai(data.absenPengajarData.waktuSelesai || "");
+          }
           setAtribut({
             kopiah: !!data.absenPengajarData.atributKopiah,
             nametag: !!data.absenPengajarData.atributNametag,
@@ -529,14 +566,24 @@ export function AbsensiKelasClient({
           const cached = loadFormCache(tanggal, sesi, kelasId);
           if (cached) {
             setMateri(cached.materi || "");
-            setWaktuMulai(cached.waktuMulai || "");
-            setWaktuSelesai(cached.waktuSelesai || "");
+            if (isTeacher) {
+              setWaktuMulai("");
+              setWaktuSelesai(resolveJamTutup(jadwalSesiList, activeSession, activeClassId, kelasId, programList, tanggal));
+            } else {
+              setWaktuMulai(cached.waktuMulai || "");
+              setWaktuSelesai(cached.waktuSelesai || "");
+            }
             setAtribut(cached.atribut || { kopiah: false, nametag: false, bros: false });
             setKecerdasan(cached.kecerdasan || []);
           } else {
             setMateri("");
-            setWaktuMulai("");
-            setWaktuSelesai("");
+            if (isTeacher) {
+              setWaktuMulai("");
+              setWaktuSelesai(resolveJamTutup(jadwalSesiList, activeSession, activeClassId, kelasId, programList, tanggal));
+            } else {
+              setWaktuMulai("");
+              setWaktuSelesai("");
+            }
             setAtribut({ kopiah: false, nametag: false, bros: false });
             setKecerdasan([]);
           }
@@ -610,16 +657,30 @@ export function AbsensiKelasClient({
 
       const payload: any = { tanggal, sesi, kelasId, absenList };
       if (isTeacher || (userRole === "ADMIN" && showAdminPengajarForm)) {
-        if (!materi || !waktuMulai || !waktuSelesai) {
+        if (isTeacher && !materi) {
+          toast.error("Mohon isi materi pelajaran hari ini");
+          setIsSaving(false);
+          return;
+        }
+        if (!isTeacher && (!materi || !waktuMulai || !waktuSelesai)) {
           toast.error("Mohon lengkapi Form Absensi Pengajar (Materi dan Waktu)");
           setIsSaving(false);
           return;
         }
+
+        // Auto-capture waktu untuk pengajar
+        const finalWaktuMulai = isTeacher
+          ? (waktuMulai ? waktuMulai : getWibTimeNow())
+          : waktuMulai;
+        const finalWaktuSelesai = isTeacher
+          ? resolveJamTutup(jadwalSesiList, activeSession, activeClassId, kelasId, programList, tanggal)
+          : waktuSelesai;
+
         // Admin backup: pilih pengajar bersifat opsional, jika ada maka dikirim
         payload.absenPengajar = {
           materi,
-          waktuMulai,
-          waktuSelesai,
+          waktuMulai: finalWaktuMulai,
+          waktuSelesai: finalWaktuSelesai,
           atributKopiah: atribut.kopiah,
           atributNametag: atribut.nametag,
           atributBros: atribut.bros,
@@ -629,6 +690,12 @@ export function AbsensiKelasClient({
         };
         if (userRole === "ADMIN" && showAdminPengajarForm) {
           payload.targetUserId = selectedAdminPengajarId;
+        }
+
+        // Update state agar UI menampilkan waktu yang tercatat
+        if (isTeacher) {
+          setWaktuMulai(finalWaktuMulai);
+          setWaktuSelesai(finalWaktuSelesai);
         }
       }
 
@@ -1038,7 +1105,7 @@ export function AbsensiKelasClient({
             </button>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col">
             {/* Stats */}
             <div className="flex flex-wrap gap-4 border-b border-[var(--color-surface-dark)] px-6 py-4 bg-white">
               <div className="flex items-center gap-2 text-sm font-bold">
@@ -1232,7 +1299,7 @@ export function AbsensiKelasClient({
               (isTeacher && activeSession && (teacherSessions.some(ts => ts.sesi === activeSession && ts.kelasId === kelasId) || isBadalMode)) ||
               (userRole === "ADMIN" && showAdminPengajarForm)
             ) && (
-                <div ref={adminFormRef} className="p-6 md:p-8 bg-[var(--color-surface-light)] border-t border-[var(--color-surface-dark)]">
+                <div ref={adminFormRef} className="order-first p-4 md:p-8 bg-[var(--color-surface-light)] border-b border-[var(--color-surface-dark)]">
                   {/* Peringatan jika admin belum memilih kelas spesifik */}
                   {userRole === "ADMIN" && (kelasId === "ALL" || kelasId === "UNASSIGNED") && (
                     <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -1383,26 +1450,51 @@ export function AbsensiKelasClient({
                         <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-2">Materi Pelajaran Hari Ini</label>
                         <input type="text" value={materi} onChange={e => { setMateri(e.target.value); setIsSaved(false); }} placeholder="Contoh: Nahwu Bab Isim" className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-3 text-sm focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 outline-none transition-all" />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-2">Jam Masuk (24H)</label>
-                          <input type="text" placeholder="Contoh: 15:30" maxLength={5} value={waktuMulai} onChange={e => {
-                            let val = e.target.value.replace(/[^0-9:]/g, '');
-                            if (val.length === 2 && !val.includes(':') && e.target.value.length > waktuMulai.length) val += ':';
-                            setWaktuMulai(val);
-                            setIsSaved(false);
-                          }} className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-3 text-sm focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 outline-none transition-all font-mono placeholder:text-[var(--color-text-subtle)]" />
+                      {isTeacher ? (
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] w-28">Jam Masuk</label>
+                              <div className="text-sm font-mono flex-1">
+                                {waktuMulai
+                                  ? <span className="text-emerald-600 font-bold flex items-center gap-2">
+                                      <CheckCircle2 className="w-4 h-4" /> Waktu masuk Anda adalah : {waktuMulai} WIB
+                                    </span>
+                                  : <span className="text-amber-600 font-medium flex items-center gap-2">
+                                      <Clock className="w-4 h-4" /> Otomatis saat simpan
+                                    </span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] w-28">Jam Selesai</label>
+                              <div className="text-sm font-mono flex-1 text-[var(--color-text)]">
+                                {resolveJamTutup(jadwalSesiList, activeSession, activeClassId, kelasId, programList, tanggal) || "-"} WIB
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-2">Jam Selesai (24H)</label>
-                          <input type="text" placeholder="Contoh: 17:00" maxLength={5} value={waktuSelesai} onChange={e => {
-                            let val = e.target.value.replace(/[^0-9:]/g, '');
-                            if (val.length === 2 && !val.includes(':') && e.target.value.length > waktuSelesai.length) val += ':';
-                            setWaktuSelesai(val);
-                            setIsSaved(false);
-                          }} className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-3 text-sm focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 outline-none transition-all font-mono placeholder:text-[var(--color-text-subtle)]" />
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-2">Jam Masuk (24H)</label>
+                            <input type="text" placeholder="Contoh: 15:30" maxLength={5} value={waktuMulai} onChange={e => {
+                              let val = e.target.value.replace(/[^0-9:]/g, '');
+                              if (val.length === 2 && !val.includes(':') && e.target.value.length > waktuMulai.length) val += ':';
+                              setWaktuMulai(val);
+                              setIsSaved(false);
+                            }} className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-3 text-sm focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 outline-none transition-all font-mono placeholder:text-[var(--color-text-subtle)]" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-2">Jam Selesai (24H)</label>
+                            <input type="text" placeholder="Contoh: 17:00" maxLength={5} value={waktuSelesai} onChange={e => {
+                              let val = e.target.value.replace(/[^0-9:]/g, '');
+                              if (val.length === 2 && !val.includes(':') && e.target.value.length > waktuSelesai.length) val += ':';
+                              setWaktuSelesai(val);
+                              setIsSaved(false);
+                            }} className="w-full rounded-2xl border border-[var(--color-surface-dark)] bg-white px-4 py-3 text-sm focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 outline-none transition-all font-mono placeholder:text-[var(--color-text-subtle)]" />
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1470,13 +1562,13 @@ export function AbsensiKelasClient({
 
                     <div className="pt-6 border-t border-[var(--color-surface-dark)]/30 flex flex-col sm:flex-row items-center justify-between gap-4">
                       <p className="text-xs text-[var(--color-text-subtle)] font-medium">
-                        {!materi || !waktuMulai || !waktuSelesai
-                          ? "⚠️ Lengkapi materi dan waktu untuk menyimpan"
+                        {!materi
+                          ? (isTeacher ? "⚠️ Lengkapi materi pelajaran untuk menyimpan" : "⚠️ Lengkapi materi dan waktu untuk menyimpan")
                           : belumDiabsen > 0
                             ? `⚠️ ${belumDiabsen} santri belum diabsen — data tetap bisa disimpan`
                             : isSaved
                               ? "✅ Data sudah tersimpan. Anda bisa mengubah dan menyimpan ulang."
-                              : "📝 Siap disimpan ke server"}
+                              : (isTeacher ? "🕐 Jam masuk akan tercatat otomatis saat Anda menyimpan" : "📝 Siap disimpan ke server")}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                         {isSaved && activeSessionsList.length > 1 && activeSessionsList.indexOf(activeSession || "") + 1 < activeSessionsList.length && (
@@ -1501,7 +1593,7 @@ export function AbsensiKelasClient({
                         )}
                         <button
                           onClick={handleSave}
-                          disabled={isSaving || !tanggal || !sesi || !materi || !waktuMulai || !waktuSelesai}
+                          disabled={isSaving || !tanggal || !sesi || !materi || (isTeacher ? false : (!waktuMulai || !waktuSelesai))}
                           className="w-full sm:w-auto rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-dark)] hover:shadow-md hover:shadow-[var(--color-primary-100)] disabled:opacity-50"
                         >
                           {isSaving ? "Menyimpan Data..." : isSaved ? "Simpan Ulang" : "Simpan Absensi Final"}
@@ -1522,7 +1614,7 @@ export function AbsensiKelasClient({
                   </div>
                 </div>
               )}
-          </>
+          </div>
         )}
       </section>
 
@@ -1576,19 +1668,28 @@ export function AbsensiKelasClient({
           </div>
         </div>
       )}
-      {/* Floating Refresh Button — untuk semua pengguna halaman absen kelas */}
-      <button
-        onClick={handleFloatingRefresh}
-        title="Refresh halaman"
-        className={`fixed bottom-24 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition-all duration-300 ${
-          isRefreshing
-            ? "bg-emerald-400 scale-90 shadow-emerald-200"
-            : "bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] hover:scale-105 shadow-[var(--color-primary-100)] active:scale-95"
-        }`}
-      >
-        <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        <span className="hidden sm:inline">{isRefreshing ? "Memuat..." : "Refresh"}</span>
-      </button>
+      {/* Floating Save Button — khusus pengajar */}
+      {isTeacher && activeSession && (
+        <button
+          onClick={handleSave}
+          disabled={isSaving || !materi}
+          title="Simpan absensi"
+          className={`fixed bottom-24 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 ${
+            isSaving
+              ? "bg-amber-400 scale-90 shadow-amber-200"
+              : isSaved
+                ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"
+                : "bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] hover:scale-105 shadow-[var(--color-primary-100)] active:scale-95"
+          } disabled:opacity-50`}
+        >
+          {isSaving
+            ? <><RefreshCw className="w-4 h-4 animate-spin" /> <span>Menyimpan...</span></>
+            : isSaved
+              ? <><CheckCircle2 className="w-4 h-4" /> <span>Tersimpan ✓</span></>
+              : <><Save className="w-4 h-4" /> <span>Simpan</span></>
+          }
+        </button>
+      )}
 
       {selectedTasrih && (
         <TasrihModal tasrih={selectedTasrih} onClose={() => setSelectedTasrih(null)} />

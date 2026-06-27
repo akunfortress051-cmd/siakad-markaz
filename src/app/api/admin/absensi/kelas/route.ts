@@ -164,6 +164,32 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, count: operations.length, note: "Absen santri tersimpan, absen pengajar dilewati (tidak ada kelas yang terdeteksi)" });
       }
 
+      // === Hitung terlambatMenit server-side ===
+      let terlambatMenit: number | null = null;
+      if (!absenPengajar.isBadal && absenPengajar.waktuMulai && absenPengajar.waktuMulai !== "-") {
+        // Resolve jadwal buka dari JadwalSesi / SesiTambahanProgram
+        const jadwalSesi = await prisma.jadwalSesi.findUnique({ where: { sesi: sesi as any } });
+        let jadwalBuka: string | null = jadwalSesi?.jamBuka ?? null;
+
+        // Fallback: SesiTambahanProgram
+        if (!jadwalBuka && actualKelasId) {
+          const kelas = await prisma.kelas.findUnique({ where: { id: actualKelasId }, select: { programId: true } });
+          if (kelas?.programId) {
+            const tambahan = await prisma.sesiTambahanProgram.findFirst({
+              where: { programId: kelas.programId, sesi: sesi as any, isActive: true }
+            });
+            if (tambahan) jadwalBuka = tambahan.jamBuka;
+          }
+        }
+
+        if (jadwalBuka) {
+          const [hM, mM] = absenPengajar.waktuMulai.split(":").map(Number);
+          const [hB, mB] = jadwalBuka.split(":").map(Number);
+          const diff = (hM * 60 + mM) - (hB * 60 + mB);
+          if (diff > 5) terlambatMenit = diff - 5; // Grace period 5 menit
+        }
+      }
+
       operations.push(
         prisma.absenPengajar.upsert({
           where: {
@@ -178,6 +204,7 @@ export async function POST(request: Request) {
             waktuMulai: absenPengajar.waktuMulai,
             waktuSelesai: absenPengajar.waktuSelesai,
             materi: absenPengajar.materi,
+            terlambatMenit,
             atributNametag: absenPengajar.atributNametag,
             atributKopiah: absenPengajar.atributKopiah,
             atributBros: absenPengajar.atributBros,
@@ -193,6 +220,7 @@ export async function POST(request: Request) {
             waktuMulai: absenPengajar.waktuMulai,
             waktuSelesai: absenPengajar.waktuSelesai,
             materi: absenPengajar.materi,
+            terlambatMenit,
             atributNametag: absenPengajar.atributNametag,
             atributKopiah: absenPengajar.atributKopiah,
             atributBros: absenPengajar.atributBros,
