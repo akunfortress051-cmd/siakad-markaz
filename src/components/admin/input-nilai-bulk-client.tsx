@@ -528,7 +528,7 @@ export function InputNilaiBulkClient({
                                   )}
                                 </td>
                                 <td className="px-1 py-2">
-                                  {curRowMode === 1 || curRowMode === 2 ? (
+                                  {curRowMode === 2 ? (
                                     <div className="w-full rounded-lg bg-gray-50/50 px-2 py-1.5 text-center font-bold text-gray-300">X</div>
                                   ) : activeFlags.u3 ? (
                                     <input 
