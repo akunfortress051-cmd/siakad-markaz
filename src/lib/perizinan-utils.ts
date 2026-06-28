@@ -36,7 +36,8 @@ export async function processAutoAbsensiIzin(
   tanggalMulai: Date, 
   tanggalSelesai: Date | null, 
   alasan: string,
-  nomorTasrih: string
+  nomorTasrih: string,
+  statusAbsen: "IZIN" | "SAKIT" = "IZIN"
 ) {
   const allSesi = await getAllJadwalSesi();
   const sesiList = allSesi.map(s => s.sesi);
@@ -68,8 +69,8 @@ export async function processAutoAbsensiIzin(
       if (!existingKelas || existingKelas.status !== "HADIR") {
         await prisma.absenKelas.upsert({
           where: { riwayatId_tanggal_sesi: { riwayatId, tanggal: date, sesi } },
-          update: { status: "IZIN", keterangan },
-          create: { riwayatId, tanggal: date, sesi, status: "IZIN", keterangan }
+          update: { status: statusAbsen, keterangan },
+          create: { riwayatId, tanggal: date, sesi, status: statusAbsen, keterangan }
         });
       }
     }
@@ -82,12 +83,12 @@ export async function processAutoAbsensiIzin(
       if (!existingSakan || existingSakan.status !== "HADIR") {
         await prisma.absenSakan.upsert({
           where: { riwayatId_tanggal: { riwayatId, tanggal: date } },
-          update: { status: "IZIN", keterangan },
-          create: { riwayatId, tanggal: date, status: "IZIN", keterangan }
+          update: { status: statusAbsen, keterangan },
+          create: { riwayatId, tanggal: date, status: statusAbsen, keterangan }
         });
       }
 
-      // 3. Absen Kegiatan (Yang sudah ada diabsen diubah jadi IZIN, atau auto isi untuk semua kategori aktif)
+      // 3. Absen Kegiatan (Yang sudah ada diabsen diubah jadi IZIN/SAKIT, atau auto isi untuk semua kategori aktif)
       // Ambil semua kategori aktif
       const kategoriAktif = await prisma.kategoriKegiatan.findMany({ where: { aktif: true } });
       for (const kat of kategoriAktif) {
@@ -97,8 +98,8 @@ export async function processAutoAbsensiIzin(
         if (!existingKegiatan || existingKegiatan.status !== "HADIR") {
           await prisma.absenKegiatan.upsert({
             where: { riwayatId_kategoriId_tanggal: { riwayatId, tanggal: date, kategoriId: kat.id } },
-            update: { status: "IZIN", keterangan },
-            create: { riwayatId, tanggal: date, kategoriId: kat.id, status: "IZIN", keterangan }
+            update: { status: statusAbsen, keterangan },
+            create: { riwayatId, tanggal: date, kategoriId: kat.id, status: statusAbsen, keterangan }
           });
         }
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Users, User, Calendar, Save, FileText, CheckSquare, Search } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -45,21 +45,20 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const [tanggalMulai, setTanggalMulai] = useState(getTodayWIB());
   const [tanggalSelesai, setTanggalSelesai] = useState("");
   const [globalBatasJamAkhir, setGlobalBatasJamAkhir] = useState("19:00");
+  const [statusAbsen, setStatusAbsen] = useState<"IZIN" | "SAKIT">("IZIN");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  import("react").then((React) => {
-    React.useEffect(() => {
-      fetch("/api/admin/perizinan/pengaturan")
-        .then(res => res.json())
-        .then(data => {
-          if (data.batasJamAkhirKeluarPare) {
-            setGlobalBatasJamAkhir(data.batasJamAkhirKeluarPare);
-          }
-        })
-        .catch(console.error);
-    }, []);
-  });
+  useEffect(() => {
+    fetch("/api/admin/perizinan/pengaturan")
+      .then(res => res.json())
+      .then(data => {
+        if (data.batasJamAkhirKeluarPare) {
+          setGlobalBatasJamAkhir(data.batasJamAkhirKeluarPare);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   if (!initialTab) {
     return <div className="p-8 text-center text-red-500 font-bold bg-red-50 rounded-xl">Anda tidak memiliki akses untuk membuat izin.</div>;
@@ -118,7 +117,8 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
           tipeIzin: activeTab,
           alasan,
           tanggalMulai,
-          tanggalSelesai: activeTab === "BERHARI_HARI" ? tanggalSelesai : null
+          tanggalSelesai: activeTab === "BERHARI_HARI" ? tanggalSelesai : null,
+          statusAbsen,
         })
       });
 
@@ -131,6 +131,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
       setAlasan("");
       setTanggalMulai(getTodayWIB());
       setTanggalSelesai("");
+      setStatusAbsen("IZIN");
       if (mode === "INDIVIDU") {
         setSelectedSantri(null);
         setSearch("");
@@ -282,13 +283,34 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
         {/* RIGHT PANEL - FORM IZIN */}
         <div className="flex-1">
           <form onSubmit={handleSubmit} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+            {/* Pilihan Izin / Sakit */}
             <div>
-              <label className="block text-sm font-bold text-[var(--color-text)] mb-1">Alasan Izin</label>
+              <label className="block text-sm font-bold text-[var(--color-text)] mb-2">Status di Absen</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStatusAbsen("IZIN")}
+                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl border-2 transition-all ${statusAbsen === "IZIN" ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}
+                >
+                  📋 Izin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusAbsen("SAKIT")}
+                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl border-2 transition-all ${statusAbsen === "SAKIT" ? "bg-amber-50 border-amber-400 text-amber-700 shadow-sm" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}
+                >
+                  🤒 Sakit
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-[var(--color-text)] mb-1">Alasan {statusAbsen === "SAKIT" ? "Sakit" : "Izin"}</label>
               <textarea 
                 required
                 value={alasan}
                 onChange={(e) => setAlasan(e.target.value)}
-                placeholder="Contoh: Mengurus ijazah, Berobat, dll..."
+                placeholder={statusAbsen === "SAKIT" ? "Contoh: Demam, Sakit perut, dll..." : "Contoh: Mengurus ijazah, Berobat, dll..."}
                 rows={3}
                 className="w-full px-4 py-3 border border-[var(--color-surface-dark)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-sm resize-none"
               />

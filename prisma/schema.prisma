@@ -465,6 +465,7 @@ model Perizinan {
   isFromPublic     Boolean    @default(false)
   batasJam         Int?
   grupTasrihId     String?
+  statusAbsen      String     @default("IZIN") // "IZIN" atau "SAKIT"
   
   riwayat          RiwayatSantri @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
   

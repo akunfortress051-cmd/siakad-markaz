@@ -84,15 +84,18 @@ export async function POST(request: Request) {
         if (ms && ms.sakan && ms.sakan !== "-") {
           sakanSudahAbsen.add(ms.sakan);
 
-          // Kumpulkan keterangan jika ada
+          // Kumpulkan keterangan jika ada (strip [TRS-xxx] agar tidak tampil di WA)
           if (record.keterangan && record.keterangan.trim()) {
             if (!keteranganPerSakan.has(ms.sakan)) {
               keteranganPerSakan.set(ms.sakan, []);
             }
-            keteranganPerSakan.get(ms.sakan)!.push({
-              nama: ms.nama,
-              keterangan: record.keterangan.trim(),
-            });
+            const cleanKeterangan = record.keterangan.trim().replace(/\s*\[TRS-[\d-]+\]\s*/g, "").trim();
+            if (cleanKeterangan) {
+              keteranganPerSakan.get(ms.sakan)!.push({
+                nama: ms.nama,
+                keterangan: cleanKeterangan,
+              });
+            }
           }
           
           // Kumpulkan unconfirmed Izin

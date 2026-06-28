@@ -274,6 +274,9 @@ export function AbsensiKelasClient({
   const [activeSessionLabels, setActiveSessionLabels] = useState<Record<string, string>>({});
   const [unconfirmedIds, setUnconfirmedIds] = useState<Set<string>>(new Set());
   const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
+  const [tasrihPickerFor, setTasrihPickerFor] = useState<{ riwayatId: string; nama: string } | null>(null);
+  const [perizinanCache, setPerizinanCache] = useState<Record<string, any[]>>({});
+  const [isFetchingPerizinan, setIsFetchingPerizinan] = useState(false);
 
   // Sync ref dengan state
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
@@ -285,10 +288,44 @@ export function AbsensiKelasClient({
       const res = await fetch(`/api/admin/perizinan/tasrih/${nomorTasrih}`);
       if (!res.ok) throw new Error("Gagal load tasrih");
       const json = await res.json();
+      
+      // Inject sakan dari data santriList saat ini
+      const matchedSantri = santriList.find(s => s.riwayatId === json.riwayatId);
+      if (matchedSantri && matchedSantri.sakan) {
+        json.sakan = matchedSantri.sakan;
+      }
+      
       setSelectedTasrih(json);
     } catch (error) {
       toast.error("Gagal memuat detail tasrih");
     }
+  };
+
+  const openTasrihPicker = async (santri: SantriAbsenTarget) => {
+    setTasrihPickerFor({ riwayatId: santri.riwayatId, nama: santri.nama });
+    if (!perizinanCache[santri.riwayatId]) {
+      setIsFetchingPerizinan(true);
+      try {
+        const res = await fetch(`/api/admin/perizinan/santri/${santri.riwayatId}`);
+        const data = await res.json();
+        setPerizinanCache(prev => ({ ...prev, [santri.riwayatId]: Array.isArray(data) ? data : [] }));
+      } catch {
+        toast.error("Gagal memuat perizinan");
+      } finally {
+        setIsFetchingPerizinan(false);
+      }
+    }
+  };
+
+  const attachTasrih = (riwayatId: string, perizinan: any) => {
+    const keterangan = `[${perizinan.nomorTasrih}] ${perizinan.alasan}`;
+    setAbsenMap(prev => ({
+      ...prev,
+      [riwayatId]: { status: "IZIN", keterangan }
+    }));
+    setIsSaved(false);
+    setTasrihPickerFor(null);
+    toast.success("Tasrih berhasil dilampirkan");
   };
 
   useEffect(() => {
@@ -1222,6 +1259,8 @@ export function AbsensiKelasClient({
                                 {students.map((santri, index) => {
                                   const currentStatus = absenMap[santri.riwayatId]?.status;
                                   const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
+                                  const nomorTasrih = currentKet.match(/\[(TRS-[\d-]+)\]/)?.[1] || null;
+                                  const displayKet = currentKet.replace(/\s*\[TRS-[\d-]+\]\s*/, "").trim();
 
                                   return (
                                     <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)] transition-colors">
@@ -1252,6 +1291,16 @@ export function AbsensiKelasClient({
                                           ) : (
                                             <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)] capitalize">{santri.kategori ?? "-"}</span>
                                           )}
+                                          {/* Tombol Tasrih di bawah nama */}
+                                          {nomorTasrih && (
+                                            <button
+                                              onClick={() => viewTasrih(nomorTasrih)}
+                                              className="inline-flex items-center gap-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 uppercase tracking-wider hover:bg-indigo-200 transition-colors"
+                                              title="Lihat Detail Tasrih"
+                                            >
+                                              <FileText size={12} /> Lihat Tasrih
+                                            </button>
+                                          )}
                                         </div>
                                       </td>
                                       <td className="px-6 py-4">
@@ -1276,10 +1325,6 @@ export function AbsensiKelasClient({
                                       <td className="px-6 py-4">
                                         <div className="relative flex items-center gap-2">
                                           {(() => {
-                                            const match = currentKet.match(/\[(TRS-[\d-]+)\]/);
-                                            const nomorTasrih = match ? match[1] : null;
-                                            const displayKet = currentKet.replace(/\s*\[TRS-[\d-]+\]\s*/, '');
-                                            
                                             return (
                                               <>
                                                 <input
@@ -1289,21 +1334,12 @@ export function AbsensiKelasClient({
                                                   onChange={(e) => {
                                                     let val = e.target.value;
                                                     if (nomorTasrih) {
-                                                      val = `[${nomorTasrih}] ${val.replace(/\s*\[TRS-[\d-]+\]\s*/g, '')}`;
+                                                      val = `[${nomorTasrih}] ${val.replace(/\s*\[TRS-[\d-]+\]\s*/g, "")}`;
                                                     }
                                                     handleKeteranganChange(santri.riwayatId, val);
                                                   }}
-                                                  className={`w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)] ${nomorTasrih && currentStatus === "IZIN" ? "pl-28 bg-blue-50/50" : ""}`}
+                                                  className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)]"
                                                 />
-                                                {nomorTasrih && currentStatus === "IZIN" && (
-                                                  <button 
-                                                    onClick={() => viewTasrih(nomorTasrih)}
-                                                    className="absolute left-1.5 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider hover:bg-[var(--color-primary-dark)] transition-colors shadow-sm"
-                                                    title="Lihat Surat Izin Santri"
-                                                  >
-                                                    <FileText size={12} /> Detail
-                                                  </button>
-                                                )}
                                               </>
                                             );
                                           })()}
@@ -1796,6 +1832,56 @@ export function AbsensiKelasClient({
 
       {selectedTasrih && (
         <TasrihModal tasrih={selectedTasrih} onClose={() => setSelectedTasrih(null)} />
+      )}
+
+      {/* Modal Picker Tasrih */}
+      {tasrihPickerFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Lampirkan Tasrih</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{tasrihPickerFor.nama}</p>
+              </div>
+              <button onClick={() => setTasrihPickerFor(null)} className="text-slate-400 hover:text-slate-600 transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              {isFetchingPerizinan ? (
+                <div className="text-center py-8 text-sm text-slate-500 font-medium">Memuat perizinan...</div>
+              ) : (perizinanCache[tasrihPickerFor.riwayatId] || []).length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm font-bold text-slate-700 mb-1">Tidak ada tasrih aktif</p>
+                  <p className="text-xs text-slate-500">Santri ini tidak memiliki perizinan aktif saat ini.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Pilih perizinan aktif:</p>
+                  {(perizinanCache[tasrihPickerFor.riwayatId] || []).map((p: any) => (
+                    <button
+                      key={p.id}
+                      onClick={() => attachTasrih(tasrihPickerFor.riwayatId, p)}
+                      className="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 group-hover:bg-white px-2 py-0.5 rounded-md border border-indigo-100 transition">
+                          {p.tipeIzin.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(p.tanggalMulai).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                          {p.tanggalSelesai && ` - ${new Date(p.tanggalSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}`}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-sm font-semibold text-slate-700 leading-snug">{p.alasan}</p>
+                      <p className="mt-1 text-[10px] text-slate-400 font-medium">Status → Izin • Klik untuk melampirkan</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
