@@ -369,7 +369,7 @@ export function InputNilaiBulkClient({
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {!isGabunganMode && hasUsbuainPermission && (
+              {!isGabunganMode && isAdmin && (
                 <div className="flex items-center gap-2 border border-[var(--color-surface-dark)] bg-white rounded-full px-3 py-1.5 shrink-0">
                   <span className="text-xs font-bold text-[var(--color-text-muted)]">Set Sekelas:</span>
                   <select 
@@ -394,12 +394,12 @@ export function InputNilaiBulkClient({
             </div>
           </div>
 
-          <div className="overflow-x-auto w-full custom-scrollbar">
+          <div className="overflow-x-auto overflow-y-auto w-full custom-scrollbar" style={{ maxHeight: 'calc(100vh - 280px)' }}>
             {isGabunganMode ? (
               <GabunganTable mapels={mapels} santriList={santriList} isLoading={isLoading} kkm={kkm} changes={changes} computeSummary={computeSummary} handleNilaiChange={handleNilaiChange} />
             ) : (
             <table className="w-full text-left text-sm text-[var(--color-text-muted)] border-collapse min-w-max">
-              <thead className="bg-[var(--color-secondary)] text-xs uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+              <thead className="bg-[var(--color-secondary)] text-xs uppercase tracking-[0.1em] text-[var(--color-text-muted)] sticky top-0 z-30">
                 <tr>
                   <th className="px-2 md:px-4 py-3 font-semibold text-center border-b border-[var(--color-surface-dark)] sticky left-0 bg-[var(--color-secondary)] z-20 border-r min-w-[40px] w-[40px] md:min-w-[50px] md:w-[50px]" rowSpan={2}>No</th>
                   <th className="px-3 md:px-4 py-3 font-semibold border-b border-[var(--color-surface-dark)] sticky left-[40px] md:left-[50px] bg-[var(--color-secondary)] z-20 border-r min-w-[140px] w-[140px] md:min-w-[250px] md:w-[250px] text-xs md:text-sm" rowSpan={2}>Nama Peserta Didik</th>
@@ -463,7 +463,7 @@ export function InputNilaiBulkClient({
                         <td className="px-3 md:px-4 py-2 font-bold text-[var(--color-text)] sticky left-[40px] md:left-[50px] bg-white z-10 border-r border-[var(--color-surface)] shadow-[1px_0_0_0_#f1f5f9] min-w-[140px] w-[140px] md:min-w-[250px] md:w-[250px] whitespace-normal leading-snug text-xs md:text-sm">
                           <div className="flex flex-col gap-1">
                             <span>{row.nama}</span>
-                            {hasUsbuainPermission && (
+                            {isAdmin && (
                               <select 
                                 value={getUsbuainVal(row) ?? 0}
                                 onChange={(e) => handleUsbuainChange(row.riwayatId, Number(e.target.value))}
@@ -507,6 +507,7 @@ export function InputNilaiBulkClient({
                                       type="number" min={0} max={100} 
                                       value={u1 === null ? "" : u1}
                                       onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "u1", e.target.value === "" ? null : Number(e.target.value))}
+                                      onWheel={(e) => e.currentTarget.blur()}
                                       className="w-full rounded-lg border border-[var(--color-surface-dark)] bg-white px-2 py-1.5 text-center font-bold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-emerald-100 focus:bg-[var(--color-primary-50)]/30 hover:border-[var(--color-surface-dark)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                     />
                                   ) : (
@@ -521,6 +522,7 @@ export function InputNilaiBulkClient({
                                       type="number" min={0} max={100} 
                                       value={u2 === null ? "" : u2}
                                       onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "u2", e.target.value === "" ? null : Number(e.target.value))}
+                                      onWheel={(e) => e.currentTarget.blur()}
                                       className="w-full rounded-lg border border-[var(--color-surface-dark)] bg-white px-2 py-1.5 text-center font-bold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-emerald-100 focus:bg-[var(--color-primary-50)]/30 hover:border-[var(--color-surface-dark)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                     />
                                   ) : (
@@ -536,6 +538,7 @@ export function InputNilaiBulkClient({
                                       value={n !== null ? n : ""}
                                       onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "n", e.target.value === "" ? null : Number(e.target.value))}
                                       onFocus={(e) => e.target.select()}
+                                      onWheel={(e) => e.currentTarget.blur()}
                                       className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-bold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] bg-white"
                                     />
                                   ) : (
@@ -580,6 +583,7 @@ export function InputNilaiBulkClient({
                                             type="number" min={0} max={100}
                                             value={avg === null ? "" : Math.round(avg)}
                                             onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "a", e.target.value === "" ? null : Number(e.target.value))}
+                                            onWheel={(e) => e.currentTarget.blur()}
                                             placeholder="Nilai"
                                             className="w-full rounded border border-emerald-300 bg-white px-1 py-1 text-center text-[10px] font-bold text-emerald-800 outline-none focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                           />
@@ -594,6 +598,7 @@ export function InputNilaiBulkClient({
                                           value={curTambahan || ""}
                                           placeholder="+"
                                           onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, e.target.value === "" ? 0 : Math.min(maxTambahan, Math.max(0, Number(e.target.value))))}
+                                          onWheel={(e) => e.currentTarget.blur()}
                                           className="w-full rounded border border-amber-300 bg-amber-50 px-0.5 py-0.5 text-center text-[10px] font-bold text-amber-800 outline-none focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                       )}
@@ -615,6 +620,7 @@ export function InputNilaiBulkClient({
                                     type="number" min={0} max={100} 
                                     value={a === null ? "" : a}
                                     onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "a", e.target.value === "" ? null : Number(e.target.value))}
+                                    onWheel={(e) => e.currentTarget.blur()}
                                     className="w-full rounded-lg border border-[var(--color-surface-dark)] bg-white px-2 py-1.5 text-center font-bold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-emerald-100 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                   />
                                 </td>
@@ -623,6 +629,7 @@ export function InputNilaiBulkClient({
                                     <input type="number" min={0} max={maxT}
                                       value={curT || ""} placeholder="+"
                                       onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, e.target.value === "" ? 0 : Math.min(maxT, Math.max(0, Number(e.target.value))))}
+                                      onWheel={(e) => e.currentTarget.blur()}
                                       className="w-full rounded border border-amber-300 bg-amber-50 px-0.5 py-0.5 text-center text-[10px] font-bold text-amber-800 outline-none focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     />
                                   )}

@@ -50,7 +50,7 @@ export function GabunganTable({
 }) {
   return (
     <table className="w-full text-left text-sm border-collapse min-w-max">
-      <thead className="bg-[var(--color-secondary)] text-xs uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+      <thead className="bg-[var(--color-secondary)] text-xs uppercase tracking-[0.1em] text-[var(--color-text-muted)] sticky top-0 z-30">
         <tr>
           <th className="px-3 py-3 text-center border-b border-[var(--color-surface-dark)] sticky left-0 bg-[var(--color-secondary)] z-20 border-r w-[40px]" rowSpan={2}>No</th>
           <th className="px-3 py-3 border-b border-[var(--color-surface-dark)] sticky left-[40px] bg-[var(--color-secondary)] z-20 border-r min-w-[120px] max-w-[120px] md:min-w-[200px] md:max-w-none" rowSpan={2}>Nama</th>
@@ -103,6 +103,7 @@ export function GabunganTable({
                           value={currentTambahan || ""}
                           placeholder="+"
                           onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan", e.target.value === "" ? 0 : Math.min(Math.max(0, 100 - Math.round(nilaiAkhir)), Math.max(0, Number(e.target.value))))}
+                          onWheel={(e) => e.currentTarget.blur()}
                           className="w-10 rounded border border-amber-300 bg-amber-50 px-1 py-1 text-center text-xs font-bold text-amber-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       ) : (
