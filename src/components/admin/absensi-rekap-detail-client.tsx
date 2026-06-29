@@ -568,7 +568,14 @@ export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: 
                             (() => {
                               const datesInClass = Array.from(new Set(group.records.map(r => r.tanggal))).sort();
                               const santris = Array.from(new Set(group.records.map(r => r.namaSantri))).sort();
-                              const sessionKeys = ["SESI_1", "SESI_2", "SESI_3", "SESI_4", "SESI_5", "SESI_6"];
+                              
+                              // Deteksi sesi yang ada di data grup ini (bukan hardcode)
+                              const sesiSet = new Set(group.records.map(r => r.sesi).filter(Boolean) as string[]);
+                              const sessionKeys = Array.from(sesiSet).sort((a, b) => {
+                                const numA = parseInt(a.replace("SESI_", ""));
+                                const numB = parseInt(b.replace("SESI_", ""));
+                                return numA - numB;
+                              });
 
                               // Group dates by Usbu
                               const weeksMap = new Map<string, string[]>();
@@ -592,7 +599,7 @@ export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: 
                                         {weeks.map((week, wIdx) => (
                                           <React.Fragment key={`wh1-${week.wk}`}>
                                             {week.dates.map(date => (
-                                              <th key={`dh1-${date}`} colSpan={7} className="px-4 py-2 text-center border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)]">
+                                              <th key={`dh1-${date}`} colSpan={sessionKeys.length + 1} className="px-4 py-2 text-center border-b border-r-2 border-[var(--color-surface-dark)] font-bold text-[var(--color-text)]">
                                                 {format(new Date(date), "EEEE, d MMM yyyy", { locale: id })}
                                               </th>
                                             ))}
@@ -612,7 +619,7 @@ export function AbsensiRekapDetailClient({ allowedKelasId }: { allowedKelasId?: 
                                               <React.Fragment key={`dh2-${date}`}>
                                                 {sessionKeys.map((s, i) => (
                                                   <th key={`${date}-${s}`} className="px-2 py-2 text-center border-b border-r border-[var(--color-surface-dark)] text-xs font-semibold text-[var(--color-text-muted)] min-w-[32px]">
-                                                    {i + 1}
+                                                    {parseInt(s.replace("SESI_", ""))}
                                                   </th>
                                                 ))}
                                                 <th className="px-2 py-2 text-center border-b border-r-2 border-[var(--color-surface-dark)] text-[10px] font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-light)] min-w-[40px]">

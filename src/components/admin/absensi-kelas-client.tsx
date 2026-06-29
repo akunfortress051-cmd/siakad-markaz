@@ -31,7 +31,7 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
         if (kId.startsWith("PROGRAM_")) {
           programIds.add(kId.replace("PROGRAM_", ""));
         } else {
-          const prog = programList.find(p => p.kelasList.some((k:any) => k.id === kId));
+          const prog = programList.find(p => p.kelasList.some((k: any) => k.id === kId));
           if (prog) programIds.add(prog.id);
         }
       }
@@ -41,9 +41,9 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   let finalJadwal: any[] = [];
 
   if (programIds.size === 0) {
-    finalJadwal = jadwalConfig.globalSesi ? jadwalConfig.globalSesi.map((g:any) => ({...g, programId: null})) : [];
+    finalJadwal = jadwalConfig.globalSesi ? jadwalConfig.globalSesi.map((g: any) => ({ ...g, programId: null })) : [];
     if (includeAllSesiTambahan && jadwalConfig.sesiTambahan) {
-      jadwalConfig.sesiTambahan.filter((s:any) => s.isActive).forEach((t:any) => {
+      jadwalConfig.sesiTambahan.filter((s: any) => s.isActive).forEach((t: any) => {
         finalJadwal.push({
           sesi: t.sesi, label: "Sesi " + t.sesi.replace("SESI_", ""),
           jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit,
@@ -53,10 +53,10 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
     }
   } else {
     programIds.forEach(pId => {
-      const progJadwal = jadwalConfig.globalSesi ? jadwalConfig.globalSesi.map((g:any) => ({...g, programId: pId})) : [];
-      const tambahan = jadwalConfig.sesiTambahan ? jadwalConfig.sesiTambahan.filter((s:any) => s.programId === pId && s.isActive) : [];
-      tambahan.forEach((t:any) => {
-        const idx = progJadwal.findIndex((g:any) => g.sesi === t.sesi);
+      const progJadwal = jadwalConfig.globalSesi ? jadwalConfig.globalSesi.map((g: any) => ({ ...g, programId: pId })) : [];
+      const tambahan = jadwalConfig.sesiTambahan ? jadwalConfig.sesiTambahan.filter((s: any) => s.programId === pId && s.isActive) : [];
+      tambahan.forEach((t: any) => {
+        const idx = progJadwal.findIndex((g: any) => g.sesi === t.sesi);
         if (idx !== -1) {
           progJadwal[idx] = { ...progJadwal[idx], jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit };
         } else {
@@ -71,8 +71,8 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
     });
 
     if (includeAllSesiTambahan && jadwalConfig.sesiTambahan) {
-      const extra = jadwalConfig.sesiTambahan.filter((s:any) => !programIds.has(s.programId) && s.isActive);
-      extra.forEach((t:any) => {
+      const extra = jadwalConfig.sesiTambahan.filter((s: any) => !programIds.has(s.programId) && s.isActive);
+      extra.forEach((t: any) => {
         finalJadwal.push({
           sesi: t.sesi, label: "Sesi " + t.sesi.replace("SESI_", ""),
           jamBuka: t.jamBuka, jamTutup: t.jamTutup, toleransiMenit: t.toleransiMenit,
@@ -83,9 +83,9 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   }
 
   programIds.forEach(programId => {
-    const isTaqwimDate = jadwalConfig.taqwim?.tanggalList?.some((t:any) => t.programId === programId && t.tanggal.startsWith(tanggal));
+    const isTaqwimDate = jadwalConfig.taqwim?.tanggalList?.some((t: any) => t.programId === programId && t.tanggal.startsWith(tanggal));
     if (isTaqwimDate) {
-      const taqwimConf = jadwalConfig.taqwim?.configs?.find((c:any) => c.programId === programId && c.isActive);
+      const taqwimConf = jadwalConfig.taqwim?.configs?.find((c: any) => c.programId === programId && c.isActive);
       if (taqwimConf) {
         const s1Idx = finalJadwal.findIndex(j => j.sesi === "SESI_1" && j.programId === programId);
         if (s1Idx !== -1) {
@@ -129,7 +129,7 @@ function computeSessionState(jadwalConfig: any, programList: any[], targetKelasI
   }
 
   const uniqueActiveSesis = Array.from(new Set(activeSesis));
-  uniqueActiveSesis.sort((a,b) => {
+  uniqueActiveSesis.sort((a, b) => {
     const na = parseInt(a.replace("SESI_", ""));
     const nb = parseInt(b.replace("SESI_", ""));
     return na - nb;
@@ -163,17 +163,17 @@ function resolveJamTutup(jadwalSesiList: any, activeSession: string | null, acti
   if (resolvedClassId && resolvedClassId !== "ALL" && resolvedClassId !== "UNASSIGNED") {
     if (resolvedClassId.startsWith("PROGRAM_")) pId = resolvedClassId.replace("PROGRAM_", "");
     else {
-      const prog = programList.find(p => p.kelasList.some((k:any) => k.id === resolvedClassId));
+      const prog = programList.find(p => p.kelasList.some((k: any) => k.id === resolvedClassId));
       if (prog) pId = prog.id;
     }
   }
   let j: any = null;
   if (activeSession === "SESI_1" && pId) {
-    const isTaqwim = jadwalSesiList.taqwim?.tanggalList?.some((t:any) => t.programId === pId && t.tanggal.startsWith(tanggal));
-    if (isTaqwim) j = jadwalSesiList.taqwim?.configs?.find((c:any) => c.programId === pId && c.isActive);
+    const isTaqwim = jadwalSesiList.taqwim?.tanggalList?.some((t: any) => t.programId === pId && t.tanggal.startsWith(tanggal));
+    if (isTaqwim) j = jadwalSesiList.taqwim?.configs?.find((c: any) => c.programId === pId && c.isActive);
   }
-  if (!j && pId && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x:any) => x.sesi === activeSession && x.programId === pId);
-  if (!j) j = jadwalSesiList.globalSesi?.find((x:any) => x.sesi === activeSession);
+  if (!j && pId && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x: any) => x.sesi === activeSession && x.programId === pId);
+  if (!j) j = jadwalSesiList.globalSesi?.find((x: any) => x.sesi === activeSession);
   return j?.jamTutup || "";
 }
 
@@ -288,13 +288,13 @@ export function AbsensiKelasClient({
       const res = await fetch(`/api/admin/perizinan/tasrih/${nomorTasrih}`);
       if (!res.ok) throw new Error("Gagal load tasrih");
       const json = await res.json();
-      
+
       // Inject sakan dari data santriList saat ini
       const matchedSantri = santriList.find(s => s.riwayatId === json.riwayatId);
       if (matchedSantri && matchedSantri.sakan) {
         json.sakan = matchedSantri.sakan;
       }
-      
+
       setSelectedTasrih(json);
     } catch (error) {
       toast.error("Gagal memuat detail tasrih");
@@ -412,15 +412,15 @@ export function AbsensiKelasClient({
         const h = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
         const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
         const s = parseInt(parts.find(p => p.type === 'second')?.value || '0');
-        
+
         const currentSeconds = h * 3600 + m * 60 + s;
         const [bukaH, bukaM] = nextSession.jamBuka.split(':').map(Number);
         let targetSeconds = bukaH * 3600 + bukaM * 60;
-        
+
         if (targetSeconds < currentSeconds) {
-           targetSeconds += 24 * 3600;
+          targetSeconds += 24 * 3600;
         }
-        
+
         const diff = targetSeconds - currentSeconds;
         if (diff > 0) {
           setCountdown({ hours: Math.floor(diff / 3600), minutes: Math.floor((diff % 3600) / 60), seconds: diff % 60 });
@@ -449,7 +449,7 @@ export function AbsensiKelasClient({
             const teachesPrev = teacherSessions.some(ts => ts.sesi === prevSession);
             if (teachesPrev) {
               const currentAssignmentIdx = activeAssignments.findIndex(a => a.sesi === prevSession && a.kelasId === prevClassId);
-              
+
               if (currentAssignmentIdx !== -1) {
                 if (isCompletedRef.current && activeAssignments.length > 1) {
                   const nextAssign = currentAssignmentIdx + 1 < activeAssignments.length ? activeAssignments[currentAssignmentIdx + 1] : activeAssignments[currentAssignmentIdx];
@@ -495,17 +495,17 @@ export function AbsensiKelasClient({
           setIsSaved(false);
 
           if (nextKelasId) {
-             setKelasId(nextKelasId);
-             setActiveClassId(nextKelasId);
+            setKelasId(nextKelasId);
+            setActiveClassId(nextKelasId);
           } else {
-             const fallback = teacherSessions.find(ts => ts.sesi === nextSesi);
-             if (fallback) {
-               setKelasId(fallback.kelasId);
-               setActiveClassId(fallback.kelasId);
-             } else {
-               setKelasId("");
-               setActiveClassId(null);
-             }
+            const fallback = teacherSessions.find(ts => ts.sesi === nextSesi);
+            if (fallback) {
+              setKelasId(fallback.kelasId);
+              setActiveClassId(fallback.kelasId);
+            } else {
+              setKelasId("");
+              setActiveClassId(null);
+            }
           }
           toast("Sesi berganti otomatis", { icon: '🔄' });
         } else {
@@ -645,7 +645,7 @@ export function AbsensiKelasClient({
           }
         }
         setAbsenMap(newMap);
-        
+
         if (data.unconfirmedIds) {
           setUnconfirmedIds(new Set(data.unconfirmedIds));
         } else {
@@ -685,7 +685,12 @@ export function AbsensiKelasClient({
   const setAllStatus = (status: AbsenStatus) => {
     const newMap = { ...absenMap };
     santriList.forEach(s => {
-      newMap[s.riwayatId] = { status, keterangan: newMap[s.riwayatId]?.keterangan || "" };
+      const current = newMap[s.riwayatId];
+      // Jika diset ke HADIR tapi santri sudah punya tasrih (keterangan ada [TRS-]), biarkan status bawaannya
+      if (status === "HADIR" && current?.keterangan?.includes("[TRS-")) {
+        return;
+      }
+      newMap[s.riwayatId] = { status, keterangan: current?.keterangan || "" };
     });
     setAbsenMap(newMap);
   };
@@ -806,7 +811,7 @@ export function AbsensiKelasClient({
     programList.forEach((program) => {
       // Cek apakah guru ini punya penugasan level program untuk program ini
       const isProgramLevelAllowed = teacherSessions.some(ts => ts.isProgramLevel && ts.programId === program.id);
-      
+
       if (isProgramLevelAllowed || !allowedClassIds) {
         pushOption({ id: `PROGRAM_${program.id}`, label: `Seluruh Program ${program.nama_indo}`, group: "Program Level" });
       }
@@ -915,21 +920,21 @@ export function AbsensiKelasClient({
                       if (resolvedClassId && resolvedClassId !== "ALL" && resolvedClassId !== "UNASSIGNED") {
                         if (resolvedClassId.startsWith("PROGRAM_")) pId = resolvedClassId.replace("PROGRAM_", "");
                         else {
-                          const prog = programList.find(p => p.kelasList.some((k:any) => k.id === resolvedClassId));
+                          const prog = programList.find(p => p.kelasList.some((k: any) => k.id === resolvedClassId));
                           if (prog) pId = prog.id;
                         }
                       }
                       let j = null;
                       // Cek taqwim override terlebih dahulu (selalu cek, bukan hanya untuk SESI_1)
                       if (activeSession === "SESI_1" && pId) {
-                         const isTaqwimDate = jadwalSesiList.taqwim?.tanggalList?.some((t:any) => t.programId === pId && t.tanggal.startsWith(tanggal));
-                         if (isTaqwimDate) {
-                            j = jadwalSesiList.taqwim?.configs?.find((c:any) => c.programId === pId && c.isActive);
-                         }
+                        const isTaqwimDate = jadwalSesiList.taqwim?.tanggalList?.some((t: any) => t.programId === pId && t.tanggal.startsWith(tanggal));
+                        if (isTaqwimDate) {
+                          j = jadwalSesiList.taqwim?.configs?.find((c: any) => c.programId === pId && c.isActive);
+                        }
                       }
                       if (!j && pId && jadwalSesiList.sesiTambahan) j = jadwalSesiList.sesiTambahan.find((x: any) => x.sesi === activeSession && x.programId === pId);
                       if (!j) j = jadwalSesiList.globalSesi?.find((x: any) => x.sesi === activeSession);
-                      
+
                       if (j) return `${j.jamBuka} - ${j.jamTutup} (Dispensasi: ${j.toleransiMenit} mnt)`;
                       return "-";
                     })()}
@@ -996,16 +1001,16 @@ export function AbsensiKelasClient({
                       {gs.label || `Sesi ${gs.sesi.replace('SESI_', '')}`}
                     </option>
                   )) ?? (
-                    // Fallback hardcode Sesi 1-6 jika jadwalSesiList belum tersedia
-                    <>
-                      <option value="SESI_1">Sesi 1</option>
-                      <option value="SESI_2">Sesi 2</option>
-                      <option value="SESI_3">Sesi 3</option>
-                      <option value="SESI_4">Sesi 4</option>
-                      <option value="SESI_5">Sesi 5</option>
-                      <option value="SESI_6">Sesi 6</option>
-                    </>
-                  )}
+                      // Fallback hardcode Sesi 1-6 jika jadwalSesiList belum tersedia
+                      <>
+                        <option value="SESI_1">Sesi 1</option>
+                        <option value="SESI_2">Sesi 2</option>
+                        <option value="SESI_3">Sesi 3</option>
+                        <option value="SESI_4">Sesi 4</option>
+                        <option value="SESI_5">Sesi 5</option>
+                        <option value="SESI_6">Sesi 6</option>
+                      </>
+                    )}
                   {/* Sesi tambahan program yang tidak ada di global (ditampilkan per-program agar tidak bingung) */}
                   {jadwalSesiList?.sesiTambahan?.filter((s: any) => {
                     // Tampilkan sesi tambahan yang sesinya tidak ada di globalSesi
@@ -1081,15 +1086,7 @@ export function AbsensiKelasClient({
                 {showAdminPengajarForm ? "Tutup Form Pengajar" : "📝 Isi Absen Pengajar"}
               </button>
             )}
-            {!isTeacher && (
-              <button
-                onClick={handleSave}
-                disabled={isSaving || isLoading || !tanggal || !sesi}
-                className="rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-bold text-white transition hover:bg-[var(--color-primary-dark)] disabled:opacity-50"
-              >
-                {isSaving ? "Menyimpan..." : "Simpan Absensi"}
-              </button>
-            )}
+
           </div>
         </div>
 
@@ -1193,170 +1190,170 @@ export function AbsensiKelasClient({
               </div>
             </div>
 
-              <div className="flex flex-col">
-                {isLoading ? (
-                  <div className="p-8 text-center text-sm font-semibold text-[var(--color-text-muted)]">Memuat data santri...</div>
-                ) : santriList.length === 0 ? (
-                  <div className="p-8 text-center text-[var(--color-text-muted)] font-medium">Tidak ada santri yang ditemukan pada filter ini.</div>
-                ) : (
-                  <>
-                    {/* Badges Kelas */}
-                    {Object.keys(groupedSantri).length > 1 && (
-                      <div className="flex flex-wrap gap-3 px-6 py-4 bg-white border-b border-[var(--color-surface-dark)]">
-                        {Object.entries(groupedSantri).map(([className, students]) => (
-                          <button
-                            key={className}
-                            onClick={() => {
-                              const el = document.getElementById(`kelas-group-${className}`);
-                              if (el) {
-                                const y = el.getBoundingClientRect().top + window.scrollY - 100;
-                                window.scrollTo({ top: y, behavior: 'smooth' });
-                              }
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] hover:bg-[var(--color-surface-dark)] border border-[var(--color-surface-dark)] rounded-full text-sm font-bold text-[var(--color-text)] transition-colors shadow-sm"
-                          >
-                            {className}
-                            <span className="bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2 py-0.5 rounded-md text-xs border border-[var(--color-primary-100)]">
-                              {students.length} Santri
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Grouped Tables */}
-                    <div className="flex flex-col">
+            <div className="flex flex-col">
+              {isLoading ? (
+                <div className="p-8 text-center text-sm font-semibold text-[var(--color-text-muted)]">Memuat data santri...</div>
+              ) : santriList.length === 0 ? (
+                <div className="p-8 text-center text-[var(--color-text-muted)] font-medium">Tidak ada santri yang ditemukan pada filter ini.</div>
+              ) : (
+                <>
+                  {/* Badges Kelas */}
+                  {Object.keys(groupedSantri).length > 1 && (
+                    <div className="flex flex-wrap gap-3 px-6 py-4 bg-white border-b border-[var(--color-surface-dark)]">
                       {Object.entries(groupedSantri).map(([className, students]) => (
-                        <div key={className} id={`kelas-group-${className}`} className="border-b border-[var(--color-surface-dark)] last:border-0 scroll-mt-24">
-                          {/* Header Kelas */}
-                          <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--color-surface-light)]">
-                            <h3 className="text-lg font-bold text-[var(--color-text)] flex items-center gap-3">
-                              <span className="w-1.5 h-6 bg-[var(--color-primary)] rounded-full"></span>
-                              {className}
-                              <span className="text-sm font-semibold text-[var(--color-text-muted)]">({students.length})</span>
-                            </h3>
-                            <button
-                              onClick={() => handleCopyLaporan(className, students)}
-                              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-[var(--color-surface)] border border-[var(--color-surface-dark)] rounded-xl text-xs font-bold text-[var(--color-text)] transition-colors shadow-sm"
-                            >
-                              <Copy className="w-4 h-4 text-[var(--color-primary)]" />
-                              Copy Daftar Nama
-                            </button>
-                          </div>
-                          
-                          {/* Table */}
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-[var(--color-surface-dark)] text-left">
-                              <thead className="bg-white text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-text-muted)] border-y border-[var(--color-surface-dark)]">
-                                <tr>
-                                  <th className="px-4 py-4 text-center w-16">#</th>
-                                  <th className="px-6 py-4">Santri</th>
-                                  <th className="px-6 py-4 min-w-[300px]">Status Kehadiran</th>
-                                  <th className="px-6 py-4">Keterangan</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-[var(--color-surface)] text-sm text-[var(--color-text-muted)] bg-white">
-                                {students.map((santri, index) => {
-                                  const currentStatus = absenMap[santri.riwayatId]?.status;
-                                  const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
-                                  const nomorTasrih = currentKet.match(/\[(TRS-[\d-]+)\]/)?.[1] || null;
-                                  const displayKet = currentKet.replace(/\s*\[TRS-[\d-]+\]\s*/, "").trim();
-
-                                  return (
-                                    <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)] transition-colors">
-                                      <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
-                                      <td className="px-6 py-4">
-                                        <p className="font-bold text-[var(--color-text)]">
-                                          {santri.nama}
-                                          {unconfirmedIds.has(santri.riwayatId) && (
-                                            <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
-                                              ⚠️ Belum Kembali
-                                            </span>
-                                          )}
-                                        </p>
-                                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                                          {santri.gender === "BANIN" ? (
-                                            <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">BANIN</span>
-                                          ) : santri.gender === "BANAT" ? (
-                                            <span className="inline-flex items-center rounded-md bg-[var(--color-danger-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-danger)]">BANAT</span>
-                                          ) : (
-                                            <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)]">{santri.gender}</span>
-                                          )}
-                                          {santri.kategori === "BARU" ? (
-                                            <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)] capitalize">Baru</span>
-                                          ) : santri.kategori === "LAMA" ? (
-                                            <span className="inline-flex items-center rounded-md bg-[var(--color-warning-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning)] capitalize">Lama</span>
-                                          ) : santri.kategori === "KSU" ? (
-                                            <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 uppercase">KSU</span>
-                                          ) : (
-                                            <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)] capitalize">{santri.kategori ?? "-"}</span>
-                                          )}
-                                          {/* Tombol Tasrih di bawah nama */}
-                                          {nomorTasrih && (
-                                            <button
-                                              onClick={() => viewTasrih(nomorTasrih)}
-                                              className="inline-flex items-center gap-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 uppercase tracking-wider hover:bg-indigo-200 transition-colors"
-                                              title="Lihat Detail Tasrih"
-                                            >
-                                              <FileText size={12} /> Lihat Tasrih
-                                            </button>
-                                          )}
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-4">
-                                        <div className="flex gap-2">
-                                          {(["HADIR", "IZIN", "SAKIT", "ALPHA"] as AbsenStatus[]).map((st) => (
-                                            <button
-                                              key={st}
-                                              onClick={() => handleStatusChange(santri.riwayatId, st)}
-                                              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
-                                                ? st === "HADIR" ? "bg-emerald-500 text-white shadow-emerald-200 shadow-sm"
-                                                  : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
-                                                    : st === "SAKIT" ? "bg-amber-500 text-white shadow-amber-200 shadow-sm"
-                                                      : "bg-rose-500 text-white shadow-rose-200 shadow-sm"
-                                                : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
-                                                }`}
-                                            >
-                                              {st}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-4">
-                                        <div className="relative flex items-center gap-2">
-                                          {(() => {
-                                            return (
-                                              <>
-                                                <input
-                                                  type="text"
-                                                  placeholder="Catatan..."
-                                                  value={displayKet}
-                                                  onChange={(e) => {
-                                                    let val = e.target.value;
-                                                    if (nomorTasrih) {
-                                                      val = `[${nomorTasrih}] ${val.replace(/\s*\[TRS-[\d-]+\]\s*/g, "")}`;
-                                                    }
-                                                    handleKeteranganChange(santri.riwayatId, val);
-                                                  }}
-                                                  className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)]"
-                                                />
-                                              </>
-                                            );
-                                          })()}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
+                        <button
+                          key={className}
+                          onClick={() => {
+                            const el = document.getElementById(`kelas-group-${className}`);
+                            if (el) {
+                              const y = el.getBoundingClientRect().top + window.scrollY - 100;
+                              window.scrollTo({ top: y, behavior: 'smooth' });
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] hover:bg-[var(--color-surface-dark)] border border-[var(--color-surface-dark)] rounded-full text-sm font-bold text-[var(--color-text)] transition-colors shadow-sm"
+                        >
+                          {className}
+                          <span className="bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2 py-0.5 rounded-md text-xs border border-[var(--color-primary-100)]">
+                            {students.length} Santri
+                          </span>
+                        </button>
                       ))}
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+
+                  {/* Grouped Tables */}
+                  <div className="flex flex-col">
+                    {Object.entries(groupedSantri).map(([className, students]) => (
+                      <div key={className} id={`kelas-group-${className}`} className="border-b border-[var(--color-surface-dark)] last:border-0 scroll-mt-24">
+                        {/* Header Kelas */}
+                        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--color-surface-light)]">
+                          <h3 className="text-lg font-bold text-[var(--color-text)] flex items-center gap-3">
+                            <span className="w-1.5 h-6 bg-[var(--color-primary)] rounded-full"></span>
+                            {className}
+                            <span className="text-sm font-semibold text-[var(--color-text-muted)]">({students.length})</span>
+                          </h3>
+                          <button
+                            onClick={() => handleCopyLaporan(className, students)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-[var(--color-surface)] border border-[var(--color-surface-dark)] rounded-xl text-xs font-bold text-[var(--color-text)] transition-colors shadow-sm"
+                          >
+                            <Copy className="w-4 h-4 text-[var(--color-primary)]" />
+                            Copy Daftar Nama
+                          </button>
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-[var(--color-surface-dark)] text-left">
+                            <thead className="bg-white text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-text-muted)] border-y border-[var(--color-surface-dark)]">
+                              <tr>
+                                <th className="px-4 py-4 text-center w-16">#</th>
+                                <th className="px-6 py-4">Santri</th>
+                                <th className="px-6 py-4 min-w-[300px]">Status Kehadiran</th>
+                                <th className="px-6 py-4">Keterangan</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--color-surface)] text-sm text-[var(--color-text-muted)] bg-white">
+                              {students.map((santri, index) => {
+                                const currentStatus = absenMap[santri.riwayatId]?.status;
+                                const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
+                                const nomorTasrih = currentKet.match(/\[(TRS-[\d-]+)\]/)?.[1] || null;
+                                const displayKet = currentKet.replace(/\s*\[TRS-[\d-]+\]\s*/, "").trim();
+
+                                return (
+                                  <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)] transition-colors">
+                                    <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
+                                    <td className="px-6 py-4">
+                                      <p className="font-bold text-[var(--color-text)]">
+                                        {santri.nama}
+                                        {unconfirmedIds.has(santri.riwayatId) && (
+                                          <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                                            ⚠️ Belum Kembali
+                                          </span>
+                                        )}
+                                      </p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        {santri.gender === "BANIN" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">BANIN</span>
+                                        ) : santri.gender === "BANAT" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-danger-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-danger)]">BANAT</span>
+                                        ) : (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)]">{santri.gender}</span>
+                                        )}
+                                        {santri.kategori === "BARU" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-primary-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)] capitalize">Baru</span>
+                                        ) : santri.kategori === "LAMA" ? (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-warning-light)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning)] capitalize">Lama</span>
+                                        ) : santri.kategori === "KSU" ? (
+                                          <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 uppercase">KSU</span>
+                                        ) : (
+                                          <span className="inline-flex items-center rounded-md bg-[var(--color-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text)] capitalize">{santri.kategori ?? "-"}</span>
+                                        )}
+                                        {/* Tombol Tasrih di bawah nama */}
+                                        {nomorTasrih && (
+                                          <button
+                                            onClick={() => viewTasrih(nomorTasrih)}
+                                            className="inline-flex items-center gap-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 uppercase tracking-wider hover:bg-indigo-200 transition-colors"
+                                            title="Lihat Detail Tasrih"
+                                          >
+                                            <FileText size={12} /> Lihat Tasrih
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex gap-2">
+                                        {(["HADIR", "IZIN", "SAKIT", "ALPHA"] as AbsenStatus[]).map((st) => (
+                                          <button
+                                            key={st}
+                                            onClick={() => handleStatusChange(santri.riwayatId, st)}
+                                            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
+                                              ? st === "HADIR" ? "bg-emerald-500 text-white shadow-emerald-200 shadow-sm"
+                                                : st === "IZIN" ? "bg-indigo-500 text-white shadow-indigo-200 shadow-sm"
+                                                  : st === "SAKIT" ? "bg-amber-500 text-white shadow-amber-200 shadow-sm"
+                                                    : "bg-rose-500 text-white shadow-rose-200 shadow-sm"
+                                              : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)]"
+                                              }`}
+                                          >
+                                            {st}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="relative flex items-center gap-2">
+                                        {(() => {
+                                          return (
+                                            <>
+                                              <input
+                                                type="text"
+                                                placeholder="Catatan..."
+                                                value={displayKet}
+                                                onChange={(e) => {
+                                                  let val = e.target.value;
+                                                  if (nomorTasrih) {
+                                                    val = `[${nomorTasrih}] ${val.replace(/\s*\[TRS-[\d-]+\]\s*/g, "")}`;
+                                                  }
+                                                  handleKeteranganChange(santri.riwayatId, val);
+                                                }}
+                                                className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-[var(--color-primary)]"
+                                              />
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {(
               (isTeacher && activeSession && (teacherSessions.some(ts => ts.sesi === activeSession && ts.kelasId === kelasId) || isBadalMode || isAsistenMode)) ||
               (userRole === "ADMIN" && showAdminPengajarForm)
@@ -1546,11 +1543,11 @@ export function AbsensiKelasClient({
                               <div className="text-sm font-mono flex-1">
                                 {waktuMulai
                                   ? <span className="text-emerald-600 font-bold flex items-center gap-2">
-                                      <CheckCircle2 className="w-4 h-4" /> Waktu masuk Anda adalah : {waktuMulai} WIB
-                                    </span>
+                                    <CheckCircle2 className="w-4 h-4" /> Waktu masuk Anda adalah : {waktuMulai} WIB
+                                  </span>
                                   : <span className="text-amber-600 font-medium flex items-center gap-2">
-                                      <Clock className="w-4 h-4" /> Otomatis saat simpan
-                                    </span>}
+                                    <Clock className="w-4 h-4" /> Otomatis saat antum menekan simpan
+                                  </span>}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1606,34 +1603,34 @@ export function AbsensiKelasClient({
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)] mb-3">Basic Kecerdasan (Bisa Pilih Lebih Dari Satu)</label>
                         <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
-                           {[
-                              { id: "Verbal-Linguistic", label: "Verbal-Linguistic Intelligence (الذَّكَاءُ اللُّغَوِيُّ)" },
-                              { id: "Logical-Mathematical", label: "Logical-Mathematical Intelligence (الذَّكَاءُ الْمَنْطِقِيُّ الرِّيَاضِيُّ)" },
-                              { id: "Visual-Spatial", label: "Visual-Spatial Intelligence (الذَّكَاءُ الْبَصَرِيُّ الْمَكَانِيُّ)" },
-                              { id: "Musical-Rhythmic", label: "Musical-Rhythmic Intelligence (الذَّكَاءُ الْمُوسِيقِيُّ)" },
-                              { id: "Bodily-Kinesthetic", label: "Bodily-Kinesthetic Intelligence (الذَّكَاءُ الْجَسَدِيُّ الْحَرَكِيُّ)" },
-                              { id: "Interpersonal", label: "Interpersonal Intelligence (الذَّكَاءُ الاِجْتِمَاعِيُّ)" },
-                              { id: "Intrapersonal", label: "Intrapersonal Intelligence (الذَّكَاءُ الذَّاتِيُّ)" },
-                              { id: "Naturalistic", label: "Naturalistic Intelligence (الذَّكَاءُ الطَّبِيعِيُّ)" },
-                              { id: "Existential", label: "Existential Intelligence (الذَّكَاءُ الْوُجُودِيُّ)" }
-                           ].map(item => (
-                              <label key={item.id} className="flex items-center justify-between cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-[var(--color-surface-dark)] hover:border-[var(--color-primary-100)] transition-colors shadow-sm">
-                                 <span className="text-sm font-semibold text-[var(--color-text)]">{item.label}</span>
-                                 <input
-                                    type="checkbox"
-                                    checked={kecerdasan.includes(item.id)}
-                                    onChange={(e) => {
-                                       if (e.target.checked) {
-                                          setKecerdasan([...kecerdasan, item.id]);
-                                       } else {
-                                          setKecerdasan(kecerdasan.filter(k => k !== item.id));
-                                       }
-                                       setIsSaved(false);
-                                    }}
-                                    className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 border-[var(--color-surface-dark)]"
-                                 />
-                              </label>
-                           ))}
+                          {[
+                            { id: "Verbal-Linguistic", label: "Verbal-Linguistic Intelligence (الذَّكَاءُ اللُّغَوِيُّ)" },
+                            { id: "Logical-Mathematical", label: "Logical-Mathematical Intelligence (الذَّكَاءُ الْمَنْطِقِيُّ الرِّيَاضِيُّ)" },
+                            { id: "Visual-Spatial", label: "Visual-Spatial Intelligence (الذَّكَاءُ الْبَصَرِيُّ الْمَكَانِيُّ)" },
+                            { id: "Musical-Rhythmic", label: "Musical-Rhythmic Intelligence (الذَّكَاءُ الْمُوسِيقِيُّ)" },
+                            { id: "Bodily-Kinesthetic", label: "Bodily-Kinesthetic Intelligence (الذَّكَاءُ الْجَسَدِيُّ الْحَرَكِيُّ)" },
+                            { id: "Interpersonal", label: "Interpersonal Intelligence (الذَّكَاءُ الاِجْتِمَاعِيُّ)" },
+                            { id: "Intrapersonal", label: "Intrapersonal Intelligence (الذَّكَاءُ الذَّاتِيُّ)" },
+                            { id: "Naturalistic", label: "Naturalistic Intelligence (الذَّكَاءُ الطَّبِيعِيُّ)" },
+                            { id: "Existential", label: "Existential Intelligence (الذَّكَاءُ الْوُجُودِيُّ)" }
+                          ].map(item => (
+                            <label key={item.id} className="flex items-center justify-between cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-[var(--color-surface-dark)] hover:border-[var(--color-primary-100)] transition-colors shadow-sm">
+                              <span className="text-sm font-semibold text-[var(--color-text)]">{item.label}</span>
+                              <input
+                                type="checkbox"
+                                checked={kecerdasan.includes(item.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setKecerdasan([...kecerdasan, item.id]);
+                                  } else {
+                                    setKecerdasan(kecerdasan.filter(k => k !== item.id));
+                                  }
+                                  setIsSaved(false);
+                                }}
+                                className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 border-[var(--color-surface-dark)]"
+                              />
+                            </label>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1655,38 +1652,29 @@ export function AbsensiKelasClient({
                           : belumDiabsen > 0
                             ? `⚠️ ${belumDiabsen} santri belum diabsen — data tetap bisa disimpan`
                             : isSaved
-                              ? "✅ Data sudah tersimpan. Anda bisa mengubah dan menyimpan ulang."
-                              : (isTeacher ? "🕐 Jam masuk akan tercatat otomatis saat Anda menyimpan" : "📝 Siap disimpan ke server")}
+                              ? "✅ Tersimpan. Gunakan tombol Simpan (melayang) untuk menyimpan ulang kapan saja."
+                              : "💡 Gunakan tombol Simpan (melayang) di pojok kanan bawah. Absen bisa disimpan berkali-kali."}
                       </p>
-                      <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        {isSaved && activeSessionsList.length > 1 && activeSessionsList.indexOf(activeSession || "") + 1 < activeSessionsList.length && (
-                          <button
-                            onClick={() => {
-                              const nextSesi = activeSessionsList[activeSessionsList.indexOf(activeSession || "") + 1];
-                              setActiveSession(nextSesi);
-                              setIsBadalMode(false);
-                              setIsSaved(false);
-                              const teachingNext = teacherSessions.find(ts => ts.sesi === nextSesi);
-                              setSesi(nextSesi as SesiKelas);
-                              if (teachingNext) {
-                                setKelasId(teachingNext.kelasId);
-                                setActiveClassId(teachingNext.kelasId);
-                              }
-                              toast.success("Berpindah ke " + nextSesi.replace('_', ' '));
-                            }}
-                            className="w-full sm:w-auto rounded-full bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 shadow-md shadow-emerald-200"
-                          >
-                            Lanjut Sesi {activeSessionsList[activeSessionsList.indexOf(activeSession || "") + 1].replace('SESI_', '')} 👉
-                          </button>
-                        )}
+                      {isSaved && activeSessionsList.length > 1 && activeSessionsList.indexOf(activeSession || "") + 1 < activeSessionsList.length && (
                         <button
-                          onClick={handleSave}
-                          disabled={isSaving || !tanggal || !sesi || !materi || (isTeacher ? false : (!waktuMulai || !waktuSelesai))}
-                          className="w-full sm:w-auto rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-dark)] hover:shadow-md hover:shadow-[var(--color-primary-100)] disabled:opacity-50"
+                          onClick={() => {
+                            const nextSesi = activeSessionsList[activeSessionsList.indexOf(activeSession || "") + 1];
+                            setActiveSession(nextSesi);
+                            setIsBadalMode(false);
+                            setIsSaved(false);
+                            const teachingNext = teacherSessions.find(ts => ts.sesi === nextSesi);
+                            setSesi(nextSesi as SesiKelas);
+                            if (teachingNext) {
+                              setKelasId(teachingNext.kelasId);
+                              setActiveClassId(teachingNext.kelasId);
+                            }
+                            toast.success("Berpindah ke " + nextSesi.replace('_', ' '));
+                          }}
+                          className="w-full sm:w-auto rounded-full bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 shadow-md shadow-emerald-200 shrink-0"
                         >
-                          {isSaving ? "Menyimpan Data..." : isSaved ? "Simpan Ulang" : "Simpan Absensi Final"}
+                          Lanjut Sesi {activeSessionsList[activeSessionsList.indexOf(activeSession || "") + 1].replace('SESI_', '')} 👉
                         </button>
-                      </div>
+                      )}
                     </div>
                   </div>
 
@@ -1807,19 +1795,18 @@ export function AbsensiKelasClient({
           </div>
         </div>
       )}
-      {/* Floating Save Button — khusus pengajar */}
-      {isTeacher && activeSession && (
+      {/* Floating Save Button — untuk semua role saat ada sesi aktif */}
+      {activeSession && (
         <button
           onClick={handleSave}
-          disabled={isSaving || !materi}
+          disabled={isSaving || !materi || !tanggal || !sesi}
           title="Simpan absensi"
-          className={`fixed bottom-24 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 ${
-            isSaving
-              ? "bg-amber-400 scale-90 shadow-amber-200"
-              : isSaved
-                ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"
-                : "bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] hover:scale-105 shadow-[var(--color-primary-100)] active:scale-95"
-          } disabled:opacity-50`}
+          className={`fixed bottom-24 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 ${isSaving
+            ? "bg-amber-400 scale-90 shadow-amber-200"
+            : isSaved
+              ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"
+              : "bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] hover:scale-105 shadow-[var(--color-primary-100)] active:scale-95"
+            } disabled:opacity-50`}
         >
           {isSaving
             ? <><RefreshCw className="w-4 h-4 animate-spin" /> <span>Menyimpan...</span></>

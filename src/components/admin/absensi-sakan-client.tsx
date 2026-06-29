@@ -152,7 +152,12 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
   const setAllStatus = (status: AbsenStatus) => {
     const newMap = { ...absenMap };
     santriList.forEach(s => {
-      newMap[s.riwayatId] = { status, keterangan: newMap[s.riwayatId]?.keterangan || "" };
+      const current = newMap[s.riwayatId];
+      // Jika diset ke HADIR tapi santri sudah punya tasrih (keterangan ada [TRS-]), biarkan status bawaannya
+      if (status === "HADIR" && current?.keterangan?.includes("[TRS-")) {
+        return;
+      }
+      newMap[s.riwayatId] = { status, keterangan: current?.keterangan || "" };
     });
     setAbsenMap(newMap);
   };

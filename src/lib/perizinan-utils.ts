@@ -40,7 +40,23 @@ export async function processAutoAbsensiIzin(
   statusAbsen: "IZIN" | "SAKIT" = "IZIN"
 ) {
   const allSesi = await getAllJadwalSesi();
-  const sesiList = allSesi.map(s => s.sesi);
+  const sesiList: SesiKelas[] = allSesi.map(s => s.sesi);
+
+  // Juga ambil sesi tambahan dari program santri
+  const riwayat = await prisma.riwayatSantri.findUnique({
+    where: { id: riwayatId },
+    select: { programId: true }
+  });
+  if (riwayat?.programId) {
+    const sesiTambahan = await prisma.sesiTambahanProgram.findMany({
+      where: { programId: riwayat.programId, isActive: true }
+    });
+    for (const st of sesiTambahan) {
+      if (!sesiList.includes(st.sesi)) {
+        sesiList.push(st.sesi);
+      }
+    }
+  }
 
   // Helper untuk format keterangan
   const keterangan = tipeIzin === "HARIAN" ? `Izin Harian [${nomorTasrih}]: ${alasan}` : 
@@ -61,7 +77,7 @@ export async function processAutoAbsensiIzin(
 
   // Lakukan proses untuk setiap hari
   for (const date of datesToProcess) {
-    // 1. Absen Kelas (semua sesi)
+    // 1. Absen Kelas (semua sesi termasuk sesi tambahan)
     for (const sesi of sesiList) {
       const existingKelas = await prisma.absenKelas.findUnique({
         where: { riwayatId_tanggal_sesi: { riwayatId, tanggal: date, sesi } }
