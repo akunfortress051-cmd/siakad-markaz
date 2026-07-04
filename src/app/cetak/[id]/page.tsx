@@ -83,6 +83,7 @@ export default async function CetakPage({
       riwayatId={riwayatId}
       programId={programId}
       mode="per-santri"
+      musyarokah={isMusyarokah}
       backHref="/admin/dashboard"
       backLabel="← Kembali ke Dashboard"
       isTurats={isTurats}

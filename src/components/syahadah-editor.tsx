@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { SyahadahDocument } from "@/components/syahadah-document";
 import { SyahadahTuratsDocument } from "@/components/syahadah-turats-document";
 import { LayoutData, LayoutElementKey, LAYOUT_ELEMENT_KEYS, ELEMENT_LABELS, getDefaultLayout } from "@/lib/syahadah-layout";
@@ -34,6 +35,7 @@ export function SyahadahEditor({
   titleLabel,
   isTurats = false,
 }: SyahadahEditorProps) {
+  const router = useRouter();
   const [layout, setLayout] = useState<LayoutData>(initialLayout);
   const [selectedElement, setSelectedElement] = useState<LayoutElementKey | null>(null);
   const [stepSize, setStepSize] = useState(1);
@@ -80,6 +82,7 @@ export function SyahadahEditor({
       });
       if (res.ok) {
         setSaved(true);
+        router.refresh();
         setTimeout(() => setSaved(false), 2500);
       }
     } catch (err) {
@@ -241,6 +244,7 @@ export function SyahadahEditor({
           @page { size: 330mm 215mm; landscape; margin: 0; }
           .editor-toolbar, .editor-panel { display: none !important; }
           .editor-crosshair { display: none !important; }
+          .editor-workspace { transform: none !important; margin: 0 !important; }
         }
       `}</style>
 
