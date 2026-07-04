@@ -27,6 +27,7 @@ async function checkMartabahUla(programId: string, dufahNama: string, riwayatId:
   const riwayatList = await prisma.riwayatSantri.findMany({
     where: {
       programId,
+      dufahNama,
       status_kelulusan: { not: "TIDAK_LULUS" },
     },
     include: {
