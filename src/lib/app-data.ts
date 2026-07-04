@@ -360,13 +360,15 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
       const isTurats = (program as any)?.kategori === "TURATS";
       const averagePredikat = isTurats ? getPredikatTurats(Math.round(average)) : getPredikat(Math.round(average));
 
+      const isUsbuain = !isAkbarnas && effectiveUsbuainMode > 0;
+
       return {
         id: masterSantri.id,
         nama: masterSantri.nama,
         gender: masterSantri.gender,
         lokasi: `${masterSantri.sakan} / ${masterSantri.kamar} / ${masterSantri.nomorLemari}`,
-        programNama: program?.nama_indo ?? "Belum diatur",
-        programId: program?.id ?? null,
+        programNama: isUsbuain ? "Usbu'ain (Gabungan)" : (program?.nama_indo ?? "Belum diatur"),
+        programId: isUsbuain ? "USBUAIN_GROUP" : (program?.id ?? null),
         kelasNama: kelas?.nama ?? "-",
         kelasId: kelas?.id ?? null,
         statusKelulusan: program && hasCompleteNilai ? status : "TIDAK_LULUS",
@@ -381,7 +383,7 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
         riwayatId: riwayat?.id ?? null,
         average,
         averagePredikat,
-        programKategori: (program as any)?.kategori ?? "REGULER",
+        programKategori: isUsbuain ? "USBUAIN" : ((program as any)?.kategori ?? "REGULER"),
       };
     })
     .sort((left: any, right: any) => left.nama.localeCompare(right.nama, "id"));
@@ -876,6 +878,8 @@ export async function getRiwayatSantriRows() {
       dufahNama: riwayat.dufahNama,
       programNama: program?.nama_indo ?? "Belum diatur",
       programId: program?.id ?? null,
+      programKategori: program?.kategori ?? "REGULER",
+      isUsbuain: (riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0) > 0,
       kelasNama: kelas?.nama ?? "-",
       kelasId: kelas?.id ?? null,
       statusKelulusan: program && hasCompleteNilai ? status : "TIDAK_LULUS",

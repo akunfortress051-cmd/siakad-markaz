@@ -171,14 +171,16 @@ export function MartabahUlaClient({
 }: {
   santriRows: MartabahUlaRow[];
 }) {
-  const { regulerRows, turatsRows } = useMemo(() => {
-    const reguler = santriRows.filter((s) => (s.programKategori ?? "REGULER") !== "TURATS");
+  const { regulerRows, turatsRows, usbuainRows } = useMemo(() => {
+    const reguler = santriRows.filter((s) => (s.programKategori ?? "REGULER") !== "TURATS" && (s.programKategori ?? "REGULER") !== "USBUAIN");
     const turats = santriRows.filter((s) => (s.programKategori ?? "REGULER") === "TURATS");
-    return { regulerRows: reguler, turatsRows: turats };
+    const usbuain = santriRows.filter((s) => (s.programKategori ?? "REGULER") === "USBUAIN");
+    return { regulerRows: reguler, turatsRows: turats, usbuainRows: usbuain };
   }, [santriRows]);
 
   const regulerData = useMemo(() => computeMartabahUla(regulerRows), [regulerRows]);
   const turatsData = useMemo(() => computeMartabahUla(turatsRows), [turatsRows]);
+  const usbuainData = useMemo(() => computeMartabahUla(usbuainRows), [usbuainRows]);
 
   return (
     <div className="space-y-8 mt-6">
@@ -209,6 +211,21 @@ export function MartabahUlaClient({
           list={turatsData.martabahUlaList}
           globalTopId={turatsData.globalTopId}
           emptyMessage="Belum ada santri peraih Martabah Ula di program Turats."
+        />
+      </div>
+
+      {/* Usbuain Section */}
+      <div className="neu-card-white p-6">
+        <div className="mb-6 flex flex-col gap-2">
+          <h2 className="text-2xl font-bold text-[var(--color-text)]">Peraih Martabah Ula — Usbu&apos;ain</h2>
+          <p className="text-sm text-[var(--color-text-muted)] max-w-2xl">
+            Daftar santri dengan nilai tertinggi gabungan untuk seluruh program Usbu&apos;ain.
+          </p>
+        </div>
+        <MartabahUlaTable
+          list={usbuainData.martabahUlaList}
+          globalTopId={usbuainData.globalTopId}
+          emptyMessage="Belum ada santri peraih Martabah Ula di program Usbu'ain."
         />
       </div>
     </div>
