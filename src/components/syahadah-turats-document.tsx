@@ -79,8 +79,8 @@ export function SyahadahTuratsDocument({
   const tglMulai = data.template.tgl_mulai_turats || data.template.tgl_mulai_indo || "........";
   const tglSelesai = data.template.tgl_selesai_turats || data.template.tgl_selesai_indo || "........";
   // Hardcoded for Turats
-  const namaMudir = "Abdul Wahhab, M.Pd.";
-  const jabatanMudir = "General Manager Turats";
+  const namaMudir = "Ustadz Abdul Wahhab, M.Pd.";
+  const jabatanMudir = "Direktur Markaz Turats";
 
   const averageValue = isMusyarokah ? "" : Math.round(data.average).toString();
   const averagePredikat = isMusyarokah ? "" : data.averagePredikat.indo;
@@ -112,7 +112,7 @@ export function SyahadahTuratsDocument({
       >
         {/* Turats Background */}
         <img
-          src="/images/syahadah-turats.webp"
+          src="/images/syahadah-turats.png"
           alt=""
           style={{
             position: "absolute",
@@ -393,10 +393,7 @@ export function SyahadahTuratsDocument({
               transform: `translate(${lo.teksDufah.offsetX}mm, ${lo.teksDufah.offsetY}mm)`,
             }}
           >
-            Yang telah menyelesaikan serangkaian pembelajaran dan ujian pada{" "}
-            <strong style={{ color: "#6b1a1a" }}>
-              {data.masterSantri.dufahNama}
-            </strong>
+            telah menyelesaikan serangkaian pembelajaran dan ujian pada Marhalah 1
           </p>
 
           {/* Teks Program */}
@@ -431,8 +428,8 @@ export function SyahadahTuratsDocument({
           >
             yang diselenggarakan pada tanggal{" "}
             <strong style={{ color: "#6b1a1a" }}>{tglMulai}</strong>{" "}
-            sampai dengan{" "}
-            <strong style={{ color: "#6b1a1a" }}>{tglSelesai}</strong>.
+            sampai{" "}
+            <strong style={{ color: "#6b1a1a" }}>{tglSelesai}</strong>,
           </p>
 
           {/* Rata-rata */}
@@ -449,7 +446,7 @@ export function SyahadahTuratsDocument({
                 transform: `translate(${lo.rataRata.offsetX}mm, ${lo.rataRata.offsetY}mm)`,
               }}
             >
-              Dengan nilai rata-rata kumulatif{" "}
+              dengan nilai rata-rata kumulatif{" "}
               <strong style={{ color: "#6b1a1a" }}>{averageValue}</strong>
             </p>
           )}
@@ -468,7 +465,7 @@ export function SyahadahTuratsDocument({
                 transform: `translate(${(lo.predikat?.offsetX ?? 0)}mm, ${(lo.predikat?.offsetY ?? 0)}mm)`,
               }}
             >
-              Dengan predikat{" "}
+              Predikat{" "}
               <strong style={{ color: "#6b1a1a" }}>{averagePredikat}</strong>
             </p>
           )}
@@ -527,7 +524,7 @@ export function SyahadahTuratsDocument({
                 {/* Stempel */}
                 <img
                   {...elProps("stempel", editorMode, selectedElement, onSelectElement, "Stempel")}
-                  src="/images/stamp.png"
+                  src="/images/stempel-turats.png"
                   alt="Stempel"
                   style={{
                     position: "absolute",
@@ -537,6 +534,7 @@ export function SyahadahTuratsDocument({
                     objectFit: "contain",
                     opacity: 0.88,
                     zIndex: 3,
+                    transform: "rotate(-15deg)",
                     ...(editorMode ? { cursor: "pointer" } : {}),
                   }}
                 />

@@ -22,14 +22,17 @@ const programInclude = {
   },
 };
 
-async function checkMartabahUla(programId: string, dufahNama: string, riwayatId: string): Promise<boolean> {
+async function checkMartabahUla(programId: string, dufahNama: string, riwayatId: string, isUsbuain: boolean = false): Promise<boolean> {
   // Ambil semua anak di cohort ini
-  const riwayatList = await prisma.riwayatSantri.findMany({
-    where: {
-      programId,
-      dufahNama,
-    },
+  const whereClause: any = { dufahNama };
+  if (!isUsbuain) {
+    whereClause.programId = programId;
+  }
+
+  const riwayatListRaw = await prisma.riwayatSantri.findMany({
+    where: whereClause,
     include: {
+      kelas: true,
       nilaiList: {
         include: { mapel: true },
       },
@@ -42,6 +45,10 @@ async function checkMartabahUla(programId: string, dufahNama: string, riwayatId:
       },
     },
   });
+
+  const riwayatList = isUsbuain 
+    ? riwayatListRaw.filter((r: any) => (r.jumlah_kolom_usbu ?? r.kelas?.jumlah_kolom_usbu ?? 0) > 0 && !r.program?.nama_indo.toLowerCase().includes("akbarnas"))
+    : riwayatListRaw;
 
   if (riwayatList.length === 0) {
     return false;
@@ -502,6 +509,7 @@ export async function getCertificateData(id: string) {
   let riwayat = await prisma.riwayatSantri.findUnique({
     where: { id },
     include: {
+      kelas: true,
       santri: true,
       program: {
         include: programInclude,
@@ -524,6 +532,7 @@ export async function getCertificateData(id: string) {
     riwayat = await prisma.riwayatSantri.findUnique({
       where: { santriId_dufahNama: { santriId: id, dufahNama: masterSantriFallback.dufahNama } },
       include: {
+        kelas: true,
         santri: true,
         program: {
           include: programInclude,
@@ -631,12 +640,26 @@ export async function getCertificateData(id: string) {
       }
 
       if (selected && selected.nilaiAkhir === null && (selected.nilaiUsbu1 !== null || selected.nilaiUsbu2 !== null || selected.nilaiNihai !== null)) {
-        selected = {
-          ...selected,
-          nilaiAkhir: calcMapelNilaiAkhir(
+        const kelas = riwayat.kelas;
+        const effectiveUsbuainMode = riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0;
+        const programMapel = riwayat.program.programMapels.find((pm: any) => pm.mapelId === selected.mapelId);
+        const m = programMapel?.mapel;
+
+        let nilaiAkhirCalculated = null;
+        if (m?.jumlah_tes === 3 && effectiveUsbuainMode === 2) {
+          nilaiAkhirCalculated = calcMapelNilaiAkhirUsbuain2({ u1: selected.nilaiUsbu1, u2: selected.nilaiUsbu2 });
+        } else if (m?.jumlah_tes === 3 && effectiveUsbuainMode === 1) {
+          nilaiAkhirCalculated = selected.nilaiNihai;
+        } else {
+          nilaiAkhirCalculated = calcMapelNilaiAkhir(
             { u1: selected.nilaiUsbu1, u2: selected.nilaiUsbu2, n: selected.nilaiNihai },
             false
-          )
+          );
+        }
+
+        selected = {
+          ...selected,
+          nilaiAkhir: nilaiAkhirCalculated
         };
       }
 
@@ -677,7 +700,10 @@ export async function getCertificateData(id: string) {
 
   // Check Martabah Ula
   if (status !== "TIDAK_LULUS" && riwayat.programId && average > 0) {
-    const isMartabahUla = await checkMartabahUla(riwayat.programId, riwayat.dufahNama, riwayat.id);
+    const effectiveUsbuainMode = riwayat.jumlah_kolom_usbu ?? riwayat.kelas?.jumlah_kolom_usbu ?? 0;
+    const isUsbuain = !isAkbarnas && effectiveUsbuainMode > 0;
+    
+    const isMartabahUla = await checkMartabahUla(riwayat.programId, riwayat.dufahNama, riwayat.id, isUsbuain);
     if (isMartabahUla) {
       predikat = { indo: "Martabah Ula", arab: "الامتياز مع مرتبة الشرف الأولى" };
     }
