@@ -164,39 +164,76 @@ export async function getMusyarokahLayoutForRiwayat(riwayatId: string, programId
   return getMusyarokahLayout(programId);
 }
 
-/** Save layout (global, per-program, or per-santri). Set musyarokah=true to save to musyarokahLayoutData. */
+// ===== MARTABAH ULA LAYOUT =====
+
+/** Fetch martabah layout for a specific program, falling back to global martabah, then global default */
+/** Fetch martabah layout from global profile */
+export async function getMartabahLayout(isTurats: boolean = false): Promise<LayoutData> {
+  const global = await prisma.syahadahLayout.findFirst({
+    where: { riwayatId: null, programId: null },
+  });
+
+  if (!global) return getDefaultLayout();
+
+  const data = global as any;
+  if (isTurats) {
+    return mergeLayout(data.martabahTuratsLayoutData as Partial<LayoutData>);
+  }
+  return mergeLayout(data.martabahLayoutData as Partial<LayoutData>);
+}
+
+/** Save layout (global, per-program, or per-santri). */
 export async function saveLayout(
-  params: { riwayatId?: string | null; programId?: string | null; musyarokah?: boolean },
+  params: { riwayatId?: string | null; programId?: string | null; mode?: "REGULER" | "MUSYAROKAH" | "MARTABAH_REGULER" | "MARTABAH_TURATS" },
   layoutData: LayoutData
 ) {
-  const isMusyarokah = params.musyarokah === true;
+  const isMusyarokah = params.mode === "MUSYAROKAH";
+  
+  const getUpdateData = () => {
+    if (params.mode === "MARTABAH_REGULER") return { martabahLayoutData: layoutData as any };
+    if (params.mode === "MARTABAH_TURATS") return { martabahTuratsLayoutData: layoutData as any };
+    if (isMusyarokah) return { musyarokahLayoutData: layoutData as any };
+    return { layoutData: layoutData as any };
+  };
 
-  if (params.riwayatId) {
+  const getCreateData = () => {
+    const base: any = { layoutData: getDefaultLayout() as any };
+    if (params.mode === "MARTABAH_REGULER") base.martabahLayoutData = layoutData as any;
+    else if (params.mode === "MARTABAH_TURATS") base.martabahTuratsLayoutData = layoutData as any;
+    else if (isMusyarokah) base.musyarokahLayoutData = layoutData as any;
+    else base.layoutData = layoutData as any;
+    return base;
+  };
+
+  let targetRiwayatId = params.riwayatId;
+  let targetProgramId = params.programId;
+
+  // Force global for Martabah modes
+  if (params.mode === "MARTABAH_REGULER" || params.mode === "MARTABAH_TURATS") {
+    targetRiwayatId = null;
+    targetProgramId = null;
+  }
+
+  if (targetRiwayatId) {
     // Per-santri: upsert by riwayatId
     await prisma.syahadahLayout.upsert({
-      where: { riwayatId: params.riwayatId },
-      update: isMusyarokah
-        ? { musyarokahLayoutData: layoutData as any }
-        : { layoutData: layoutData as any },
+      where: { riwayatId: targetRiwayatId },
+      update: getUpdateData(),
       create: {
-        riwayatId: params.riwayatId,
+        riwayatId: targetRiwayatId,
         programId: null,
-        layoutData: (isMusyarokah ? getDefaultLayout() : layoutData) as any,
-        ...(isMusyarokah ? { musyarokahLayoutData: layoutData as any } : {}),
+        ...getCreateData(),
       },
     });
-  } else if (params.programId) {
+  } else if (targetProgramId) {
     // Per-program: upsert by programId
     await prisma.syahadahLayout.upsert({
-      where: { programId: params.programId },
-      update: isMusyarokah
-        ? { musyarokahLayoutData: layoutData as any }
-        : { layoutData: layoutData as any },
+      where: { programId: targetProgramId },
+      update: getUpdateData(),
       create: {
         riwayatId: null,
-        programId: params.programId,
-        layoutData: (isMusyarokah ? getDefaultLayout() : layoutData) as any,
-        ...(isMusyarokah ? { musyarokahLayoutData: layoutData as any } : {}),
+        programId: targetProgramId,
+        ...getCreateData(),
       },
     });
   } else {
@@ -207,17 +244,14 @@ export async function saveLayout(
     if (existing) {
       await prisma.syahadahLayout.update({
         where: { id: existing.id },
-        data: isMusyarokah
-          ? { musyarokahLayoutData: layoutData as any }
-          : { layoutData: layoutData as any },
+        data: getUpdateData(),
       });
     } else {
       await prisma.syahadahLayout.create({
         data: {
           riwayatId: null,
           programId: null,
-          layoutData: (isMusyarokah ? getDefaultLayout() : layoutData) as any,
-          ...(isMusyarokah ? { musyarokahLayoutData: layoutData as any } : {}),
+          ...getCreateData(),
         },
       });
     }

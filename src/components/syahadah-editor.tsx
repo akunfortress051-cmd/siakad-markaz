@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SyahadahDocument } from "@/components/syahadah-document";
 import { SyahadahTuratsDocument } from "@/components/syahadah-turats-document";
+import { SyahadahMartabahDocument } from "@/components/syahadah-martabah-document";
+import { SyahadahMartabahTuratsDocument } from "@/components/syahadah-martabah-turats-document";
 import { LayoutData, LayoutElementKey, LAYOUT_ELEMENT_KEYS, ELEMENT_LABELS, getDefaultLayout } from "@/lib/syahadah-layout";
 
 type SyahadahEditorProps = {
@@ -18,6 +20,7 @@ type SyahadahEditorProps = {
   backLabel: string;
   titleLabel?: string;
   isTurats?: boolean;
+  isMartabah?: boolean;
 };
 
 const STEP_OPTIONS = [0.5, 1, 2, 5];
@@ -34,6 +37,7 @@ export function SyahadahEditor({
   backLabel,
   titleLabel,
   isTurats = false,
+  isMartabah = false,
 }: SyahadahEditorProps) {
   const router = useRouter();
   const [layout, setLayout] = useState<LayoutData>(initialLayout);
@@ -77,7 +81,7 @@ export function SyahadahEditor({
           riwayatId: mode === "per-santri" ? riwayatId : null,
           programId: mode === "per-program" ? programId : null,
           layoutData: layout,
-          musyarokah: musyarokah === true,
+          mode: isMartabah ? (isTurats ? "MARTABAH_TURATS" : "MARTABAH_REGULER") : musyarokah ? "MUSYAROKAH" : "REGULER",
         }),
       });
       if (res.ok) {
@@ -459,25 +463,23 @@ export function SyahadahEditor({
 
         {/* Syahadah Preview */}
         <div className="flex flex-col items-center gap-10 print:gap-0">
-          {isTurats ? (
-            <SyahadahTuratsDocument
-              qrUrl={qrUrl}
-              data={data}
-              layout={layout}
-              editorMode={editorActive}
-              selectedElement={selectedElement}
-              onSelectElement={setSelectedElement}
-            />
-          ) : (
-            <SyahadahDocument
-              qrUrl={qrUrl}
-              data={data}
-              layout={layout}
-              editorMode={editorActive}
-              selectedElement={selectedElement}
-              onSelectElement={setSelectedElement}
-            />
-          )}
+          {(() => {
+            let DocumentComponent = isTurats ? SyahadahTuratsDocument : SyahadahDocument;
+            if (isMartabah) {
+              DocumentComponent = isTurats ? SyahadahMartabahTuratsDocument : SyahadahMartabahDocument;
+            }
+
+            return (
+              <DocumentComponent
+                qrUrl={qrUrl}
+                data={data}
+                layout={layout}
+                editorMode={editorActive}
+                selectedElement={selectedElement}
+                onSelectElement={setSelectedElement}
+              />
+            );
+          })()}
         </div>
       </div>
     </>

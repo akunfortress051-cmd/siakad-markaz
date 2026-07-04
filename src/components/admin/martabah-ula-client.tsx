@@ -149,7 +149,13 @@ function MartabahUlaTable({
                         Transkrip
                       </Link>
                       <Link
-                        href={`/admin/syahadah/${santri.id}/transkrip`}
+                        href={`/admin/martabah-ula/${santri.id}/cetak`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-xs font-semibold text-amber-600 transition hover:bg-amber-100 hover:border-amber-300 shadow-sm"
+                      >
+                        Cetak Penghargaan
+                      </Link>
+                      <Link
+                        href={`/cetak/${santri.id}`}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2 text-xs font-semibold text-[var(--color-info)] transition hover:bg-blue-100"
                       >
                         Lihat Syahadah

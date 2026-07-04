@@ -179,13 +179,15 @@ model SyahadahTemplate {
 }
 
 model SyahadahLayout {
-  id                   String         @id @default(cuid())
-  riwayatId            String?        @unique
-  programId            String?        @unique
-  layoutData           Json
-  musyarokahLayoutData Json?
-  riwayat              RiwayatSantri? @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
-  program              Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  id                       String         @id @default(cuid())
+  riwayatId                String?        @unique
+  programId                String?        @unique
+  layoutData               Json           @default("{}")
+  musyarokahLayoutData     Json?          @default("{}")
+  martabahLayoutData       Json?          @default("{}")
+  martabahTuratsLayoutData Json           @default("{}")
+  riwayat                  RiwayatSantri? @relation(fields: [riwayatId], references: [id], onDelete: Cascade)
+  program                  Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
 }
 
 enum StatusAbsen {

@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
     const hasPermission = await checkPermission("syahadah_edit");
     if (!session || !hasPermission) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
-    const { riwayatId, programId, layoutData, musyarokah } = body;
+    const { riwayatId, programId, layoutData, mode } = body;
 
     if (!layoutData || typeof layoutData !== "object") {
       return NextResponse.json({ error: "Invalid layoutData" }, { status: 400 });
     }
 
-    await saveLayout({ riwayatId, programId, musyarokah: musyarokah === true }, layoutData);
+    await saveLayout({ riwayatId, programId, mode }, layoutData);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error saving layout:", error);

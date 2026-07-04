@@ -350,9 +350,9 @@ export function SyahadahTuratsDocument({
             }}
           >
             <p style={{ margin: 0 }}>
-              Setelah berwasiat untuk senantiasa bertakwa kepada Allah SWT dan mengikuti sunnah
-              Rasulullah SAW,<br /> Markaz Turats Pare, Kediri, Indonesia memutuskan untuk memberikan
-              sertifikat kelulusan kepada santri:
+              Setelah berwasiat untuk senantiasa bertakwa kepada Allah SWT<br />
+              dan mengikuti sunnah Rasulullah SAW, Markaz Turats Pare, Kediri, Indonesia<br />
+              memutuskan untuk memberikan sertifikat kelulusan kepada santri:
             </p>
           </div>
 
