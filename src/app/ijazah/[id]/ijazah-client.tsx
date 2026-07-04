@@ -161,7 +161,7 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/images/stamp.png" alt="Stempel" style={{ position: "absolute", left: "50%", transform: "translateX(-75%)", bottom: "-2mm", height: "36mm", objectFit: "contain", opacity: 0.88, zIndex: 0 }} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={data.isTurats ? "/images/signature-turats.png" : "/images/signature.png"} alt="Tanda Tangan" style={{ position: "absolute", left: "50%", transform: "translateX(-20%)", bottom: "-2mm", height: "28mm", objectFit: "contain", zIndex: 1 }} />
+                <img src={data.isTurats ? "/images/signature-turats.png" : "/images/signature.png"} alt="Tanda Tangan" style={{ position: "absolute", left: "50%", transform: "translateX(-20%)", bottom: "-2mm", height: "28mm", objectFit: "contain", zIndex: 2, filter: data.isTurats ? "brightness(0)" : "none" }} />
               </div>
               <p style={{ fontSize: "10.5pt", fontWeight: "bold", color: "#111" }}>{data.isTurats ? "Abdul Wahhab, M.Pd." : data.template.nama_mudir_indo}</p>
             </div>

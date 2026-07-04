@@ -297,7 +297,7 @@ export function SyahadahMartabahTuratsDocument({
                     height: "45mm",
                     objectFit: "contain",
                     opacity: 0.88,
-                    zIndex: 3,
+                    zIndex: 1,
                     transform: "rotate(-15deg)",
                     ...(editorMode ? { cursor: "pointer" } : {}),
                   }}
@@ -313,7 +313,8 @@ export function SyahadahMartabahTuratsDocument({
                     bottom: `calc(-2mm + ${-lo.tandaTangan.offsetY}mm)`,
                     height: "45mm",
                     objectFit: "contain",
-                    zIndex: 1,
+                    zIndex: 2,
+                    filter: "brightness(0)",
                     ...(editorMode ? { cursor: "pointer" } : {}),
                   }}
                 />
