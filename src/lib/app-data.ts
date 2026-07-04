@@ -705,7 +705,7 @@ export async function getCertificateData(id: string) {
     
     const isMartabahUla = await checkMartabahUla(riwayat.programId, riwayat.dufahNama, riwayat.id, isUsbuain);
     if (isMartabahUla) {
-      predikat = { indo: "Martabah Ula", arab: "الامتياز مع مرتبة الشرف الأولى" };
+      predikat = { indo: isTuratsCert ? "Peringkat Satu dengan Predikat Istimewa" : "Martabah Ula", arab: "الامتياز مع مرتبة الشرف الأولى" };
     }
   }
 

@@ -17,12 +17,14 @@ type SantriRow = {
   isAktif: boolean;
   canViewIjazah: boolean;
   isMartabahUla?: boolean;
+  programKategori?: string;
 };
 
 type KelasItem = {
   id: string;
   nama: string;
   programId: string;
+  urutan_haflah?: number;
   waliKelas?: {
     nama: string;
   } | null;
@@ -65,13 +67,76 @@ export function HaflahWadaClient({
   dufahLabel: string;
 }) {
   const [activeTab, setActiveTab] = useState<"denah" | "pemanggilan">("denah");
+  const [colCount, setColCount] = useState<number>(10);
   const [mounted, setMounted] = useState(false);
   const [exporting, setExporting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Manage manual sorting modal
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [classOrder, setClassOrder] = useState<KelasItem[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  const openOrderModal = () => {
+    // Sort taking 0 as the bottom to match processedSantri behavior
+    const sorted = [...kelasList].sort((a, b) => {
+       const uA = a.urutan_haflah || 0;
+       const uB = b.urutan_haflah || 0;
+       if (uA !== uB) {
+         if (uA === 0) return 1;
+         if (uB === 0) return -1;
+         return uA - uB;
+       }
+       return a.nama.localeCompare(b.nama, "id");
+    });
+    setClassOrder(sorted);
+    setShowOrderModal(true);
+  };
+
+  const handleDragStart = (idx: number) => {
+    setDraggedIdx(idx);
+  };
+
+  const handleDragEnter = (targetIdx: number) => {
+    if (draggedIdx === null || draggedIdx === targetIdx) return;
+    const newOrder = [...classOrder];
+    const draggedItem = newOrder[draggedIdx];
+    newOrder.splice(draggedIdx, 1);
+    newOrder.splice(targetIdx, 0, draggedItem);
+    setClassOrder(newOrder);
+    setDraggedIdx(targetIdx);
+  };
+
+  const saveOrder = async () => {
+    setSavingOrder(true);
+    try {
+      const payload = classOrder.map((cls, index) => ({
+        id: cls.id,
+        urutan_haflah: index + 1
+      }));
+      await fetch("/api/admin/kelas/sort-haflah", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      window.location.reload();
+    } catch (e) {
+       console.error("Gagal simpan urutan", e);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const kelasMap = useMemo(() => {
+    const map = new Map<string, KelasItem>();
+    kelasList.forEach(k => map.set(k.id, k));
+    return map;
+  }, [kelasList]);
 
   const processedSantri = useMemo(() => {
     const topByProgram = new Map<string, string>();
@@ -95,36 +160,62 @@ export function HaflahWadaClient({
       isMartabahUla: topByProgram.get(s.programId || "unknown_program") === s.id
     }));
 
-    mapped.sort((a, b) => {
+    let allSantriList = [...mapped];
+
+    allSantriList.sort((a, b) => {
+      // 1. Structural sort by strictly defined Class urutan_haflah priority
+      const classA = a.kelasId ? kelasMap.get(a.kelasId) : undefined;
+      const classB = b.kelasId ? kelasMap.get(b.kelasId) : undefined;
+      
+      const urutanA = classA?.urutan_haflah || 0;
+      const urutanB = classB?.urutan_haflah || 0;
+
+      if (urutanA !== urutanB) {
+         if (urutanA === 0) return 1;
+         if (urutanB === 0) return -1;
+         return urutanA - urutanB;
+      }
+
+      // 2. Primary sort by program structurally first to keep logic intact when unconfigured
       const pA = getProgramOrder(a.programNama);
       const pB = getProgramOrder(b.programNama);
       if (pA !== pB) return pA - pB;
       
+      // 3. Fallback sort structurally straight down by Class Alphabetically
       const kA = a.kelasNama.localeCompare(b.kelasNama, "id");
       if (kA !== 0) return kA;
       
-      const statA = a.statusKelulusan === "MUSYAROKAH" ? 1 : 0;
-      const statB = b.statusKelulusan === "MUSYAROKAH" ? 1 : 0;
+      // 4. Group graduates above non-graduates inside the class if preferred, or just by score.
+      const statA = (a.statusKelulusan === "TIDAK_LULUS") ? 2 : (a.statusKelulusan === "MUSYAROKAH" ? 1 : 0);
+      const statB = (b.statusKelulusan === "TIDAK_LULUS") ? 2 : (b.statusKelulusan === "MUSYAROKAH" ? 1 : 0);
       if (statA !== statB) return statA - statB;
       
+      // 5. Finally by average score
       return b.average - a.average;
     });
 
-    return mapped;
-  }, [santriRows]);
+    let graduates = allSantriList.filter(s => s.statusKelulusan !== "TIDAK_LULUS");
+    let nonGraduates = allSantriList.filter(s => s.statusKelulusan === "TIDAK_LULUS");
 
-  const denahBanin = useMemo(() => processedSantri.filter(s => s.gender === "BANIN"), [processedSantri]);
-  const denahBanat = useMemo(() => processedSantri.filter(s => s.gender === "BANAT"), [processedSantri]);
+    return { allSantriList, graduates, nonGraduates };
+  }, [santriRows, kelasMap]);
 
-  const kelasMap = useMemo(() => {
-    const map = new Map<string, KelasItem>();
-    kelasList.forEach(k => map.set(k.id, k));
-    return map;
-  }, [kelasList]);
+  const denahBanin = useMemo(() => [
+    ...processedSantri.graduates.filter((s: SantriRow) => s.gender === "BANIN"),
+    ...processedSantri.nonGraduates.filter((s: SantriRow) => s.gender === "BANIN")
+  ], [processedSantri]);
+
+  const denahBanat = useMemo(() => [
+    ...processedSantri.graduates.filter((s: SantriRow) => s.gender === "BANAT"),
+    ...processedSantri.nonGraduates.filter((s: SantriRow) => s.gender === "BANAT")
+  ], [processedSantri]);
+
+
 
   const pemanggilanGroups = useMemo(() => {
     const groups = new Map<string, SantriRow[]>();
-    processedSantri.forEach(s => {
+    // Pemanggilan EXCLUDES non-graduates
+    processedSantri.graduates.forEach(s => {
       const kId = s.kelasId || "unknown_kelas";
       if (!groups.has(kId)) groups.set(kId, []);
       groups.get(kId)!.push(s);
@@ -133,8 +224,18 @@ export function HaflahWadaClient({
     const sortedClassIds = Array.from(groups.keys()).sort((a, b) => {
       const classA = kelasMap.get(a);
       const classB = kelasMap.get(b);
-      const programA = processedSantri.find(s => s.kelasId === a)?.programNama || "";
-      const programB = processedSantri.find(s => s.kelasId === b)?.programNama || "";
+      
+      const urutanA = classA?.urutan_haflah || 0;
+      const urutanB = classB?.urutan_haflah || 0;
+
+      if (urutanA !== urutanB) {
+         if (urutanA === 0) return 1;
+         if (urutanB === 0) return -1;
+         return urutanA - urutanB;
+      }
+
+      const programA = processedSantri.graduates.find((s: SantriRow) => s.kelasId === a)?.programNama || "";
+      const programB = processedSantri.graduates.find((s: SantriRow) => s.kelasId === b)?.programNama || "";
       
       const pA = getProgramOrder(programA);
       const pB = getProgramOrder(programB);
@@ -373,10 +474,37 @@ export function HaflahWadaClient({
             Urutan Pemanggilan
           </button>
         </div>
-        <div className="flex items-center justify-between w-full md:w-auto gap-4">
-          <div className="text-sm font-semibold text-[var(--color-text-muted)]">
-            Total Masuk: <span className="font-bold text-[var(--color-text)]">{processedSantri.length} Santri</span>
+        
+        {/* Settings Bar */}
+        {activeTab === "denah" && (
+          <div className="flex items-center gap-2 bg-[var(--color-surface)] p-2 px-4 rounded-xl shadow-sm border border-slate-100">
+             <span className="text-sm font-bold text-[var(--color-text-muted)]">Grid Area:</span>
+             <input 
+                type="number" 
+                min={5} max={25} 
+                value={colCount} 
+                onChange={e => setColCount(Math.max(5, parseInt(e.target.value) || 10))} 
+                className="w-16 rounded-md border border-slate-300 px-2 py-1 text-sm font-bold text-center outline-none focus:border-blue-500" 
+              />
+             <span className="text-xs font-semibold text-[var(--color-text-muted)]">Kolom</span>
           </div>
+        )}
+
+        <div className="flex items-center justify-between w-full md:w-auto gap-4">
+          <div className="hidden lg:block text-sm font-semibold text-[var(--color-text-muted)]">
+            Total Lulus: <span className="font-bold text-[var(--color-primary)]">{processedSantri.graduates.length}</span> |  
+            Total Denah: <span className="font-bold text-[var(--color-text)]">{denahBanin.length + denahBanat.length}</span>
+          </div>
+          
+          <button
+            onClick={openOrderModal}
+            className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold shadow-sm transition border border-slate-300"
+            title="Klik untuk drag and drop kelas"
+          >
+            <ListOrdered className="w-4 h-4" />
+            <span className="hidden md:inline">Urutan Kelas</span>
+          </button>
+          
           <button
             onClick={handleExportPDF}
             disabled={exporting}
@@ -418,8 +546,8 @@ export function HaflahWadaClient({
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 800, borderCollapse: "collapse", border: "2px solid black" }}>
                   <tbody>
-                    {chunkArray(denahBanin, 10).map((chunk, rowIdx) => {
-                      const reversed = padAndReverse(chunk, 10);
+                    {chunkArray(denahBanin, colCount).map((chunk, rowIdx) => {
+                      const reversed = padAndReverse(chunk, colCount);
                       return (
                         <tr key={rowIdx}>
                           {reversed.map((student, colIdx) => {
@@ -430,7 +558,7 @@ export function HaflahWadaClient({
                       );
                     })}
                     {denahBanin.length === 0 && (
-                      <tr><td colSpan={10} style={{ textAlign: "center", padding: 24, color: "#94a3b8", border: "1px solid black" }}>Belum ada data Banin</td></tr>
+                      <tr><td colSpan={colCount} style={{ textAlign: "center", padding: 24, color: "#94a3b8", border: "1px solid black" }}>Belum ada data Banin</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -445,8 +573,8 @@ export function HaflahWadaClient({
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 800, borderCollapse: "collapse", border: "2px solid black" }}>
                   <tbody>
-                    {chunkArray(denahBanat, 10).map((chunk, rowIdx) => {
-                      const reversed = padAndReverse(chunk, 10);
+                    {chunkArray(denahBanat, colCount).map((chunk, rowIdx) => {
+                      const reversed = padAndReverse(chunk, colCount);
                       return (
                         <tr key={rowIdx}>
                           {reversed.map((student, colIdx) => {
@@ -457,7 +585,7 @@ export function HaflahWadaClient({
                       );
                     })}
                     {denahBanat.length === 0 && (
-                      <tr><td colSpan={10} style={{ textAlign: "center", padding: 24, color: "#94a3b8", border: "1px solid black" }}>Belum ada data Banat</td></tr>
+                      <tr><td colSpan={colCount} style={{ textAlign: "center", padding: 24, color: "#94a3b8", border: "1px solid black" }}>Belum ada data Banat</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -525,17 +653,27 @@ export function HaflahWadaClient({
                       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                         <tbody>
                           {group.banin.length > 0 ? group.banin.map((s, idx) => (
-                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: "white" }}>
+                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: s.isMartabahUla ? "#dcfce7" : "white" }}>
                               <td style={{ width: 28, textAlign: "center", borderRight: "1px solid #cbd5e1", padding: "6px 2px", fontWeight: 700, color: "#94a3b8", fontSize: 11 }}>{idx + 1}</td>
                               <td style={{ padding: "6px 8px", borderRight: "1px solid #e2e8f0", fontSize: 13 }}>
-                                <span style={{ fontWeight: 500, color: "#1e293b" }}>
+                                <span style={{ fontWeight: s.isMartabahUla ? 800 : 500, color: "#1e293b" }}>
+                                  {s.isMartabahUla && "★ "}
                                   {s.nama}
                                 </span>
                               </td>
-                              <td style={{ padding: "6px 8px", textAlign: "right", direction: "rtl", fontSize: 13 }}>
-                                <span>
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{s.averagePredikat.arab}</span>
-                                </span>
+                              <td style={{ padding: "6px 8px", textAlign: "right", direction: s.programKategori === 'TURATS' ? "ltr" : "rtl", fontSize: 13 }}>
+                                {s.isMartabahUla ? (
+                                  <span style={{ backgroundColor: "#bbf7d0", border: "1px solid #86efac", color: "#166534", padding: "4px 14px", borderRadius: 4, fontWeight: 700, fontSize: 14, display: "inline-block" }}>
+                                    {s.programKategori === 'TURATS' ? "Peringkat Satu dengan Predikat Istimewa" : "الامتياز مع مرتبة الشرف الأولى"}
+                                  </span>
+                                ) : (
+                                  <span>
+                                    <span style={{ fontWeight: 600, fontSize: 13 }}>
+                                      {s.programKategori === 'TURATS' ? s.averagePredikat.indo : s.averagePredikat.arab}
+                                    </span>
+                                    {s.statusKelulusan === "MUSYAROKAH" && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: s.programKategori === 'TURATS' ? 8 : 0, marginRight: s.programKategori === 'TURATS' ? 0 : 8, background: "#f1f5f9", padding: "2px 8px", borderRadius: 4, border: "1px solid #e2e8f0" }}>Musyarokah</span>}
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           )) : (
@@ -553,17 +691,27 @@ export function HaflahWadaClient({
                       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                         <tbody>
                           {group.banat.length > 0 ? group.banat.map((s, idx) => (
-                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: "white" }}>
+                            <tr key={s.id} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: s.isMartabahUla ? "#dcfce7" : "white" }}>
                               <td style={{ width: 28, textAlign: "center", borderRight: "1px solid #cbd5e1", padding: "6px 2px", fontWeight: 700, color: "#94a3b8", fontSize: 11 }}>{idx + 1}</td>
                               <td style={{ padding: "6px 8px", borderRight: "1px solid #e2e8f0", fontSize: 13 }}>
-                                <span style={{ fontWeight: 500, color: "#1e293b" }}>
+                                <span style={{ fontWeight: s.isMartabahUla ? 800 : 500, color: "#1e293b" }}>
+                                  {s.isMartabahUla && "★ "}
                                   {s.nama}
                                 </span>
                               </td>
-                              <td style={{ padding: "6px 8px", textAlign: "right", direction: "rtl", fontSize: 13 }}>
-                                <span>
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{s.averagePredikat.arab}</span>
-                                </span>
+                              <td style={{ padding: "6px 8px", textAlign: "right", direction: s.programKategori === 'TURATS' ? "ltr" : "rtl", fontSize: 13 }}>
+                                {s.isMartabahUla ? (
+                                  <span style={{ backgroundColor: "#bbf7d0", border: "1px solid #86efac", color: "#166534", padding: "4px 14px", borderRadius: 4, fontWeight: 700, fontSize: 14, display: "inline-block" }}>
+                                    {s.programKategori === 'TURATS' ? "Peringkat Satu dengan Predikat Istimewa" : "الامتياز مع مرتبة الشرف الأولى"}
+                                  </span>
+                                ) : (
+                                  <span>
+                                    <span style={{ fontWeight: 600, fontSize: 13 }}>
+                                      {s.programKategori === 'TURATS' ? s.averagePredikat.indo : s.averagePredikat.arab}
+                                    </span>
+                                    {s.statusKelulusan === "MUSYAROKAH" && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: s.programKategori === 'TURATS' ? 8 : 0, marginRight: s.programKategori === 'TURATS' ? 0 : 8, background: "#f1f5f9", padding: "2px 8px", borderRadius: 4, border: "1px solid #e2e8f0" }}>Musyarokah</span>}
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           )) : (
@@ -585,6 +733,60 @@ export function HaflahWadaClient({
           </div>
         )}
       </div>
+
+      {showOrderModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[var(--color-surface)] w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 font-black text-lg text-[var(--color-text)]">
+              Atur Urutan Pemanggilan Kelas
+            </div>
+            
+            <div className="p-4 overflow-y-auto flex-1 space-y-2">
+              <p className="text-sm text-[var(--color-text-muted)] mb-4 leading-relaxed">
+                Tarik lalu geser <i>(drag-and-drop)</i> kelas di bawah ini untuk mengatur posisi mereka saat dipanggil pada Haflah Wada'.
+              </p>
+              
+              {classOrder.map((cls, idx) => (
+                <div 
+                  key={cls.id}
+                  draggable
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragEnter={() => handleDragEnter(idx)}
+                  onDragOver={(e) => e.preventDefault()}
+                  className={`p-3 bg-white border border-slate-200 shadow-sm rounded-lg flex items-center gap-3 cursor-grab active:cursor-grabbing transition-transform ${draggedIdx === idx ? "opacity-50 scale-95 border-blue-400" : "hover:border-slate-300"}`}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded text-slate-500 font-bold text-xs shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="font-semibold text-sm select-none">
+                    {cls.nama}
+                  </div>
+                  <div className="ml-auto text-slate-400">
+                    <ListOrdered className="w-4 h-4 opacity-50" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex items-center gap-3 bg-slate-50">
+              <button 
+                onClick={() => setShowOrderModal(false)}
+                className="px-4 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={saveOrder}
+                disabled={savingOrder}
+                className="flex-1 px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {savingOrder && <Loader2 className="w-4 h-4 animate-spin" />}
+                {savingOrder ? "Menyimpan..." : "Simpan Urutan & Refresh"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

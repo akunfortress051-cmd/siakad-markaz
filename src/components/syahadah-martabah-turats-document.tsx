@@ -229,7 +229,7 @@ export function SyahadahMartabahTuratsDocument({
               transform: `translate(${lo.teksDufah.offsetX}mm, ${lo.teksDufah.offsetY}mm)`,
             }}
           >
-            karena meraih predikat <i>istimewa/cumlaude</i> pada program <strong style={{ color: "#6b1a1a" }}>{programNama}</strong>
+            sebagai <i>Peringkat Satu dengan Predikat Istimewa</i> pada program <strong style={{ color: "#6b1a1a" }}>{programNama}</strong>
           </p>
 
           {/* Teks Beasiswa */}
