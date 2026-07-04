@@ -38,6 +38,13 @@ const PREDIKAT_LABELS = {
   maqbul: { indo: "Maqbul", arab: "مقبول" }
 } as const;
 
+const PREDIKAT_LABELS_TURATS = {
+  imtiyaz: { indo: "Istimewa", arab: "الامتياز" },
+  jayyidJiddan: { indo: "Baik Sekali", arab: "جيد جدا" },
+  jayyid: { indo: "Baik", arab: "جيد" },
+  maqbul: { indo: "Cukup", arab: "مقبول" }
+} as const;
+
 export function convertToArabicNumerals(value: number | string): string {
   return String(value).replace(/\d/g, (digit) => ARABIC_DIGITS[Number(digit)] ?? digit);
 }
@@ -124,4 +131,20 @@ export function getPredikat(skor: number) {
   }
 
   return PREDIKAT_LABELS.maqbul;
+}
+
+export function getPredikatTurats(skor: number) {
+  if (skor >= 90) {
+    return PREDIKAT_LABELS_TURATS.imtiyaz;
+  }
+
+  if (skor >= 80) {
+    return PREDIKAT_LABELS_TURATS.jayyidJiddan;
+  }
+
+  if (skor >= 70) {
+    return PREDIKAT_LABELS_TURATS.jayyid;
+  }
+
+  return PREDIKAT_LABELS_TURATS.maqbul;
 }

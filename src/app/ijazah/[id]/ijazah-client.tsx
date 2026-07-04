@@ -26,6 +26,7 @@ interface IjazahClientData {
   average: number;
   averagePredikat: { indo: string };
   status: string;
+  isTurats?: boolean;
 }
 
 export function IjazahClient({ data }: { data: IjazahClientData }) {
@@ -71,7 +72,7 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
         {/* Background border */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/bg-border.png"
+          src={data.isTurats ? "/images/bingkai-turats.png" : "/images/bg-border.png"}
           alt=""
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 0, pointerEvents: "none" }}
         />
@@ -87,17 +88,19 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
         <div className="relative flex flex-col" style={{ padding: "14mm 20mm 12mm 20mm", zIndex: 2, minHeight: DOC_H }}>
           <div className="flex flex-col items-center text-center" style={{ marginBottom: "3mm" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/logo.png" alt="Logo Markaz Arabiyah" style={{ width: "25mm", height: "25mm", objectFit: "contain", marginBottom: "2mm" }} />
+            <img src={data.isTurats ? "/images/logo-turats.png" : "/images/logo.png"} alt="Logo" style={{ width: "25mm", height: "25mm", objectFit: "contain", marginBottom: "2mm" }} />
             <p style={{ fontSize: "20pt", fontWeight: "bold", letterSpacing: "0.04em", textTransform: "uppercase", color: "#111", marginBottom: "0.5mm" }}>
               DATA PESERTA KURSUS BAHASA ARAB
             </p>
             <p style={{ fontSize: "20pt", fontWeight: "900", color: "#333", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "0.5mm" }}>
-              &ldquo;MARKAZ ARABIYAH&rdquo;
+              &ldquo;{data.isTurats ? "MARKAZ TURATS" : "MARKAZ ARABIYAH"}&rdquo;
             </p>
             <p style={{ fontSize: "15pt", fontStyle: "italic", color: "#333", marginBottom: "1mm" }}>(Berbasis Multiple Intelligences)</p>
-            <p style={{ fontSize: "20pt", textDecoration: "underline", fontWeight: "bold", color: "#111", marginBottom: "1mm" }}>
-              SK. Diknas No: 421.9/4357/418.20/2022
-            </p>
+            {!data.isTurats && (
+              <p style={{ fontSize: "20pt", textDecoration: "underline", fontWeight: "bold", color: "#111", marginBottom: "1mm" }}>
+                SK. Diknas No: 421.9/4357/418.20/2022
+              </p>
+            )}
             <p style={{ fontSize: "10pt", color: "#222", lineHeight: 1.5, textAlign: "center" }}>
               <strong>Kantor Pusat:</strong> Jl. Cempaka, No. 32, Tegalsari, Tulungrejo, Kec. Pare, Kab. Kediri, Jawa Timur 64212.
             </p>
@@ -105,7 +108,7 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
           </div>
 
           <p style={{ fontSize: "12pt", textAlign: "justify", lineHeight: 1.7, color: "#111", marginBottom: "3mm" }}>
-            Menyatakan bahwa nama di bawah ini benar-benar telah mengikuti proses pembelajaran bahasa Arab di Markaz Arabiyah pada {data.masterSantri.dufahNama} yang berlaku sebagaimana terlampir.
+            Menyatakan bahwa nama di bawah ini benar-benar telah mengikuti proses pembelajaran bahasa Arab di {data.isTurats ? "Markaz Turats" : "Markaz Arabiyah"} pada {data.masterSantri.dufahNama} yang berlaku sebagaimana terlampir.
           </p>
 
           <table style={{ width: "120%", borderCollapse: "collapse", border: "none" }}>
@@ -147,20 +150,20 @@ export function IjazahClient({ data }: { data: IjazahClientData }) {
           )}
 
           <p style={{ fontSize: "12pt", textAlign: "justify", lineHeight: 1.7, color: "#111", marginTop: "4mm" }}>
-            Demikian surat keterangan ini dibuat agar dapat dipergunakan sebagaimana mestinya dan menjadi bukti hasil evaluasi santri dalam program pembelajaran bahasa Arab di Markaz Arabiyah.
+            Demikian surat keterangan ini dibuat agar dapat dipergunakan sebagaimana mestinya dan menjadi bukti hasil evaluasi santri dalam program pembelajaran bahasa Arab di {data.isTurats ? "Markaz Turats" : "Markaz Arabiyah"}.
           </p>
 
           <div style={{ marginTop: "auto", paddingTop: "5mm", display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
             <div style={{ textAlign: "center", minWidth: "90mm", position: "relative" }}>
               <p style={{ fontSize: "11pt", color: "#111", marginBottom: "1mm" }}>Pare, {data.template.tgl_cetak_indo}</p>
-              <p style={{ fontSize: "11pt", color: "#111", marginBottom: "2mm" }}>{data.template.jabatan_mudir_indo}</p>
+              <p style={{ fontSize: "11pt", color: "#111", marginBottom: "2mm" }}>{data.isTurats ? "General Manager Turats" : data.template.jabatan_mudir_indo}</p>
               <div style={{ position: "relative", height: "35mm", marginBottom: "2mm", display: "flex", justifyContent: "center" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/images/stamp.png" alt="Stempel" style={{ position: "absolute", left: "50%", transform: "translateX(-75%)", bottom: "-2mm", height: "36mm", objectFit: "contain", opacity: 0.88, zIndex: 0 }} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/signature.png" alt="Tanda Tangan" style={{ position: "absolute", left: "50%", transform: "translateX(-20%)", bottom: "-2mm", height: "28mm", objectFit: "contain", zIndex: 1 }} />
+                <img src={data.isTurats ? "/images/signature-turats.png" : "/images/signature.png"} alt="Tanda Tangan" style={{ position: "absolute", left: "50%", transform: "translateX(-20%)", bottom: "-2mm", height: "28mm", objectFit: "contain", zIndex: 1 }} />
               </div>
-              <p style={{ fontSize: "10.5pt", fontWeight: "bold", color: "#111" }}>{data.template.nama_mudir_indo}</p>
+              <p style={{ fontSize: "10.5pt", fontWeight: "bold", color: "#111" }}>{data.isTurats ? "Abdul Wahhab, M.Pd." : data.template.nama_mudir_indo}</p>
             </div>
           </div>
         </div>

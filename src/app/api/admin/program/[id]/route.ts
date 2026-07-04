@@ -5,7 +5,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { nama_indo, nama_arab, kkm } = body;
+    const { nama_indo, nama_arab, kkm, kategori } = body;
 
     if (!nama_indo?.trim() || !nama_arab?.trim() || kkm == null) {
       return NextResponse.json({ error: "Semua field wajib diisi." }, { status: 400 });
@@ -20,7 +20,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const updated = await prisma.program.update({
       where: { id },
-      data: { nama_indo: nama_indo.trim(), nama_arab: nama_arab.trim(), kkm: Number(kkm) },
+      data: {
+        nama_indo: nama_indo.trim(),
+        nama_arab: nama_arab.trim(),
+        kkm: Number(kkm),
+        kategori: kategori === "TURATS" ? "TURATS" : "REGULER",
+      },
     });
 
     return NextResponse.json({ success: true, program: updated });

@@ -2,19 +2,21 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { SyahadahDocument } from "@/components/syahadah-document";
+import { SyahadahTuratsDocument } from "@/components/syahadah-turats-document";
 import { LayoutData, LayoutElementKey, LAYOUT_ELEMENT_KEYS, ELEMENT_LABELS, getDefaultLayout } from "@/lib/syahadah-layout";
 
 type SyahadahEditorProps = {
   qrUrl: string;
   data: any;
   initialLayout: LayoutData;
-  riwayatId?: string | null; // null = global or per-program
+  riwayatId?: string | null;
   programId?: string | null;
   mode: "global" | "per-program" | "per-santri";
   musyarokah?: boolean;
   backHref: string;
   backLabel: string;
   titleLabel?: string;
+  isTurats?: boolean;
 };
 
 const STEP_OPTIONS = [0.5, 1, 2, 5];
@@ -30,6 +32,7 @@ export function SyahadahEditor({
   backHref,
   backLabel,
   titleLabel,
+  isTurats = false,
 }: SyahadahEditorProps) {
   const [layout, setLayout] = useState<LayoutData>(initialLayout);
   const [selectedElement, setSelectedElement] = useState<LayoutElementKey | null>(null);
@@ -452,14 +455,25 @@ export function SyahadahEditor({
 
         {/* Syahadah Preview */}
         <div className="flex flex-col items-center gap-10 print:gap-0">
-          <SyahadahDocument
-            qrUrl={qrUrl}
-            data={data}
-            layout={layout}
-            editorMode={editorActive}
-            selectedElement={selectedElement}
-            onSelectElement={setSelectedElement}
-          />
+          {isTurats ? (
+            <SyahadahTuratsDocument
+              qrUrl={qrUrl}
+              data={data}
+              layout={layout}
+              editorMode={editorActive}
+              selectedElement={selectedElement}
+              onSelectElement={setSelectedElement}
+            />
+          ) : (
+            <SyahadahDocument
+              qrUrl={qrUrl}
+              data={data}
+              layout={layout}
+              editorMode={editorActive}
+              selectedElement={selectedElement}
+              onSelectElement={setSelectedElement}
+            />
+          )}
         </div>
       </div>
     </>

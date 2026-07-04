@@ -23,10 +23,12 @@ export default async function ProgramLayoutEditorPage({
   const isGlobal = programId === "global";
 
   let programName = "Template Global";
+  let isTurats = false;
   if (!isGlobal) {
     const prog = await prisma.program.findUnique({ where: { id: programId } });
     if (!prog) notFound();
     programName = `Program ${prog.nama_indo}`;
+    isTurats = (prog as any).kategori === "TURATS";
   }
 
   const baseUrl = await getBaseUrl();
@@ -147,6 +149,7 @@ export default async function ProgramLayoutEditorPage({
       sampleQrUrl={sampleQrUrl}
       programId={actualProgramId}
       programName={programName}
+      isTurats={isTurats}
     />
   );
 }

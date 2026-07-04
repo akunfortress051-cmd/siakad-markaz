@@ -12,6 +12,7 @@ type ProgramLayoutEditorClientProps = {
   sampleQrUrl: string;
   programId: string | null;
   programName: string;
+  isTurats?: boolean;
 };
 
 export function ProgramLayoutEditorClient({
@@ -22,6 +23,7 @@ export function ProgramLayoutEditorClient({
   sampleQrUrl,
   programId,
   programName,
+  isTurats = false,
 }: ProgramLayoutEditorClientProps) {
   const [activeTab, setActiveTab] = useState<"lulus" | "musyarokah">("lulus");
 
@@ -63,6 +65,7 @@ export function ProgramLayoutEditorClient({
           backHref="/layout-editor"
           backLabel="← Kembali ke Pilihan Program"
           titleLabel={`Layout Editor — ${programName}`}
+          isTurats={isTurats}
         />
       )}
 
@@ -79,6 +82,7 @@ export function ProgramLayoutEditorClient({
           backHref="/layout-editor"
           backLabel="← Kembali ke Pilihan Program"
           titleLabel={`Layout Musyarokah — ${programName}`}
+          isTurats={isTurats}
         />
       )}
     </div>

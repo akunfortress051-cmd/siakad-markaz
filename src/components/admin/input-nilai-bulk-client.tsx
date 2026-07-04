@@ -567,7 +567,9 @@ export function InputNilaiBulkClient({
 
                                   const curTambahan = changes[row.riwayatId]?.nilai?.[m.id]?.tambahan !== undefined
                                     ? (changes[row.riwayatId].nilai![m.id].tambahan as number) : (row.nilai?.[m.id]?.tambahan ?? 0);
-                                  const maxTambahan = avg !== null ? Math.max(0, 100 - Math.round(avg)) : 100;
+                                  const maxTambahan = 5;
+                                  const exactFinal = avg !== null ? Number((avg + curTambahan).toFixed(2)) : null;
+                                  const kkmDiff = avg !== null ? Math.max(0, Number((kkm - avg).toFixed(2))) : 0;
                                   return (
                                     <td className="px-0.5 py-1 border-r border-[var(--color-surface-dark)] bg-amber-50/30">
                                       {curRowMode === 1 ? (
@@ -589,18 +591,30 @@ export function InputNilaiBulkClient({
                                           />
                                         </div>
                                       ) : (
-                                        <div className={`text-center text-[10px] font-bold mb-0.5 ${avg !== null && (avg + curTambahan) < kkm ? 'text-red-600' : 'text-[var(--color-text)]'}`}>
-                                          {avg !== null ? Math.round(avg + curTambahan) : '-'}
+                                        <div className={`text-center text-[10px] font-bold mb-0.5 ${exactFinal !== null && exactFinal < kkm ? 'text-red-600' : 'text-[var(--color-text)]'}`}>
+                                          {exactFinal !== null ? exactFinal : '-'}
                                         </div>
                                       )}
                                       {avg !== null && (
-                                        <input type="number" min={0} max={maxTambahan}
-                                          value={curTambahan || ""}
-                                          placeholder="+"
-                                          onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, e.target.value === "" ? 0 : Math.min(maxTambahan, Math.max(0, Number(e.target.value))))}
-                                          onWheel={(e) => e.currentTarget.blur()}
-                                          className="w-full rounded border border-amber-300 bg-amber-50 px-0.5 py-0.5 text-center text-[10px] font-bold text-amber-800 outline-none focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
+                                        <>
+                                          <input type="number" min={0} max={maxTambahan} step="any"
+                                            value={curTambahan || ""}
+                                            placeholder="+"
+                                            onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, e.target.value === "" ? 0 : Math.min(maxTambahan, Math.max(0, Number(e.target.value))))}
+                                            onWheel={(e) => e.currentTarget.blur()}
+                                            className="w-full rounded border border-amber-300 bg-amber-50 px-0.5 py-0.5 text-center text-[10px] font-bold text-amber-800 outline-none focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          />
+                                          {exactFinal !== null && exactFinal < kkm && kkmDiff > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, Number(kkmDiff.toFixed(2)))}
+                                              className="w-full mt-0.5 rounded border border-blue-300 bg-blue-50 px-0.5 py-0 text-[8px] font-bold text-blue-700 hover:bg-blue-100 transition"
+                                              title={`Sesuaikan KKM (+${kkmDiff})`}
+                                            >
+                                              ≈KKM
+                                            </button>
+                                          )}
+                                        </>
                                       )}
                                     </td>
                                   );
@@ -612,7 +626,9 @@ export function InputNilaiBulkClient({
                             const nd2 = row.nilai?.[m.id];
                             const curT = changes[row.riwayatId]?.nilai?.[m.id]?.tambahan !== undefined
                               ? (changes[row.riwayatId].nilai![m.id].tambahan as number) : (nd2?.tambahan ?? 0);
-                            const maxT = a !== null ? Math.max(0, 100 - a) : 100;
+                            const maxT = 5;
+                            const exactFinalT = a !== null ? Number((a + curT).toFixed(2)) : null;
+                            const kkmDiffT = a !== null ? Math.max(0, Number((kkm - a).toFixed(2))) : 0;
                             return (
                               <Fragment key={`td_${m.id}`}>
                                 <td className="px-1 py-2">
@@ -626,12 +642,24 @@ export function InputNilaiBulkClient({
                                 </td>
                                 <td className="px-0.5 py-1 border-r border-[var(--color-surface-dark)] bg-amber-50/30">
                                   {a !== null && (
-                                    <input type="number" min={0} max={maxT}
-                                      value={curT || ""} placeholder="+"
-                                      onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, e.target.value === "" ? 0 : Math.min(maxT, Math.max(0, Number(e.target.value))))}
-                                      onWheel={(e) => e.currentTarget.blur()}
-                                      className="w-full rounded border border-amber-300 bg-amber-50 px-0.5 py-0.5 text-center text-[10px] font-bold text-amber-800 outline-none focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    />
+                                    <>
+                                      <input type="number" min={0} max={maxT} step="any"
+                                        value={curT || ""} placeholder="+"
+                                        onChange={(e) => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, e.target.value === "" ? 0 : Math.min(maxT, Math.max(0, Number(e.target.value))))}
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                        className="w-full rounded border border-amber-300 bg-amber-50 px-0.5 py-0.5 text-center text-[10px] font-bold text-amber-800 outline-none focus:border-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      />
+                                      {exactFinalT !== null && exactFinalT < kkm && kkmDiffT > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleNilaiChange(row.riwayatId, m.id, "tambahan" as any, Number(kkmDiffT.toFixed(2)))}
+                                          className="w-full mt-0.5 rounded border border-blue-300 bg-blue-50 px-0.5 py-0 text-[8px] font-bold text-blue-700 hover:bg-blue-100 transition"
+                                          title={`Sesuaikan KKM (+${kkmDiffT})`}
+                                        >
+                                          ≈KKM
+                                        </button>
+                                      )}
+                                    </>
                                   )}
                                 </td>
                               </Fragment>

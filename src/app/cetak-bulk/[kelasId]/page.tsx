@@ -1,4 +1,5 @@
 import { SyahadahDocument } from "@/components/syahadah-document";
+import { SyahadahTuratsDocument } from "@/components/syahadah-turats-document";
 import { PrintToolbar } from "@/components/print-toolbar";
 import { getBaseUrl } from "@/lib/base-url";
 import { getDashboardSantriRows, getCertificateData } from "@/lib/app-data";
@@ -98,6 +99,10 @@ export default async function CetakBulkPage({
           {certificateDataList.map(({ id, data, layout }) => {
             if (!data) return null;
             const qrUrl = `${baseUrl}/ijazah/${id}`;
+            const isTurats = (data.program as any)?.kategori === "TURATS";
+            if (isTurats) {
+              return <SyahadahTuratsDocument key={id} qrUrl={qrUrl} data={data as any} layout={layout} />;
+            }
             return <SyahadahDocument key={id} qrUrl={qrUrl} data={data as any} layout={layout} />;
           })}
         </div>

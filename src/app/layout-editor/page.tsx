@@ -33,21 +33,33 @@ export default async function LayoutEditorIndexPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {programs.map((prog) => (
-            <Link
-              key={prog.id}
-              href={`/layout-editor/${prog.id}`}
-              className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:shadow-md"
-            >
-              <div>
-                <h3 className="font-bold text-slate-800 group-hover:text-blue-700">{prog.nama_indo}</h3>
-                <p className="mt-1 text-sm text-slate-500 font-arabic" dir="rtl">{prog.nama_arab}</p>
-              </div>
-              <div className="mt-6 flex items-center text-sm font-semibold text-blue-600">
-                Atur Layout <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
-              </div>
-            </Link>
-          ))}
+          {programs.map((prog) => {
+            const isTurats = (prog as any).kategori === "TURATS";
+            return (
+              <Link
+                key={prog.id}
+                href={`/layout-editor/${prog.id}`}
+                className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-slate-800 group-hover:text-blue-700">{prog.nama_indo}</h3>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      isTurats
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}>
+                      {isTurats ? "Turats" : "Reguler"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500 font-arabic" dir="rtl">{prog.nama_arab}</p>
+                </div>
+                <div className="mt-6 flex items-center text-sm font-semibold text-blue-600">
+                  Atur Layout <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
+                </div>
+              </Link>
+            );
+          })}
 
           {/* Global Fallback (opsional jika ingin tetap bisa set default global) */}
           <Link

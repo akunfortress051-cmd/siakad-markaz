@@ -35,6 +35,7 @@ export default async function CetakOnlinePage({
     nilai: record.nilai,
     programOnline: record.programOnline
       ? {
+          namaIndo: record.programOnline.namaIndo,
           namaArab: record.programOnline.namaArab,
           tglCetakArab: record.programOnline.tglCetakArab,
           periodeAwal: record.programOnline.periodeAwal,

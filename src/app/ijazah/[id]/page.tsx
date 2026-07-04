@@ -44,6 +44,7 @@ export default async function IjazahPage({
     average: data.average,
     averagePredikat: { indo: data.averagePredikat.indo },
     status: data.status,
+    isTurats: (data.program as any)?.kategori === "TURATS",
   };
 
   return <IjazahClient data={clientData} />;

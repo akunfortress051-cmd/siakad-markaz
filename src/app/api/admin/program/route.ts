@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { nama_indo, nama_arab, kkm } = body;
+    const { nama_indo, nama_arab, kkm, kategori } = body;
 
     if (!nama_indo?.trim() || !nama_arab?.trim() || kkm == null) {
       return NextResponse.json({ error: "Semua field wajib diisi." }, { status: 400 });
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         nama_indo: nama_indo.trim(),
         nama_arab: nama_arab.trim(),
         kkm: Number(kkm),
+        kategori: kategori === "TURATS" ? "TURATS" : "REGULER",
       },
     });
 

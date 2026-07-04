@@ -1,7 +1,7 @@
 import { cache } from "react";
 import prisma from "@/lib/prisma";
 import { calculateStatus } from "@/lib/kelulusan";
-import { formatDateIndo, getPredikat, translateDateToArabic } from "@/lib/formatters";
+import { formatDateIndo, getPredikat, getPredikatTurats, translateDateToArabic } from "@/lib/formatters";
 import { getMasterSantriById, getMasterSantriList } from "@/lib/santri-api";
 import { getActiveDufahName } from "@/lib/absensi";
 import { calcAkbarnasGabungan, calcAkbarnasMapelAverage, calcAkumulatif, calcMapelNilaiAkhir, calcMapelNilaiAkhirUsbuain2, applyNilaiTambahan } from "@/lib/grade-calculator";
@@ -97,6 +97,12 @@ function buildDefaultTemplate() {
     jabatan_mudir_arab: "مدير مركز العربية",
     teks_dufah_akbarnas_arab: null,
     teks_dufah_arab: null,
+    // Turats defaults
+    nama_mudir_turats: "Ustadz Abdul Wahhab, M.Pd.",
+    jabatan_mudir_turats: "Direktur Markaz Turats",
+    tgl_cetak_turats: null,
+    tgl_mulai_turats: null,
+    tgl_selesai_turats: null,
   };
 }
 
@@ -105,6 +111,7 @@ function serializeProgram(program: {
   nama_indo: string;
   nama_arab: string;
   kkm: number;
+  kategori?: string;
   programMapels: Array<{
     urutan: number;
     mapel: {
@@ -130,6 +137,7 @@ function serializeProgram(program: {
     nama_indo: program.nama_indo,
     nama_arab: program.nama_arab,
     kkm: program.kkm,
+    kategori: program.kategori ?? "REGULER",
     mapelList: program.programMapels.map((pm) => ({
       id: pm.mapel.id,
       nama_indo: pm.mapel.nama_indo,
@@ -325,7 +333,8 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
           return { score: (n.nilaiAkhir || 0) + (n.nilaiTambahan || 0), bobot: pm?.mapel.bobot ?? 1 };
         })
       );
-      const averagePredikat = getPredikat(Math.round(average));
+      const isTurats = (program as any)?.kategori === "TURATS";
+      const averagePredikat = isTurats ? getPredikatTurats(Math.round(average)) : getPredikat(Math.round(average));
 
       return {
         id: masterSantri.id,
@@ -348,6 +357,7 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
         riwayatId: riwayat?.id ?? null,
         average,
         averagePredikat,
+        programKategori: (program as any)?.kategori ?? "REGULER",
       };
     })
     .sort((left: any, right: any) => left.nama.localeCompare(right.nama, "id"));
@@ -636,7 +646,8 @@ export async function getCertificateData(id: string) {
   );
   const status = calculateStatus(riwayat, accumulativeRows.map((nilai: any) => ({ skor: Number(nilai.skor) })), riwayat.program);
 
-  let predikat: { indo: string; arab: string } = getPredikat(Math.round(average));
+  const isTuratsCert = (riwayat.program as any)?.kategori === "TURATS";
+  let predikat: { indo: string; arab: string } = isTuratsCert ? getPredikatTurats(Math.round(average)) : getPredikat(Math.round(average));
 
   // Check Martabah Ula
   if (status !== "TIDAK_LULUS" && riwayat.programId && average > 0) {

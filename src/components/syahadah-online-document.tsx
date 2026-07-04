@@ -11,6 +11,7 @@ export type SyahadahOnlineDocumentData = {
   isMusyarokah: boolean;
   nilai: number | null;
   programOnline: {
+    namaIndo: string;
     namaArab: string;
     tglCetakArab: string | null;
     periodeAwal: string | null;
@@ -71,6 +72,9 @@ export function SyahadahOnlineDocument({ data, qrUrl, layout, editorMode, select
   const periodeAkhir = data.programOnline?.periodeAkhir || "........";
   const nilaiValue = !isMusyarokah && data.nilai ? convertToArabicNumerals(Math.round(data.nilai)) : "";
   const namaFontSize = lo.namaSantri.fontSize ?? 32;
+
+  // Turats Detection
+  const isTurats = !!data.programOnline?.namaIndo?.toLowerCase().includes("turats");
 
   // Base positions for signature area (bottom of content box)
   const sigAreaTop = "auto"; // using marginTop:auto in flex
@@ -134,12 +138,31 @@ export function SyahadahOnlineDocument({ data, qrUrl, layout, editorMode, select
           <p style={{ fontSize: "10pt", color: "#000", textAlign: "center", marginBottom: "3mm", marginTop: 0, direction: "rtl" }}>
             امسح الكود للتحقق من الأصالة
           </p>
-          <QRCodeCanvas
-            value={qrUrl}
-            size={75}
-            level="H"
-            imageSettings={{ src: "/images/logo.png", height: 26, width: 26, excavate: true }}
-          />
+          <div style={{ position: "relative", width: "105px", height: "105px" }}>
+            {isTurats && (
+              <img
+                src="/images/bingkai-turats.png"
+                alt=""
+                style={{
+                  position: "absolute",
+                  inset: "-12px",
+                  width: "129px",
+                  height: "129px",
+                  objectFit: "contain",
+                  zIndex: 0,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
+            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "center", alignItems: "center", width: "100%", height: "100%" }}>
+              <QRCodeCanvas
+                value={qrUrl}
+                size={75}
+                level="H"
+                imageSettings={{ src: isTurats ? "/images/logo-turats.png" : "/images/logo.png", height: 26, width: 26, excavate: true }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Main Content Area */}
@@ -172,7 +195,7 @@ export function SyahadahOnlineDocument({ data, qrUrl, layout, editorMode, select
             })}
           >
             <p dir="rtl" style={{ textAlign: "center", margin: 0 }}>
-              بعد الوصية بتقوى الله واتباع سنة رسول الله، قرر مركز العربية بباري كديري إندونيسيا،
+              بعد الوصية بتقوى الله واتباع سنة رسول الله، قرر {isTurats ? "مركز التراث" : "مركز العربية"} بباري كديري إندونيسيا،
               <br />
               منح شهادة الاستكمال للطالب/الطالبة :
             </p>
@@ -300,7 +323,7 @@ export function SyahadahOnlineDocument({ data, qrUrl, layout, editorMode, select
                 zIndex: 4,
               })}
             >
-              الرئيس العام لمركز العربية
+              {isTurats ? "الرئيس العام لمركز التراث" : "الرئيس العام لمركز العربية"}
             </p>
 
             {/* ── KIRI: Cap (Stempel) ── */}

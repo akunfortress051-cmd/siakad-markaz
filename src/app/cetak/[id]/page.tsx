@@ -52,7 +52,8 @@ export default async function CetakPage({
 
   const riwayatId = data.riwayatSantri?.id ?? null;
   const programId = data.program?.id ?? null;
-  
+  const isTurats = (data.program as any)?.kategori === "TURATS";
+
   // Fetch layout: per-santri override → per-program → global → default
   // Use musyarokah-specific layout if status is MUSYAROKAH
   let layout;
@@ -84,6 +85,7 @@ export default async function CetakPage({
       mode="per-santri"
       backHref="/admin/dashboard"
       backLabel="← Kembali ke Dashboard"
+      isTurats={isTurats}
     />
   );
 }

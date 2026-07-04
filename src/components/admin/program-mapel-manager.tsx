@@ -58,6 +58,7 @@ type ProgramItem = {
   nama_indo: string;
   nama_arab: string;
   kkm: number;
+  kategori?: string;
   programMapels: MapelItem[];
   _count: { riwayatRecords: number };
 };
@@ -327,9 +328,11 @@ function ProgramCard({
   const [editNamaIndo, setEditNamaIndo] = useState(program.nama_indo);
   const [editNamaArab, setEditNamaArab] = useState(program.nama_arab);
   const [editKkm, setEditKkm] = useState(String(program.kkm));
+  const [editKategori, setEditKategori] = useState(program.kategori ?? "REGULER");
   const [savingProgram, setSavingProgram] = useState(false);
   const [programNama, setProgramNama] = useState(program.nama_indo);
   const [programNamaArab, setProgramNamaArab] = useState(program.nama_arab);
+  const [programKategori, setProgramKategori] = useState(program.kategori ?? "REGULER");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -456,6 +459,7 @@ function ProgramCard({
           nama_indo: editNamaIndo.trim(),
           nama_arab: editNamaArab.trim(),
           kkm: Number(editKkm),
+          kategori: editKategori,
         }),
       });
       const data = await res.json();
@@ -466,6 +470,7 @@ function ProgramCard({
       toast.success("Program berhasil diperbarui!", { id: toastId });
       setProgramNama(editNamaIndo.trim());
       setProgramNamaArab(editNamaArab.trim());
+      setProgramKategori(editKategori);
       setEditingProgram(false);
       onReload();
     } finally {
@@ -479,7 +484,16 @@ function ProgramCard({
       <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-surface)] bg-[var(--color-surface-light)]">
         <BookOpen className="h-5 w-5 text-[var(--color-primary)] shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-[var(--color-text)] truncate">{programNama}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-[var(--color-text)] truncate">{programNama}</p>
+            <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              programKategori === "TURATS"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-[var(--color-primary-50)] text-[var(--color-primary)]"
+            }`}>
+              {programKategori === "TURATS" ? "Turats" : "Reguler"}
+            </span>
+          </div>
           <p className="text-xs text-[var(--color-text-subtle)] truncate" dir="rtl">{programNamaArab}</p>
         </div>
         <span className="shrink-0 rounded-full bg-[var(--color-surface)] px-2.5 py-1 text-xs font-bold text-[var(--color-text-muted)]">
@@ -533,6 +547,17 @@ function ProgramCard({
                   className="w-20 rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2 text-sm text-center font-bold outline-none focus:border-amber-400"
                 />
               </div>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold text-[var(--color-text-muted)] whitespace-nowrap">Kategori :</label>
+                <select
+                  value={editKategori}
+                  onChange={(e) => setEditKategori(e.target.value)}
+                  className="flex-1 rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-amber-400"
+                >
+                  <option value="REGULER">Reguler (Markaz Arabiyah)</option>
+                  <option value="TURATS">Turats (Markaz Turats)</option>
+                </select>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveProgram}
@@ -543,7 +568,7 @@ function ProgramCard({
                   Simpan
                 </button>
                 <button
-                  onClick={() => { setEditingProgram(false); setEditNamaIndo(programNama); setEditNamaArab(programNamaArab); }}
+                  onClick={() => { setEditingProgram(false); setEditNamaIndo(programNama); setEditNamaArab(programNamaArab); setEditKategori(programKategori); }}
                   className="rounded-xl border border-[var(--color-surface-dark)] px-4 py-2 text-sm font-semibold text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] transition"
                 >
                   <X className="h-4 w-4" />
@@ -729,6 +754,7 @@ export function ProgramMapelManager({ initialPrograms }: { initialPrograms: Prog
   const [newNamaIndo, setNewNamaIndo] = useState("");
   const [newNamaArab, setNewNamaArab] = useState("");
   const [newKkm, setNewKkm] = useState("60");
+  const [newKategori, setNewKategori] = useState("REGULER");
   const [addingProgram, setAddingProgram] = useState(false);
 
   const handleAddProgram = async () => {
@@ -742,7 +768,7 @@ export function ProgramMapelManager({ initialPrograms }: { initialPrograms: Prog
       const res = await fetch("/api/admin/program", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nama_indo: newNamaIndo.trim(), nama_arab: newNamaArab.trim(), kkm: Number(newKkm) }),
+        body: JSON.stringify({ nama_indo: newNamaIndo.trim(), nama_arab: newNamaArab.trim(), kkm: Number(newKkm), kategori: newKategori }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -750,7 +776,7 @@ export function ProgramMapelManager({ initialPrograms }: { initialPrograms: Prog
         return;
       }
       toast.success("Program berhasil ditambahkan!", { id: toastId });
-      setNewNamaIndo(""); setNewNamaArab(""); setNewKkm("60");
+      setNewNamaIndo(""); setNewNamaArab(""); setNewKkm("60"); setNewKategori("REGULER");
       setShowAddProgram(false);
       router.refresh();
     } finally {
@@ -807,6 +833,17 @@ export function ProgramMapelManager({ initialPrograms }: { initialPrograms: Prog
                 onChange={(e) => setNewKkm(e.target.value)}
                 className="w-24 rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2.5 text-sm text-center font-bold outline-none focus:border-[var(--color-primary)]"
               />
+            </div>
+            <div className="sm:col-span-2 flex items-center gap-3">
+              <label className="text-sm font-semibold text-[var(--color-text-muted)] whitespace-nowrap">Kategori :</label>
+              <select
+                value={newKategori}
+                onChange={(e) => setNewKategori(e.target.value)}
+                className="flex-1 rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)]"
+              >
+                <option value="REGULER">Reguler (Markaz Arabiyah)</option>
+                <option value="TURATS">Turats (Markaz Turats)</option>
+              </select>
             </div>
           </div>
           <div className="flex gap-2">
