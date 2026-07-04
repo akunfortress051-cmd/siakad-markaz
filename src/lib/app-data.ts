@@ -23,12 +23,11 @@ const programInclude = {
 };
 
 async function checkMartabahUla(programId: string, dufahNama: string, riwayatId: string): Promise<boolean> {
-  // Query langsung ke DB: hanya ambil riwayat dari program yang sama
+  // Ambil semua anak di cohort ini
   const riwayatList = await prisma.riwayatSantri.findMany({
     where: {
       programId,
       dufahNama,
-      status_kelulusan: { not: "TIDAK_LULUS" },
     },
     include: {
       nilaiList: {
@@ -48,7 +47,6 @@ async function checkMartabahUla(programId: string, dufahNama: string, riwayatId:
     return false;
   }
 
-  // Hitung rata-rata akumulatif per riwayat langsung dari nilai di DB
   let highestAverage = -1;
   let topRiwayatId: string | null = null;
 
@@ -56,8 +54,33 @@ async function checkMartabahUla(programId: string, dufahNama: string, riwayatId:
     const program = riwayat.program;
     if (!program) continue;
 
-    const totalMapel = program.programMapels.length;
-    if (totalMapel === 0 || riwayat.nilaiList.length < totalMapel) continue;
+    const accumulativeNilai = riwayat.nilaiList.filter((n: any) => {
+      const pm = program.programMapels.find((p: any) => p.mapelId === n.mapelId);
+      return pm?.mapel.masuk_akumulasi !== false;
+    });
+
+    const status = calculateStatus(
+      { is_tasmi: riwayat.is_tasmi },
+      accumulativeNilai.map((n: any) => ({ skor: n.nilaiAkhir || 0 })),
+      program
+    );
+
+    // Kriteria: HANYA LULUS murni yang boleh menjadi Martabah Ula (Musyarokah TIDAK BOLEH)
+    if (status !== "LULUS") continue;
+
+    // Periksa kelengkapan nilai HANYA untuk mapel yang masuk_akumulasi
+    let isComplete = true;
+    for (const pm of program.programMapels) {
+      if (pm.mapel.masuk_akumulasi !== false) {
+        const hasNilai = riwayat.nilaiList.find((n: any) => n.mapelId === pm.mapelId && n.nilaiAkhir !== null);
+        if (!hasNilai) {
+          isComplete = false;
+          break;
+        }
+      }
+    }
+
+    if (!isComplete) continue;
 
     const accItems: { score: number; bobot: number }[] = [];
     for (const nilai of riwayat.nilaiList) {
@@ -242,7 +265,7 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
   return masterSantriList
     .map((masterSantri) => {
       let targetDufah = masterSantri.dufahNama;
-      
+
       // Jika sistem sedang aktif di Duf'ah X, dan santri ini punya riwayat di Duf'ah X, 
       // prioritaskan riwayat Duf'ah X agar mereka tidak hilang dari kelas saat ini
       // meskipun mereka sudah daftar ulang ke Duf'ah selanjutnya (sehingga masterSantri.dufahNama = Duf'ah selanjutnya).
@@ -604,7 +627,7 @@ export async function getCertificateData(id: string) {
           selected = n;
         }
       }
-      
+
       if (selected && selected.nilaiAkhir === null && (selected.nilaiUsbu1 !== null || selected.nilaiUsbu2 !== null || selected.nilaiNihai !== null)) {
         selected = {
           ...selected,
@@ -772,7 +795,7 @@ export async function getRiwayatSantriRows() {
     const kelas = riwayat.kelas;
     const isAkbarnas = program?.nama_indo.toLowerCase().includes("akbarnas");
     const nilaiList = riwayat.nilaiList ?? [];
-    
+
     if (!isAkbarnas) {
       const effectiveUsbuainMode = riwayat.jumlah_kolom_usbu ?? kelas?.jumlah_kolom_usbu ?? 0;
       for (const n of nilaiList) {
