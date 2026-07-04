@@ -340,6 +340,12 @@ export function SyahadahMartabahTuratsDocument({
           </div>
         </div>
       </div>
+      <style>{`
+        @media print {
+          body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
+          @page { size: 330mm 215mm landscape; margin: 0; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -245,10 +245,32 @@ export function SyahadahEditor({
         html, body { margin: 0; padding: 0; background: #111 !important; }
         @media print {
           html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
-          @page { size: 330mm 215mm; landscape; margin: 0; }
-          .editor-toolbar, .editor-panel { display: none !important; }
-          .editor-crosshair { display: none !important; }
-          .editor-workspace { transform: none !important; margin: 0 !important; }
+          @page { size: 330mm 215mm landscape; margin: 0; }
+          
+          /* Hide EVERYTHING structurally inside body */
+          .lg\\:hidden, aside, footer, .app-footer, header, nav { 
+            display: none !important; 
+          }
+          
+          /* Strip all layout constraints that shrink the canvas */
+          html, body, main, main > div, .min-h-screen {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: white !important;
+            display: block !important;
+          }
+          
+          .container-syahadah {
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+          }
+
+          .editor-toolbar, .editor-panel, .editor-crosshair { display: none !important; }
+          .editor-workspace { transform: none !important; margin: 0 !important; padding: 0 !important; }
         }
       `}</style>
 
