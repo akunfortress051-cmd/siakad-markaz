@@ -203,6 +203,7 @@ export function SyahadahOnlineDocument({ data, qrUrl, layout, editorMode, select
 
           {/* Nama Peserta */}
           <div
+            dir="ltr"
             {...ep("namaSantri", editorMode, selectedElement, onSelectElement, "Nama Peserta", {
               textAlign: "center",
               marginBottom: "1mm",

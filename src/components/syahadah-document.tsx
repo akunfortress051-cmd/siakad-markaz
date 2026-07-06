@@ -343,6 +343,7 @@ export function SyahadahDocument({ qrUrl, data, layout, editorMode, selectedElem
           {/* Nama Santri */}
           <div
             {...elProps("namaSantri", editorMode, selectedElement, onSelectElement, "Nama Santri")}
+            dir="ltr"
             style={{
               textAlign: "center",
               marginBottom: "2mm",
