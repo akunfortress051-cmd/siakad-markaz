@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Hourglass,
   Calendar,
+  ClipboardList,
 } from "lucide-react";
 
 type SantriData = {
@@ -65,6 +66,12 @@ export default function SantriDashboardPage() {
   const [statusError, setStatusError] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Tauzi UI State
+  const [tauziData, setTauziData] = useState<any>(null);
+  const [tauziLoading, setTauziLoading] = useState(true);
+  const [selectedTauziProg, setSelectedTauziProg] = useState("");
+  const [submittingTauzi, setSubmittingTauzi] = useState(false);
+
   useEffect(() => {
     fetch("/api/santri/me")
       .then((r) => r.json())
@@ -85,6 +92,15 @@ export default function SantriDashboardPage() {
         setStatusError(true);
         setStatusLoading(false);
       });
+
+    fetch("/api/santri/me/tauzi")
+      .then((r) => r.json())
+      .then((d) => {
+        setTauziData(d);
+        if (d.peserta) setSelectedTauziProg(d.peserta.programId);
+        setTauziLoading(false);
+      })
+      .catch(() => setTauziLoading(false));
   }, []);
 
   if (loading) {
@@ -319,6 +335,63 @@ export default function SantriDashboardPage() {
                 </Link>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tauzi Info Card */}
+      {!tauziLoading && tauziData?.aktif && (
+        <div className="neu-card p-5" style={{ background: "linear-gradient(135deg, var(--bg-card), var(--color-primary-50))", border: "2px solid var(--color-primary)" }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl" style={{ background: "var(--color-primary)", color: "white" }}>
+              <ClipboardList size={22}/>
+            </div>
+            <div>
+              <h3 className="font-bold text-sm" style={{ color: "var(--color-text)" }}>Ujian Penempatan (Tauzi')</h3>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--color-text-muted)" }}>Sesi Aktif: {tauziData.sesi.nama}</p>
+            </div>
+          </div>
+          
+          <div className="space-y-3 mt-3">
+             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pilih Tujuan Program Anda</label>
+             <select 
+               value={selectedTauziProg} 
+               onChange={e => setSelectedTauziProg(e.target.value)}
+               className="neu-input w-full p-2.5 text-sm font-bold"
+               style={{ color: "var(--color-text)" }}
+             >
+               <option value="">-- Pilih Program Ujian --</option>
+               {tauziData.programs.map((p:any) => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
+             </select>
+             <button 
+               onClick={async () => {
+                  if(!selectedTauziProg) return;
+                  setSubmittingTauzi(true);
+                  try {
+                    const res = await fetch("/api/santri/me/tauzi", { method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ programId: selectedTauziProg }) });
+                    if(res.ok) {
+                      const updated = await res.json();
+                      setTauziData((prev: any) => ({ ...prev, peserta: updated.peserta }));
+                      alert("Berhasil menyimpan program ujian Tauzi!");
+                    } else {
+                      alert("Gagal menyimpan program. Silakan coba lagi.");
+                    }
+                  } finally { setSubmittingTauzi(false); }
+               }}
+               disabled={!selectedTauziProg || submittingTauzi || selectedTauziProg === tauziData.peserta?.programId}
+               className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${(!selectedTauziProg || submittingTauzi || selectedTauziProg === tauziData.peserta?.programId) ? "bg-gray-100 text-gray-400" : "neu-button-primary"}`}
+             >
+               {submittingTauzi ? "Menyimpan..." : (selectedTauziProg === tauziData.peserta?.programId ? "Program Telah Disimpan" : "Simpan Pilihan Ujian")}
+             </button>
+
+             {tauziData.peserta && (
+               <div className="mt-3 pt-3 border-t text-center" style={{ borderColor: 'var(--color-surface-hover)' }}>
+                 <p className="text-xs text-gray-500 mb-2 font-medium">Jika sudah siap, silakan ikuti ujian melalui portal tes mandiri:</p>
+                 <a href="/tauzi/login" className="inline-block px-4 py-2 rounded-lg font-bold text-xs" style={{ background: 'var(--color-primary-100)', color: 'var(--color-primary)' }} target="_blank">
+                   ➡ Masuk Portal Ujian Tauzi'
+                 </a>
+               </div>
+             )}
           </div>
         </div>
       )}

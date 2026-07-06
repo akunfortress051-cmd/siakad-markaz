@@ -17,10 +17,13 @@ model Program {
   riwayatRecords          RiwayatSantri[]
   kelasList               Kelas[]
   syahadahLayout          SyahadahLayout?
-  sesiTambahanList        SesiTambahanProgram[]
-  sesiTaqwim              SesiTaqwim?
-  tanggalTaqwimList       TanggalTaqwim[]
-  pengajarSesiProgramList PengajarSesiProgram[]
+  sesiTambahanList            SesiTambahanProgram[]
+  sesiTaqwim                  SesiTaqwim?
+  tanggalTaqwimList           TanggalTaqwim[]
+  pengajarSesiProgramList     PengajarSesiProgram[]
+  soalTauziList               SoalTauzi[]
+  pesertaTauziList            PesertaTauzi[]
+  pesertaTauziRekomendasiList PesertaTauzi[]          @relation("ProgramRekomendasi")
 }
 
 model Kelas {
@@ -78,9 +81,10 @@ model SantriInternal {
   noWaSantri     String?
   kabupaten      String?
   bulanKe        Int             @default(0)
-  isAktif        Boolean         @default(true)
-  lastSyncedAt   DateTime?
-  riwayatRecords RiwayatSantri[]
+  isAktif          Boolean         @default(true)
+  lastSyncedAt     DateTime?
+  riwayatRecords   RiwayatSantri[]
+  pesertaTauziList PesertaTauzi[]
 }
 
 model Dufah {
@@ -100,6 +104,7 @@ model Dufah {
   usbu3Active    Boolean   @default(false)
 
   riwayatRecords RiwayatSantri[]
+  sesiTauziList  SesiTauzi[]
 }
 
 model RiwayatSantri {
@@ -488,4 +493,76 @@ model PengaturanPerizinan {
   id                      Int     @id @default(1)
   batasJamKeluarPare      Int     @default(12)
   batasJamAkhirKeluarPare String  @default("19:00")
+}
+
+// ===== TAUZI' FUSHUL =====
+
+model SesiTauzi {
+  id          String         @id @default(cuid())
+  nama        String
+  dufahNama   String
+  isActive    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  
+  dufah       Dufah          @relation(fields: [dufahNama], references: [nama])
+  pesertaList PesertaTauzi[]
+  soalList    SoalTauzi[]
+}
+
+model SoalTauzi {
+  id                 String          @id @default(cuid())
+  sesiTauziId        String
+  programId          String
+  pertanyaan         String
+  urutan             Int
+  
+  sesiTauzi          SesiTauzi       @relation(fields: [sesiTauziId], references: [id], onDelete: Cascade)
+  program            Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  jawabanList        JawabanTauzi[]
+  responseSantriList ResponseTauzi[]
+
+  @@unique([sesiTauziId, programId, urutan])
+}
+
+model JawabanTauzi {
+  id        String    @id @default(cuid())
+  soalId    String
+  teks      String
+  isCorrect Boolean   @default(false)
+  urutan    Int
+  
+  soal      SoalTauzi @relation(fields: [soalId], references: [id], onDelete: Cascade)
+}
+
+model PesertaTauzi {
+  id                   String          @id @default(cuid())
+  sesiTauziId          String
+  santriId             String
+  programId            String
+  nilaiSyafawi         Float?
+  nilaiMuqobalah       Float?
+  programRekomendasiId String?
+  penyimakNama         String?
+  sudahUjian           Boolean         @default(false)
+  createdAt            DateTime        @default(now())
+  
+  sesiTauzi            SesiTauzi       @relation(fields: [sesiTauziId], references: [id], onDelete: Cascade)
+  santri               SantriInternal  @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  program              Program         @relation(fields: [programId], references: [id])
+  programRekomendasi   Program?        @relation("ProgramRekomendasi", fields: [programRekomendasiId], references: [id])
+  responseList         ResponseTauzi[]
+
+  @@unique([sesiTauziId, santriId])
+}
+
+model ResponseTauzi {
+  id        String       @id @default(cuid())
+  pesertaId String
+  soalId    String
+  jawabanId String?
+  
+  peserta   PesertaTauzi @relation(fields: [pesertaId], references: [id], onDelete: Cascade)
+  soal      SoalTauzi    @relation(fields: [soalId], references: [id], onDelete: Cascade)
+
+  @@unique([pesertaId, soalId])
 }

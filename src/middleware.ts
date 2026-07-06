@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decrypt } from '@/lib/auth';
 
-const publicRoutes = ['/login', '/api/auth/login'];
+const publicRoutes = ['/login', '/api/auth/login', '/tauzi/login'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -43,6 +43,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
   }
+
+  // Khusus Tauzi Portal Auth
+  if (pathname.startsWith('/tauzi') && pathname !== '/tauzi/login') {
+    const tauziToken = request.cookies.get('tauzi-session')?.value;
+    if (!tauziToken) {
+      return NextResponse.redirect(new URL('/tauzi/login', request.url));
+    }
+  }
+
 
   return NextResponse.next();
 }

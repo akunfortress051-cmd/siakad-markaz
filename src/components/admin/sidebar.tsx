@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette, UserCog, LogOut, ShieldCheck, Calendar, Medal, Armchair, ChevronDown, AlertTriangle, FileText, ClipboardList, Trophy } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, GraduationCap, History, Settings, Menu, X, CalendarCheck, Bed, BookOpen, Activity, BarChart3, Printer, CalendarDays, Instagram, Palette, UserCog, LogOut, ShieldCheck, Calendar, Medal, Armchair, ChevronDown, AlertTriangle, FileText, ClipboardList, Trophy, ClipboardEdit, Database, ListChecks } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SyncSantriButton } from "./sync-santri-button";
 
@@ -49,6 +49,15 @@ const navigationGroups = [
       { href: "/admin/manajemen-kelas", label: "Alokasi Kelas", icon: Users, permissionId: "alokasi_kelas" },
       { href: "/admin/kelas", label: "Manajemen Ruang Kelas", icon: DoorOpen, permissionId: "ruang_kelas" },
       { href: "/admin/jadwal-mengajar", label: "Jadwal Mengajar", icon: Calendar, permissionId: "jadwal_mengajar" },
+    ]
+  },
+  {
+    title: "Divisi Tauzi'",
+    items: [
+      { href: "/admin/tauzi", label: "Sesi Tauzi'", icon: CalendarCheck, permissionId: "tauzi_sesi" },
+      { href: "/admin/tauzi/soal", label: "Bank Soal", icon: Database, permissionId: "tauzi_soal" },
+      { href: "/admin/tauzi/nilai", label: "Input Nilai Syafawi", icon: ClipboardEdit, permissionId: "tauzi_nilai" },
+      { href: "/admin/tauzi/hasil", label: "Hasil Tauzi'", icon: ListChecks, permissionId: "tauzi_hasil" },
     ]
   },
   {

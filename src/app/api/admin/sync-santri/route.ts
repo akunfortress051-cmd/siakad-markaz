@@ -32,7 +32,10 @@ type ApiSantriResponse = {
     } | null;
   }>;
   isAktif?: boolean;
+  kategoriSiswa?: string;
   kategori?: string;
+  kategoriProgram?: string;
+  programAktif?: string | null;
 };
 
 export async function POST() {
@@ -245,6 +248,7 @@ export async function POST() {
           pr.program &&
           pr.program.nama_indo.toLowerCase().includes("akbarnas")
         ) {
+           // We keep the old akbarnas logic to auto carry over if needed
           const wasBulan2 = pr.kelas?.is_akbarnas_b2;
           if (pr.kelasId && pr.programId && !wasBulan2) {
             santriToAkbarnasClass.set(pr.santriId, {
@@ -252,6 +256,24 @@ export async function POST() {
               kelasId: pr.kelasId,
             });
           }
+        }
+      }
+
+      // Map untuk matching program berdasarkan string 'programAktif' dari PPDB
+      const allPrograms = await prisma.program.findMany({ select: { id: true, nama_indo: true } });
+      const programMap = new Map();
+      allPrograms.forEach(p => {
+         programMap.set(p.nama_indo.toLowerCase().trim(), p.id);
+      });
+
+      // Buat lookup dari list PPDB (validSantri) untuk mengambil programAktif nya
+      const santriProgramMap = new Map<string, string>();
+      for (const s of validSantri) {
+        if (s.programAktif && s.nis) {
+           const mappedId = programMap.get(s.programAktif.toLowerCase().trim());
+           if (mappedId) {
+             santriProgramMap.set(s.nis as string, mappedId);
+           }
         }
       }
 
@@ -263,11 +285,15 @@ export async function POST() {
         await prisma.riwayatSantri.createMany({
           data: missingRiwayat.map((s) => {
             const pastAkbarnas = santriToAkbarnasClass.get(s.id);
+            // Ambil program langsung dari mapping hasil sinkronisasi PPDB
+            const activeProgramId = santriProgramMap.get(s.id) || null;
+            
             if (pastAkbarnas) continuingAkbarnasCount++;
             return {
               santriId: s.id,
               dufahNama: s.dufahNama!,
-              programId: pastAkbarnas ? pastAkbarnas.programId : null,
+              // Prioritaskan program aktif dari PPDB (kecuali untuk Akbarnas auto-lanjut)
+              programId: pastAkbarnas ? pastAkbarnas.programId : activeProgramId,
               kelasId: pastAkbarnas ? pastAkbarnas.kelasId : null,
               is_tasmi: false,
               status_kelulusan: "TIDAK_LULUS",
@@ -276,6 +302,27 @@ export async function POST() {
           skipDuplicates: true,
         });
         newRiwayatCount = missingRiwayat.length;
+      }
+
+      // Update RiwayatSantri yang sudah ada jika programnya masih kosong (null)
+      const existingToUpdate = existingRiwayat.filter(r => r.programId === null);
+      if (existingToUpdate.length > 0) {
+        // Karena Prisma tidak support bulk update dengan value berbeda-beda, kita loop atau updateMany per program
+        for (const [nis, mappedProgId] of santriProgramMap.entries()) {
+          const matchingToUpdate = existingToUpdate.filter(r => r.santriId === nis);
+          if (matchingToUpdate.length > 0) {
+            await prisma.riwayatSantri.updateMany({
+              where: {
+                santriId: nis,
+                dufahNama: { in: matchingToUpdate.map(m => m.dufahNama) },
+                programId: null
+              },
+              data: {
+                programId: mappedProgId
+              }
+            });
+          }
+        }
       }
     }
 
