@@ -15,6 +15,7 @@ import {
 type PPDBProgram = {
   id: string;
   nama: string;
+  kategoriProgram?: string;
   durasiBulanFormatted: string;
   tglProgramFormatted: string;
   hargaFormatted: string;
@@ -45,6 +46,7 @@ export default function SantriDaftarUlangPage() {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
 
+  const [activeKategori, setActiveKategori] = useState<string>("ALL");
   const [selectedProgram, setSelectedProgram] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
@@ -114,6 +116,18 @@ export default function SantriDaftarUlangPage() {
   
   const programs = metaData?.programTersedia || [];
   const selectedProgramData = programs.find((p) => p.id === selectedProgram);
+
+  // Kategori filter logic
+  const validPrograms = programs.map(p => ({
+    ...p,
+    // Safely fallback to 'REGULER' if kategoriProgram is undefined/empty from API
+    kategori: p.kategoriProgram && p.kategoriProgram.trim() !== '' ? p.kategoriProgram.toUpperCase() : 'REGULER'
+  }));
+  const kategoriList = ["ALL", ...new Set(validPrograms.map((p) => p.kategori))];
+  const filteredPrograms =
+    activeKategori === "ALL"
+      ? validPrograms
+      : validPrograms.filter((p) => p.kategori === activeKategori);
 
   return (
     <div className="space-y-6">
@@ -275,18 +289,47 @@ export default function SantriDaftarUlangPage() {
         )}
       </div>
 
-      {/* PPDB Programs List (New Pricing Cards UI) */}
+      {/* PPDB Programs List (Siakad Theme) */}
       <div className="space-y-4 pt-2">
         <h2 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
           Memilih Program Pendaftaran
         </h2>
+
+        {/* Kategori Filter */}
+        {!statusLoading && programs.length > 0 && kategoriList.length > 2 && (
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {kategoriList.map((kat) => (
+              <button
+                key={kat}
+                onClick={() => setActiveKategori(kat)}
+                className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                style={
+                  activeKategori === kat
+                    ? {
+                        background: "var(--color-primary)",
+                        color: "#fff",
+                        boxShadow:
+                          "3px 3px 8px rgba(0,102,102,0.3), -2px -2px 6px rgba(0,133,133,0.15)",
+                      }
+                    : {
+                        background: "var(--color-surface-light)",
+                        color: "var(--color-text-muted)",
+                        boxShadow: "var(--shadow-inset-sm)",
+                      }
+                }
+              >
+                {kat === "ALL" ? "Semua" : kat}
+              </button>
+            ))}
+          </div>
+        )}
         
         {statusLoading ? (
             <div className="neu-card p-8 flex flex-col items-center justify-center gap-3">
               <Loader2 size={24} className="animate-spin" style={{ color: "var(--color-primary)" }} />
               <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Mensinkronisasi program dengan pusat keuangan...</p>
             </div>
-        ) : programs.length === 0 ? (
+        ) : filteredPrograms.length === 0 ? (
           <div className="neu-card p-6 text-center">
             <p className="text-xs" style={{ color: "var(--color-text-subtle)" }}>
               Tidak ada program pendaftaran yang dibuka saat ini.
@@ -294,8 +337,9 @@ export default function SantriDaftarUlangPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {programs.map((prog) => {
+            {filteredPrograms.map((prog) => {
               const isSelected = selectedProgram === prog.id;
+              const isTurats = prog.kategori === 'TUROTS';
               
               return (
                 <button
@@ -303,25 +347,39 @@ export default function SantriDaftarUlangPage() {
                   onClick={() => setSelectedProgram(prog.id)}
                   className="text-left w-full transition-all overflow-hidden relative group"
                   style={{
-                    backgroundColor: "#161616", // Real dark card
+                    backgroundColor: isSelected ? "var(--bg-card)" : "var(--color-surface-light)",
                     borderRadius: "16px",
-                    border: isSelected ? "2px solid #eab308" : "2px solid transparent",
+                    border: isSelected ? "2px solid var(--color-primary)" : "2px solid transparent",
                     boxShadow: isSelected 
-                        ? "0 0 0 2px rgba(234, 179, 8, 0.2), 0 10px 25px -5px rgba(0, 0, 0, 0.5)"
-                        : "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)",
+                        ? "3px 3px 10px rgba(0,102,102,0.25), -2px -2px 6px rgba(0,133,133,0.12)"
+                        : "var(--shadow-inset-sm)",
                   }}
                 >
                   <div className="p-5">
                     {/* Header: Title and Duration Badge */}
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="text-xl font-bold text-white tracking-tight">
-                        {prog.nama}
-                      </h3>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-md font-bold tracking-tight" style={{ color: "var(--color-text)" }}>
+                            {prog.nama}
+                        </h3>
+                        <span 
+                            className="px-2 py-0.5 rounded-full text-[9px] font-bold"
+                            style={{
+                                background: isTurats ? "#fef3c7" : "var(--color-primary-50)",
+                                color: isTurats ? "#b45309" : "var(--color-primary)",
+                            }}
+                        >
+                            {prog.kategori}
+                        </span>
+                      </div>
                       <div 
                         className="px-2.5 py-1 rounded" 
-                        style={{ backgroundColor: "rgba(234, 179, 8, 0.1)" }}
+                        style={{ 
+                            backgroundColor: isSelected ? "var(--color-primary)" : "var(--color-surface-dark)",
+                            transition: "background 0.3s"
+                        }}
                       >
-                        <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: "#eab308" }}>
+                        <span className="text-[9px] uppercase font-bold tracking-wider" style={{ color: isSelected ? "#fff" : "var(--color-text-muted)" }}>
                           {prog.durasiBulanFormatted}
                         </span>
                       </div>
@@ -329,20 +387,20 @@ export default function SantriDaftarUlangPage() {
                     
                     {/* Periode Badge */}
                     <div className="mb-3">
-                      <span className="inline-block px-3 py-1.5 rounded text-[11px] font-semibold text-gray-300" style={{ backgroundColor: "#222" }}>
+                      <span className="inline-block px-3 py-1.5 rounded-lg text-[10px] font-semibold" style={{ backgroundColor: "var(--color-surface-dark)", color: "var(--color-text-muted)" }}>
                         Periode {metaData?.informasiPendaftaranBuka?.nama || "Sedang Berjalan"}
                       </span>
                     </div>
 
                     {/* Tgl Program */}
                     <div className="mb-4">
-                      <span className="text-xs text-gray-400">Tgl Program: </span>
-                      <span className="text-xs font-semibold text-gray-200">{prog.tglProgramFormatted}</span>
+                      <span className="text-xs" style={{ color: "var(--color-text-subtle)" }}>Tgl Program: </span>
+                      <span className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>{prog.tglProgramFormatted}</span>
                     </div>
 
                     {/* Harga */}
                     <div>
-                      <p className="text-[26px] font-black tracking-tight" style={{ color: "#eab308" }}>
+                      <p className="text-xl font-black tracking-tight" style={{ color: "var(--color-primary)" }}>
                         {prog.hargaFormatted}
                       </p>
                     </div>
@@ -351,7 +409,7 @@ export default function SantriDaftarUlangPage() {
                   {/* Selection Indicator overlay */}
                   {isSelected && (
                     <div className="absolute top-4 right-14">
-                      <CheckCircle size={20} style={{ color: "#eab308" }} className="drop-shadow-lg" />
+                      <CheckCircle size={20} style={{ color: "var(--color-primary)" }} className="drop-shadow-sm" />
                     </div>
                   )}
                 </button>

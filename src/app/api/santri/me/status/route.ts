@@ -43,6 +43,10 @@ export async function GET() {
       );
     }
     
+    if (data.meta && data.meta.programTersedia) {
+      console.log("DEBUG_PROGRAM_0:", data.meta.programTersedia[0]);
+    }
+
     return NextResponse.json({ success: true, data: data.data, meta: data.meta });
   } catch (error) {
     console.error('PPDB status error:', error);
