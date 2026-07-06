@@ -96,15 +96,39 @@ export async function POST() {
 
     // ===== 2. Upsert semua santri ke SantriInternal =====
     for (const santri of validSantri) {
-      const assignedRiwayat = santri.riwayat?.find(
-        (r: any) => r.status === "ASSIGNED"
-      );
-      const sakanName = assignedRiwayat?.lemari?.kamar?.sakan?.nama ?? "-";
+      // Prioritaskan ASSIGNED. Tapi jika tidak ada ASSIGNED di riwayat TERBARU,
+      // kita perbolehkan PRE_LIST untuk kasus Akbarnas B2 (dimana lemari blm di-assign ulang).
+      let targetRiwayat = santri.riwayat?.find((r: any) => r.status === "ASSIGNED");
+      
+      // Jika riwayat terbaru di PPDB (index 0) adalah PRE_LIST, gunakan itu sbg ganti
+      if (santri.riwayat && santri.riwayat[0]?.status === "PRE_LIST") {
+        targetRiwayat = santri.riwayat[0];
+      }
+
+      if (!targetRiwayat) continue;
+
+      let sakanName = targetRiwayat.lemari?.kamar?.sakan?.nama;
+      let kamarName = targetRiwayat.lemari?.kamar?.nama;
+      let nomorLemari = targetRiwayat.lemari?.nomor;
+
+      if (!sakanName) {
+        // Fallback ke riwayat ASSIGNED lama untuk sakan
+        const oldAssigned = santri.riwayat?.find((r: any) => r.status === "ASSIGNED" && r.id !== targetRiwayat.id);
+        if (oldAssigned) {
+          sakanName = oldAssigned.lemari?.kamar?.sakan?.nama;
+          kamarName = oldAssigned.lemari?.kamar?.nama;
+          nomorLemari = oldAssigned.lemari?.nomor;
+        }
+      }
+
+      sakanName = sakanName ?? "-";
+      kamarName = kamarName ?? "-";
+      nomorLemari = nomorLemari ?? "-";
 
       // Hanya proses santri yang sudah ada sakan (aktif bulan ini)
-      if (!sakanName || sakanName === "-") continue;
+      if (sakanName === "-") continue;
 
-      const dufahNama = assignedRiwayat?.dufah?.nama ?? "-";
+      const dufahNama = targetRiwayat.dufah?.nama ?? "-";
 
       await prisma.santriInternal.upsert({
         where: { id: santri.nis as string },
@@ -116,13 +140,13 @@ export async function POST() {
           tanggal_lahir: santri.tanggalLahir ?? null,
           alamat: santri.detailAlamat ?? "",
           sakan: sakanName,
-          kamar: assignedRiwayat?.lemari?.kamar?.nama ?? "-",
-          nomorLemari: assignedRiwayat?.lemari?.nomor ?? "-",
+          kamar: kamarName,
+          nomorLemari: nomorLemari,
           dufahNama: dufahNama,
           kategori: santri.kategori ?? "-",
           noWaSantri: santri.noWaSantri ?? "-",
           kabupaten: santri.kabupaten ?? "-",
-          bulanKe: assignedRiwayat?.bulanKe ?? 0,
+          bulanKe: targetRiwayat.bulanKe ?? 0,
           isAktif: santri.isAktif ?? false,
           lastSyncedAt: now,
         },
@@ -133,13 +157,13 @@ export async function POST() {
           tanggal_lahir: santri.tanggalLahir ?? null,
           alamat: santri.detailAlamat ?? "",
           sakan: sakanName,
-          kamar: assignedRiwayat?.lemari?.kamar?.nama ?? "-",
-          nomorLemari: assignedRiwayat?.lemari?.nomor ?? "-",
+          kamar: kamarName,
+          nomorLemari: nomorLemari,
           dufahNama: dufahNama,
           kategori: santri.kategori ?? "-",
           noWaSantri: santri.noWaSantri ?? "-",
           kabupaten: santri.kabupaten ?? "-",
-          bulanKe: assignedRiwayat?.bulanKe ?? 0,
+          bulanKe: targetRiwayat.bulanKe ?? 0,
           isAktif: santri.isAktif ?? false,
           lastSyncedAt: now,
         },
@@ -185,6 +209,8 @@ export async function POST() {
     const activeSantriWithDufah = activeSantriList.filter(
       (s) => s.dufahNama && s.dufahNama !== "-"
     );
+
+    let continuingAkbarnasCount = 0;
 
     if (activeSantriWithDufah.length > 0) {
       const existingRiwayat = await prisma.riwayatSantri.findMany({
@@ -237,6 +263,7 @@ export async function POST() {
         await prisma.riwayatSantri.createMany({
           data: missingRiwayat.map((s) => {
             const pastAkbarnas = santriToAkbarnasClass.get(s.id);
+            if (pastAkbarnas) continuingAkbarnasCount++;
             return {
               santriId: s.id,
               dufahNama: s.dufahNama!,
@@ -253,6 +280,9 @@ export async function POST() {
     }
 
     // ===== 4. Auto-toggle Akbarnas classes jika ada Dufah baru =====
+    // DETERMINISTIC TOGGLE: Jika ada Dufah baru, hindari "blind toggle"
+    // Gunakan fakta: jika ada santri yg dilanjutkan (carry over), maka WAJIB Bulan 2.
+    // Jika tidak ada yg dilanjutkan (Bulan 1 baru), maka WAJIB Bulan 1.
     if (missingDufahs.length > 0) {
       try {
         const akbarnasPrograms = await prisma.program.findMany({
@@ -264,17 +294,11 @@ export async function POST() {
         const akbarnasIds = akbarnasPrograms.map((p) => p.id);
 
         if (akbarnasIds.length > 0) {
-          const classes = await prisma.kelas.findMany({
+          const isBulan2Baru = continuingAkbarnasCount > 0;
+          await prisma.kelas.updateMany({
             where: { programId: { in: akbarnasIds } },
-            select: { id: true, is_akbarnas_b2: true },
+            data: { is_akbarnas_b2: isBulan2Baru },
           });
-
-          for (const cls of classes) {
-            await prisma.kelas.update({
-              where: { id: cls.id },
-              data: { is_akbarnas_b2: !cls.is_akbarnas_b2 },
-            });
-          }
         }
       } catch (err) {
         console.error(
