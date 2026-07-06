@@ -50,6 +50,10 @@ type StatusData = {
   masaAktif?: {
     sisaKoutaBulan?: number;
     berakhirPadaDufahNama?: string;
+    dufahSekarangSistem?: {
+      id: number;
+      nama: string;
+    };
   };
   [key: string]: any;
 };
@@ -153,8 +157,18 @@ export default function SantriDashboardPage() {
         )
       : 0;
 
+  const adjustDufahName = (name?: string) => {
+    if (!name || name === "Belum Ditentukan") return name;
+    return name.replace(/\d+/, (match) => {
+      const num = parseInt(match, 10);
+      return num < 80 ? (num + 80).toString() : num.toString();
+    });
+  };
+
   const sisaBulan = statusData?.masaAktif?.sisaKoutaBulan;
-  const berakhirDufah = statusData?.masaAktif?.berakhirPadaDufahNama;
+  const berakhirDufah = adjustDufahName(statusData?.masaAktif?.berakhirPadaDufahNama);
+  const dufahSekarang = adjustDufahName(statusData?.masaAktif?.dufahSekarangSistem?.nama);
+  
   const isDurasiLow = sisaBulan !== undefined && sisaBulan !== null && sisaBulan <= 2;
 
   return (
@@ -267,14 +281,27 @@ export default function SantriDashboardPage() {
                 </span>
               </div>
               {berakhirDufah && (
-                <div className="mt-2 flex items-center gap-1.5">
-                  <Calendar size={12} style={{ color: "var(--color-text-subtle)" }} />
-                  <span
-                    className="text-[11px]"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    Berakhir pada {berakhirDufah}
-                  </span>
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar size={12} style={{ color: "var(--color-text-subtle)" }} />
+                    <span
+                      className="text-[11px]"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      Berakhir pada {berakhirDufah}
+                    </span>
+                  </div>
+                  {dufahSekarang && (
+                    <div className="flex items-center gap-1.5">
+                      <Hourglass size={12} style={{ color: "var(--color-text-subtle)" }} />
+                      <span
+                        className="text-[11px]"
+                        style={{ color: "var(--color-text-muted)" }}
+                      >
+                        Sedang berjalan: {dufahSekarang}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               {isDurasiLow && (

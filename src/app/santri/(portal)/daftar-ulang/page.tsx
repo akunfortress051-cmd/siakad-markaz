@@ -25,6 +25,10 @@ type StatusData = {
   masaAktif?: {
     sisaKoutaBulan?: number;
     berakhirPadaDufahNama?: string;
+    dufahSekarangSistem?: {
+      id: number;
+      nama: string;
+    };
   };
   logikaSistem?: {
     butuhDaftarUlang: boolean;
@@ -108,8 +112,18 @@ export default function SantriDaftarUlangPage() {
     }
   };
 
+  const adjustDufahName = (name?: string) => {
+    if (!name || name === "Belum Ditentukan") return name;
+    return name.replace(/\d+/, (match) => {
+      const num = parseInt(match, 10);
+      return num < 80 ? (num + 80).toString() : num.toString();
+    });
+  };
+
   const sisaBulan = statusData?.masaAktif?.sisaKoutaBulan;
-  const berakhirDufah = statusData?.masaAktif?.berakhirPadaDufahNama;
+  const berakhirDufah = adjustDufahName(statusData?.masaAktif?.berakhirPadaDufahNama);
+  const dufahSekarang = adjustDufahName(statusData?.masaAktif?.dufahSekarangSistem?.nama);
+  
   const isDurasiLow =
     sisaBulan !== undefined && sisaBulan !== null && sisaBulan <= 2;
   const requiresRenewal = statusData?.logikaSistem?.butuhDaftarUlang;
@@ -233,14 +247,27 @@ export default function SantriDaftarUlangPage() {
             </div>
 
             {berakhirDufah && (
-              <div className="flex items-center gap-2 text-xs">
-                <Calendar
-                  size={13}
-                  style={{ color: "var(--color-text-subtle)" }}
-                />
-                <span style={{ color: "var(--color-text-muted)" }}>
-                  Berakhir pada: <strong>{berakhirDufah}</strong>
-                </span>
+              <div className="flex flex-col gap-1.5 mt-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <Calendar
+                    size={13}
+                    style={{ color: "var(--color-text-subtle)" }}
+                  />
+                  <span style={{ color: "var(--color-text-muted)" }}>
+                    Berakhir pada: <strong>{berakhirDufah}</strong>
+                  </span>
+                </div>
+                {dufahSekarang && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Hourglass
+                      size={13}
+                      style={{ color: "var(--color-text-subtle)" }}
+                    />
+                    <span style={{ color: "var(--color-text-muted)" }}>
+                      Sedang berjalan: <strong>{dufahSekarang}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
