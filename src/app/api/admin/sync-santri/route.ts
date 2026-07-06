@@ -259,24 +259,60 @@ export async function POST() {
         }
       }
 
-      // Map untuk matching program berdasarkan string 'programAktif' dari PPDB
+      // Map untuk matching program berdasarkan nama string dari PPDB
       const allPrograms = await prisma.program.findMany({ select: { id: true, nama_indo: true } });
-      const programMap = new Map();
+      const programMap = new Map<string, string>();
       allPrograms.forEach(p => {
          programMap.set(p.nama_indo.toLowerCase().trim(), p.id);
       });
 
-      // Buat lookup dari list PPDB (validSantri) untuk mengambil programAktif nya
+      // ===== Fetch programAktif dari PPDB per-santri status endpoint =====
+      // API bulk PPDB hanya mengembalikan programId (UUID PPDB, bukan SIAKAD).
+      // Endpoint /api/integrasi/siakad/status?nis=xxx mengembalikan "programAktif" sebagai NAMA string.
+      const PPDB_BASE_URL = process.env.PPDB_BASE_URL || 'https://ppdb.markazarabiyah.com';
+      const PPDB_SIAKAD_KEY = process.env.PPDB_SIAKAD_API_KEY || '';
+      
       const santriProgramMap = new Map<string, string>();
-      for (const s of validSantri) {
-        if (s.programAktif && s.nis) {
-           const mappedId = programMap.get(s.programAktif.toLowerCase().trim());
-           if (mappedId) {
-             santriProgramMap.set(s.nis as string, mappedId);
-           }
-        }
+      
+      // Ambil santri yang programnya masih null (baik yang sudah ada riwayat maupun yang baru)
+      const santriNeedingProgram = activeSantriWithDufah.filter(s => {
+         const existingRec = existingRiwayat.find(r => r.santriId === s.id);
+         return !existingRec?.programId && !santriToAkbarnasClass.has(s.id);
+      });
+
+      // Fetch data per-santri secara paralel (batch 10)
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < santriNeedingProgram.length; i += BATCH_SIZE) {
+        const batch = santriNeedingProgram.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(async (s) => {
+            try {
+              const res = await fetch(`${PPDB_BASE_URL}/api/integrasi/siakad/status?nis=${s.id}`, {
+                method: 'GET',
+                headers: {
+                  'x-api-key': PPDB_SIAKAD_KEY,
+                  'Accept': 'application/json',
+                  'User-Agent': 'Mozilla/5.0',
+                },
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const progName = data?.data?.programAktif;
+                if (progName && typeof progName === 'string') {
+                  const mappedId = programMap.get(progName.toLowerCase().trim());
+                  if (mappedId) {
+                    santriProgramMap.set(s.id, mappedId);
+                  }
+                }
+              }
+            } catch {
+              // Skip jika gagal fetch satu santri
+            }
+          })
+        );
       }
 
+      // Setelah semua program di-resolve, buat riwayat baru untuk santri yang belum punya
       const missingRiwayat = activeSantriWithDufah.filter(
         (s) => !riwayatSet.has(`${s.id}_${s.dufahNama}`)
       );
@@ -285,14 +321,12 @@ export async function POST() {
         await prisma.riwayatSantri.createMany({
           data: missingRiwayat.map((s) => {
             const pastAkbarnas = santriToAkbarnasClass.get(s.id);
-            // Ambil program langsung dari mapping hasil sinkronisasi PPDB
             const activeProgramId = santriProgramMap.get(s.id) || null;
             
             if (pastAkbarnas) continuingAkbarnasCount++;
             return {
               santriId: s.id,
               dufahNama: s.dufahNama!,
-              // Prioritaskan program aktif dari PPDB (kecuali untuk Akbarnas auto-lanjut)
               programId: pastAkbarnas ? pastAkbarnas.programId : activeProgramId,
               kelasId: pastAkbarnas ? pastAkbarnas.kelasId : null,
               is_tasmi: false,
@@ -305,23 +339,18 @@ export async function POST() {
       }
 
       // Update RiwayatSantri yang sudah ada jika programnya masih kosong (null)
-      const existingToUpdate = existingRiwayat.filter(r => r.programId === null);
-      if (existingToUpdate.length > 0) {
-        // Karena Prisma tidak support bulk update dengan value berbeda-beda, kita loop atau updateMany per program
-        for (const [nis, mappedProgId] of santriProgramMap.entries()) {
-          const matchingToUpdate = existingToUpdate.filter(r => r.santriId === nis);
-          if (matchingToUpdate.length > 0) {
-            await prisma.riwayatSantri.updateMany({
-              where: {
-                santriId: nis,
-                dufahNama: { in: matchingToUpdate.map(m => m.dufahNama) },
-                programId: null
-              },
-              data: {
-                programId: mappedProgId
-              }
-            });
-          }
+      const existingWithNullProgram = existingRiwayat.filter(r => r.programId === null);
+      for (const [nis, mappedProgId] of santriProgramMap.entries()) {
+        const matching = existingWithNullProgram.filter(r => r.santriId === nis);
+        if (matching.length > 0) {
+          await prisma.riwayatSantri.updateMany({
+            where: {
+              santriId: nis,
+              dufahNama: { in: matching.map(m => m.dufahNama) },
+              programId: null
+            },
+            data: { programId: mappedProgId }
+          });
         }
       }
     }

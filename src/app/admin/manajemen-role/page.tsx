@@ -63,6 +63,12 @@ const AVAILABLE_PERMISSIONS = [
   { id: "jadwal_mengajar", label: "Jadwal Mengajar (Lihat)", desc: "Akses melihat jadwal mengajar", category: "Divisi Kelas", type: "lihat" },
   { id: "jadwal_mengajar_edit", label: "Jadwal Mengajar (Aksi)", desc: "Akses mengatur jadwal mengajar pengajar", category: "Divisi Kelas", type: "aksi" },
 
+  // Divisi Tauzi'
+  { id: "tauzi_sesi", label: "Sesi Tauzi' (Lihat/Aksi)", desc: "Akses mengelola periode gelombang tes", category: "Divisi Tauzi'", type: "aksi" },
+  { id: "tauzi_soal", label: "Bank Soal (Lihat/Aksi)", desc: "Akses mengelola soal ujian tauzi", category: "Divisi Tauzi'", type: "aksi" },
+  { id: "tauzi_nilai", label: "Input Nilai Syafawi (Aksi)", desc: "Akses melihat dan menginput hasil ujian muqobalah", category: "Divisi Tauzi'", type: "aksi" },
+  { id: "tauzi_hasil", label: "Hasil Ujian (Lihat)", desc: "Akses melihat papan rekap data hasil tauzi'", category: "Divisi Tauzi'", type: "lihat" },
+
   // Divisi Syahadah
   { id: "data_syahadah", label: "Data Syahadah (Lihat)", desc: "Akses melihat data syahadah & profil santri", category: "Divisi Syahadah", type: "lihat" },
   { id: "data_syahadah_edit", label: "Data Syahadah (Aksi)", desc: "Akses mengedit data syahadah & profil santri", category: "Divisi Syahadah", type: "aksi" },

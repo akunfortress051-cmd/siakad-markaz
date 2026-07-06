@@ -42,10 +42,8 @@ export function ManajemenKelasClient({
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [modalSearch, setModalSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Build flat kelas list from programList
+  // Build flat kelas list
   const allKelas = useMemo(() => {
     const list: Array<{ id: string; nama: string; programNama: string }> = [];
     programList.forEach((p) => {
@@ -56,14 +54,13 @@ export function ManajemenKelasClient({
     return list.sort((a, b) => a.nama.localeCompare(b.nama));
   }, [programList]);
 
-  // Group santri by kelasId
-  const { grouped, unassigned } = useMemo(() => {
-    const groups: Record<string, { kelasNama: string; santriList: DashboardSantri[] }> = {};
-    const noKelas: DashboardSantri[] = [];
+  // Group santri
+  const { grouped, unassignedByProgram } = useMemo(() => {
+    const groups: Record<string, { kelasNama: string; programNama: string; santriList: DashboardSantri[] }> = {};
+    const unassigned: Record<string, DashboardSantri[]> = {};
 
-    // Initialize all kelas groups (even empty)
     allKelas.forEach((k) => {
-      groups[k.id] = { kelasNama: k.nama, santriList: [] };
+      groups[k.id] = { kelasNama: k.nama, programNama: k.programNama, santriList: [] };
     });
 
     santriRows.forEach((s) => {
@@ -73,28 +70,61 @@ export function ManajemenKelasClient({
       if (s.kelasId && groups[s.kelasId]) {
         groups[s.kelasId].santriList.push(s);
       } else {
-        noKelas.push(s);
+        const progRaw = s.programNama || "";
+        const isBelumDiatur = !progRaw || progRaw === "-" || progRaw.toLowerCase() === "belum diatur";
+        const prog = isBelumDiatur ? "Belum Diatur" : progRaw;
+        
+        if (!unassigned[prog]) unassigned[prog] = [];
+        unassigned[prog].push(s);
       }
     });
 
-    return { grouped: groups, unassigned: noKelas };
+    return { grouped: groups, unassignedByProgram: unassigned };
   }, [santriRows, allKelas, search]);
 
-  // Santri available for "Add" modal = those without a kelas
+  // Collapsed state logic: initialize ALL program-groups and kelas-groups as collapsed
+  const defaultCollapsed = useMemo(() => {
+    const set = new Set<string>();
+    allKelas.forEach(k => set.add(k.id));
+    Object.keys(unassignedByProgram).forEach(prog => set.add(`unassigned_${prog}`));
+    return set;
+  }, [allKelas, unassignedByProgram]); // Dependency re-evaluates properly
+  
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  
+  // To avoid hydrating massive lists initially if not needed
+  const [isInitialized, setIsInitialized] = useState(false);
+  if (!isInitialized && allKelas.length > 0) {
+    setCollapsedGroups(defaultCollapsed);
+    setIsInitialized(true);
+  }
+
+  // Available for add modal
   const availableForAdd = useMemo(() => {
+    if (modal?.type !== "add") return [];
+    const targetProgramName = allKelas.find(k => k.id === modal.targetKelasId)?.programNama || "";
+    
     return santriRows
       .filter((s) => !s.kelasId || s.kelasNama === "-")
-      .filter((s) =>
-        !modalSearch || s.nama.toLowerCase().includes(modalSearch.toLowerCase())
-      )
+      .filter((s) => {
+        // Hanya munculkan santri yang programnya SAMA dengan target kelas, atau programnya belum diatur.
+        const progRaw = s.programNama || "";
+        const isBelumDiatur = !progRaw || progRaw === "-" || progRaw.toLowerCase() === "belum diatur";
+        const prog = isBelumDiatur ? "Belum Diatur" : progRaw;
+        
+        return prog === "Belum Diatur" || prog.toLowerCase() === targetProgramName.toLowerCase();
+      })
+      .filter((s) => !modalSearch || s.nama.toLowerCase().includes(modalSearch.toLowerCase()))
       .sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [santriRows, modalSearch]);
+  }, [santriRows, modalSearch, modal, allKelas]);
 
-  const toggleCollapse = (kelasId: string) => {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleCollapse = (id: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(kelasId)) next.delete(kelasId);
-      else next.add(kelasId);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -173,7 +203,7 @@ export function ManajemenKelasClient({
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-subtle)]" />
           <input
             type="text"
-            placeholder="Cari santri di semua kelas..."
+            placeholder="Cari santri di semua kelas & program..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-[var(--color-secondary)] pl-10 pr-4 py-2.5 text-sm font-semibold text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
@@ -181,35 +211,55 @@ export function ManajemenKelasClient({
         </div>
       </div>
 
-      {/* Section: Belum Dialokasi */}
-      {unassigned.length > 0 && (
-        <div className="rounded-[var(--radius-2xl)] border-2 border-dashed border-[var(--color-warning)] bg-[var(--color-warning-light)]/50 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-warning-light)] text-[var(--color-warning)]">
-                <Users className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[var(--color-warning)]">Belum Dialokasi</h3>
-                <p className="text-xs font-semibold text-[var(--color-warning)]">{unassigned.length} santri belum memiliki kelas</p>
-              </div>
-            </div>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {unassigned.map((s) => (
-              <div key={s.id} className="flex items-center justify-between bg-white rounded-xl border border-[var(--color-warning)] px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-[var(--color-text)] truncate">{s.nama}</p>
-                  <p className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">{s.lokasi}</p>
+      {/* Section: Belum Dialokasi (By Program) */}
+      <div className="space-y-4">
+        {Object.entries(unassignedByProgram).map(([progName, santriList]) => {
+          const groupId = `unassigned_${progName}`;
+          const isCollapsed = collapsedGroups.has(groupId);
+          const isBelumDiatur = progName === "Belum Diatur";
+          
+          return (
+            <div key={groupId} className={`rounded-[var(--radius-2xl)] border-2 border-dashed ${isBelumDiatur ? 'border-red-300 bg-red-50/50' : 'border-[var(--color-warning)] bg-[var(--color-warning-light)]/50'} overflow-hidden shadow-sm transition-all`}>
+              <button
+                onClick={() => toggleCollapse(groupId)}
+                className={`w-full flex items-center justify-between p-4 sm:p-5 text-left border-b ${isBelumDiatur ? 'border-red-200' : 'border-[var(--color-warning-light)]'}`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl transition-transform ${isBelumDiatur ? 'bg-red-100 text-red-500' : 'bg-[var(--color-warning-light)] text-[var(--color-warning)]'} ${isCollapsed ? "" : "rotate-90"}`}>
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className={`font-bold text-base ${isBelumDiatur ? 'text-red-700' : 'text-[var(--color-warning)]'}`}>
+                      {progName} (Belum Dialokasi Kelas)
+                    </h3>
+                    <p className={`text-[11px] font-semibold mt-0.5 ${isBelumDiatur ? 'text-red-500' : 'text-[var(--color-warning)]'}`}>
+                      {santriList.length} santri menunggu alokasi
+                    </p>
+                  </div>
                 </div>
-                <span className={`shrink-0 ml-2 text-[10px] font-bold px-2 py-0.5 rounded-md ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
-                  {s.gender}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              </button>
+
+              {!isCollapsed && (
+                <div className="p-4 sm:p-5">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {santriList.map((s) => (
+                      <div key={s.id} className={`flex items-center justify-between bg-white rounded-xl border ${isBelumDiatur ? 'border-red-200' : 'border-[var(--color-warning-light)]'} px-3 py-2.5`}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[var(--color-text)] truncate">{s.nama}</p>
+                          <p className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">{s.lokasi}</p>
+                        </div>
+                        <span className={`shrink-0 ml-2 text-[10px] font-bold px-2 py-0.5 rounded-md ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
+                          {s.gender}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/* Grid: Per Kelas */}
       <div className="space-y-4">

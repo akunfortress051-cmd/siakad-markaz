@@ -9,15 +9,25 @@ export async function GET() {
   }
 
   try {
-    // Cek apakah peserta sudah ujian
-    if (session.pesertaId) {
-      const peserta = await prisma.pesertaTauzi.findUnique({
-        where: { id: session.pesertaId },
-        select: { sudahUjian: true }
-      });
-      if (peserta?.sudahUjian) {
-        return NextResponse.json({ error: 'Anda sudah menyelesaikan ujian' }, { status: 403 });
+    // Cek peserta
+    if (!session.pesertaId) {
+      return NextResponse.json({ error: 'Peserta ID tidak ditemukan' }, { status: 401 });
+    }
+
+    const peserta = await prisma.pesertaTauzi.findUnique({
+      where: { id: session.pesertaId },
+      include: {
+        santri: { select: { nama: true, id: true } },
+        program: { select: { nama_indo: true } }
       }
+    });
+
+    if (!peserta) {
+      return NextResponse.json({ error: 'Data peserta tidak valid' }, { status: 401 });
+    }
+
+    if (peserta.sudahUjian) {
+      return NextResponse.json({ error: 'Anda sudah menyelesaikan ujian' }, { status: 403 });
     }
 
     const soalList = await prisma.soalTauzi.findMany({
@@ -34,7 +44,6 @@ export async function GET() {
             id: true,
             teks: true,
             urutan: true
-            // isCorrect jangan dilampirkan ke frontend!
           },
           orderBy: { urutan: 'asc' }
         }
@@ -42,7 +51,14 @@ export async function GET() {
       orderBy: { urutan: 'asc' }
     });
 
-    return NextResponse.json(soalList);
+    return NextResponse.json({
+      peserta: {
+        nama: peserta.santri.nama,
+        nis: peserta.santri.id,
+        program: peserta.program?.nama_indo || '-'
+      },
+      soalList
+    });
   } catch (error) {
     console.error('Error fetching soal tauzi santri:', error);
     return NextResponse.json({ error: 'Gagal mengambil data soal' }, { status: 500 });

@@ -7,9 +7,11 @@ import toast from "react-hot-toast";
 export default function UjianTauziPage() {
   const router = useRouter();
   const [soalList, setSoalList] = useState<any[]>([]);
+  const [peserta, setPeserta] = useState<{ nama: string; nis: string; program: string } | null>(null);
   const [answers, setAnswers] = useState<{ [soalId: string]: string }>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     fetch("/api/tauzi/soal")
@@ -21,8 +23,15 @@ export default function UjianTauziPage() {
         return res.json();
       })
       .then(data => {
-        if (data && !data.error) setSoalList(data);
-        else if (data?.error) toast.error(data.error);
+        if (data && data.soalList) {
+          setSoalList(data.soalList);
+          setPeserta(data.peserta);
+        } else if (data?.error) {
+          toast.error(data.error);
+        } else if (Array.isArray(data)) {
+          // Fallback if API hasn't been updated yet
+          setSoalList(data);
+        }
       })
       .catch(() => toast.error("Gagal load soal"))
       .finally(() => setLoading(false));
@@ -32,16 +41,13 @@ export default function UjianTauziPage() {
     setAnswers(prev => ({ ...prev, [soalId]: jawabanId }));
   };
 
+  const isAllAnswered = Object.keys(answers).length === soalList.length;
+
   const handleSubmit = async () => {
-    const unanswered = soalList.filter(s => !answers[s.id]);
-    if (unanswered.length > 0) {
-      if (!confirm(`Ada ${unanswered.length} soal yang belum dijawab. Yakin ingin mengumpulkan?`)) {
-        return;
-      }
-    } else {
-      if (!confirm("Apakah Anda yakin telah selesai dan ingin mengumpulkan jawaban?")) {
-        return;
-      }
+    if (!isAllAnswered) return;
+    
+    if (!confirm("Apakah Anda yakin telah selesai dan ingin mengumpulkan jawaban?")) {
+      return;
     }
 
     setSubmitting(true);
@@ -62,6 +68,18 @@ export default function UjianTauziPage() {
     }
   };
 
+  const handleNext = () => {
+    if (currentIndex < soalList.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  };
+
   if (loading) return <div className="text-center py-20 font-bold text-gray-500">Mempersiapkan Lembar Soal...</div>;
   
   if (soalList.length === 0) {
@@ -73,64 +91,107 @@ export default function UjianTauziPage() {
     );
   }
 
-  return (
-    <div className="pb-24">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold font-display" style={{ color: "var(--color-text)" }}>Lembar Soal Syafawi</h2>
-        <p className="text-xs text-gray-500 mt-1 font-semibold">Pilih jawaban yang menurut Anda paling benar.</p>
-      </div>
+  const currentSoal = soalList[currentIndex];
 
-      <div className="space-y-6">
-        {soalList.map((soal) => (
-          <div key={soal.id} className="neu-card p-5 md:p-7 rounded-2xl transition-all">
-            <div className="flex gap-4 items-start">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-gray-100 text-gray-500">
-                {soal.urutan}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-[15px] leading-relaxed mb-4 text-gray-800 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: soal.pertanyaan }} />
-                
-                <div className="space-y-2.5">
-                  {soal.jawabanList.map((j: any, i: number) => {
-                    const isSelected = answers[soal.id] === j.id;
-                    return (
-                      <label 
-                        key={j.id} 
-                        className={`p-3.5 rounded-xl border-2 flex gap-3 items-center cursor-pointer transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-                      >
-                        <input 
-                          type="radio" 
-                          name={`soal_${soal.id}`} 
-                          value={j.id} 
-                          checked={isSelected}
-                          onChange={() => handleSelectAnswer(soal.id, j.id)}
-                          className="w-5 h-5 hidden"
-                        />
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border text-[12px] font-bold transition-colors ${isSelected ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'border-gray-300 text-gray-400'}`}>
-                          {String.fromCharCode(65 + i)}
-                        </div>
-                        <span className={`flex-1 font-medium text-sm ${isSelected ? 'text-[var(--color-primary)]' : 'text-gray-700'}`} dangerouslySetInnerHTML={{ __html: j.teks }} />
-                      </label>
-                    );
-                  })}
-                </div>
+  return (
+    <div className="pb-24 max-w-3xl mx-auto">
+      {/* Profil Santri */}
+      {peserta && (
+        <div className="mb-6 neu-card p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-l-[var(--color-primary)]">
+          <div>
+            <h3 className="font-bold text-lg text-gray-800">{peserta.nama}</h3>
+            <p className="text-sm text-gray-500">NIS: {peserta.nis}</p>
+          </div>
+          <div className="bg-[var(--color-primary-50)] text-[var(--color-primary)] px-4 py-2 rounded-xl font-bold text-sm text-center">
+            Program {peserta.program}
+          </div>
+        </div>
+      )}
+
+      {/* Konten Soal (Pagination Wizard) */}
+      <div className="neu-card p-5 md:p-7 rounded-2xl transition-all min-h-[400px] flex flex-col justify-between relative overflow-hidden">
+        <div>
+          {/* Progress Bar atas */}
+          <div className="w-full bg-gray-100 h-2 rounded-full mb-6">
+            <div 
+              className="h-2 rounded-full bg-[var(--color-primary)] transition-all duration-300" 
+              style={{ width: `${((currentIndex + 1) / soalList.length) * 100}%` }}
+            />
+          </div>
+
+          <div className="flex gap-4 items-start">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-[var(--color-primary-50)] text-[var(--color-primary)]">
+              {currentIndex + 1}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-[16px] leading-relaxed mb-6 text-gray-800 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: currentSoal.pertanyaan }} />
+              
+              <div className="space-y-3">
+                {currentSoal.jawabanList.map((j: any, i: number) => {
+                  const isSelected = answers[currentSoal.id] === j.id;
+                  return (
+                    <label 
+                      key={j.id} 
+                      className={`p-4 rounded-xl border-2 flex gap-3 items-center cursor-pointer transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                    >
+                      <input 
+                        type="radio" 
+                        name={`soal_${currentSoal.id}`} 
+                        value={j.id} 
+                        checked={isSelected}
+                        onChange={() => {
+                          handleSelectAnswer(currentSoal.id, j.id);
+                          // Otomatis lanjut jika bukan soal terakhir
+                          if (currentIndex < soalList.length - 1) {
+                            setTimeout(handleNext, 300);
+                          }
+                        }}
+                        className="w-5 h-5 hidden"
+                      />
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center border text-[12px] font-bold transition-colors shrink-0 ${isSelected ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'border-gray-300 text-gray-400'}`}>
+                        {String.fromCharCode(65 + i)}
+                      </div>
+                      <span className={`flex-1 font-medium text-sm ${isSelected ? 'text-[var(--color-primary)]' : 'text-gray-700'}`} dangerouslySetInnerHTML={{ __html: j.teks }} />
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Tombol Lanjut & Kembali */}
+        <div className="flex justify-between items-center mt-10 pt-4 border-t border-gray-100">
+          <button 
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            className={`px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all ${currentIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100 bg-gray-50'}`}
+          >
+            ← Kembali
+          </button>
+          
+          <button 
+            onClick={handleNext}
+            disabled={currentIndex === soalList.length - 1}
+            className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all ${currentIndex === soalList.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'bg-[var(--color-primary-50)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white'}`}
+          >
+            Lanjut →
+          </button>
+        </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t p-4 z-40 flex justify-center" style={{ borderColor: "var(--color-surface-hover)" }}>
+      {/* Floating Bottom Bar (Submit) */}
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t p-4 z-40 flex justify-center shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
         <div className="w-full max-w-3xl flex justify-between items-center">
           <div className="text-xs font-bold text-gray-500">
             Terjawab: <span className="text-[var(--color-primary)]">{Object.keys(answers).length}</span> / {soalList.length}
           </div>
           <button 
             onClick={handleSubmit}
-            disabled={submitting}
-            className="neu-button-primary px-8 py-3 rounded-xl font-bold flex items-center gap-2"
+            disabled={submitting || !isAllAnswered}
+            className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${(!isAllAnswered || submitting) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'neu-button-primary'}`}
           >
-            {submitting ? "Menyimpan..." : "Kumpulkan"}
+            {submitting ? "Kumpulkan..." : (isAllAnswered ? "Kumpulkan" : "Belum Selesai")}
           </button>
         </div>
       </div>
