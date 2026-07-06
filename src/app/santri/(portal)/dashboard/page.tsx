@@ -14,6 +14,9 @@ import {
   Award,
   CheckCircle,
   AlertTriangle,
+  RefreshCw,
+  Hourglass,
+  Calendar,
 } from "lucide-react";
 
 type SantriData = {
@@ -43,8 +46,19 @@ type SantriData = {
   }>;
 };
 
+type StatusData = {
+  masaAktif?: {
+    sisaKoutaBulan?: number;
+    berakhirPadaDufahNama?: string;
+  };
+  [key: string]: any;
+};
+
 export default function SantriDashboardPage() {
   const [data, setData] = useState<SantriData | null>(null);
+  const [statusData, setStatusData] = useState<StatusData | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +69,18 @@ export default function SantriDashboardPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    fetch("/api/santri/me/status")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setStatusData(d.data);
+        else setStatusError(true);
+        setStatusLoading(false);
+      })
+      .catch(() => {
+        setStatusError(true);
+        setStatusLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -86,7 +112,7 @@ export default function SantriDashboardPage() {
   }
 
   const { santri, riwayat } = data;
-  const currentRiwayat = riwayat[0]; // most recent dufah
+  const currentRiwayat = riwayat[0];
 
   const statusColor =
     currentRiwayat?.statusKelulusan === "LULUS"
@@ -126,6 +152,10 @@ export default function SantriDashboardPage() {
             100
         )
       : 0;
+
+  const sisaBulan = statusData?.masaAktif?.sisaKoutaBulan;
+  const berakhirDufah = statusData?.masaAktif?.berakhirPadaDufahNama;
+  const isDurasiLow = sisaBulan !== undefined && sisaBulan !== null && sisaBulan <= 2;
 
   return (
     <div className="space-y-6">
@@ -173,6 +203,95 @@ export default function SantriDashboardPage() {
               Anda tercatat tidak aktif. Silakan lakukan daftar ulang untuk
               mengaktifkan kembali status santri.
             </p>
+            <Link
+              href="/santri/daftar-ulang"
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-[11px] font-bold"
+              style={{
+                background: "var(--color-warning)",
+                color: "#fff",
+              }}
+            >
+              <RefreshCw size={12} />
+              Daftar Ulang Sekarang
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Status Durasi Card */}
+      {!statusLoading && !statusError && statusData?.masaAktif && (
+        <div
+          className="neu-card p-5"
+          style={{
+            background: isDurasiLow
+              ? "linear-gradient(135deg, var(--color-danger-light), var(--bg-card))"
+              : "linear-gradient(135deg, var(--color-primary-50), var(--bg-card))",
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <div
+              className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{
+                background: isDurasiLow ? "var(--color-danger-light)" : "var(--color-primary-50)",
+                boxShadow: "var(--shadow-inset-sm)",
+              }}
+            >
+              <Hourglass
+                size={22}
+                style={{
+                  color: isDurasiLow ? "var(--color-danger)" : "var(--color-primary)",
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3
+                className="text-xs font-bold uppercase tracking-wider"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Masa Aktif Asrama
+              </h3>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span
+                  className="text-3xl font-bold"
+                  style={{
+                    color: isDurasiLow ? "var(--color-danger)" : "var(--color-primary)",
+                  }}
+                >
+                  {sisaBulan ?? "-"}
+                </span>
+                <span
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  bulan tersisa
+                </span>
+              </div>
+              {berakhirDufah && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Calendar size={12} style={{ color: "var(--color-text-subtle)" }} />
+                  <span
+                    className="text-[11px]"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Berakhir pada {berakhirDufah}
+                  </span>
+                </div>
+              )}
+              {isDurasiLow && (
+                <Link
+                  href="/santri/daftar-ulang"
+                  className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-xl text-[11px] font-bold transition-all"
+                  style={{
+                    background: "var(--color-danger)",
+                    color: "#fff",
+                    boxShadow: "2px 2px 6px rgba(255,33,87,0.25)",
+                  }}
+                >
+                  <RefreshCw size={13} />
+                  Segera Daftar Ulang
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -391,6 +510,12 @@ export default function SantriDashboardPage() {
               icon: Shield,
               label: "Riwayat Perizinan",
               desc: "Status izin dan tasrih",
+            },
+            {
+              href: "/santri/daftar-ulang",
+              icon: RefreshCw,
+              label: "Daftar Ulang",
+              desc: "Perpanjang masa aktif asrama",
             },
           ].map((item) => {
             const Icon = item.icon;

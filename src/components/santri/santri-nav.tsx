@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   Clock,
   Shield,
+  RefreshCw,
   LogOut,
   GraduationCap,
   ChevronLeft,
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/santri/absensi", label: "Absensi", icon: CalendarCheck },
   { href: "/santri/riwayat", label: "Riwayat", icon: Clock },
   { href: "/santri/perizinan", label: "Perizinan", icon: Shield },
+  { href: "/santri/daftar-ulang", label: "Daftar Ulang", icon: RefreshCw },
 ];
 
 export function SantriSidebar({
