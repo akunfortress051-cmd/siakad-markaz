@@ -11,9 +11,11 @@ export const metadata: Metadata = {
 
 export default async function PengaturanKegiatanPage() {
   await requirePermission("pengaturan_kegiatan");
-  const kegiatanList = await prisma.kategoriKegiatan.findMany({
-    orderBy: { nama: "asc" }
-  });
+  
+  const [kegiatanList, lokasiList] = await Promise.all([
+    prisma.kategoriKegiatan.findMany({ orderBy: { nama: "asc" } }),
+    prisma.lokasiKegiatan.findMany({ orderBy: { nama: "asc" } })
+  ]);
 
-  return <PengaturanKegiatanClient initialList={kegiatanList} />;
+  return <PengaturanKegiatanClient initialList={kegiatanList} initialLokasi={lokasiList} />;
 }

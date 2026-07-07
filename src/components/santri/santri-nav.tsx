@@ -15,12 +15,14 @@ import {
   ChevronRight,
   Menu,
   X,
+  MapPin,
 } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
   { href: "/santri/dashboard", label: "Beranda", icon: LayoutDashboard },
   { href: "/santri/nilai", label: "Nilai", icon: FileText },
+  { href: "/santri/absen-kegiatan", label: "Absen Mandiri", icon: MapPin },
   { href: "/santri/absensi", label: "Absensi", icon: CalendarCheck },
   { href: "/santri/riwayat", label: "Riwayat", icon: Clock },
   { href: "/santri/perizinan", label: "Perizinan", icon: Shield },

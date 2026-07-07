@@ -244,6 +244,7 @@ model KategoriKegiatan {
   nama         String          @unique
   aktif        Boolean         @default(true)
   absenRecords AbsenKegiatan[]
+  sesiAbsenList SesiAbsenKegiatan[]
 }
 
 model AbsenKegiatan {
@@ -257,6 +258,41 @@ model AbsenKegiatan {
   kategori   KategoriKegiatan @relation(fields: [kategoriId], references: [id], onDelete: Cascade)
 
   @@unique([riwayatId, kategoriId, tanggal])
+}
+
+model LokasiKegiatan {
+  id        String   @id @default(cuid())
+  nama      String   @unique
+  latitude  Float
+  longitude Float
+  radius    Int      @default(50) // dalam meter
+  aktif     Boolean  @default(true)
+
+  sesiLokasiList SesiAbsenLokasi[]
+}
+
+model SesiAbsenKegiatan {
+  id            String    @id @default(cuid())
+  kode          String    @unique
+  kategoriId    String
+  durasiMenit   Int
+  dibukaPada    DateTime  @default(now())
+  ditutupPada   DateTime
+  isClosed      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  kategori      KategoriKegiatan @relation(fields: [kategoriId], references: [id], onDelete: Cascade)
+  lokasiList    SesiAbsenLokasi[]
+}
+
+model SesiAbsenLokasi {
+  sesiId    String
+  lokasiId  String
+
+  sesi      SesiAbsenKegiatan @relation(fields: [sesiId], references: [id], onDelete: Cascade)
+  lokasi    LokasiKegiatan    @relation(fields: [lokasiId], references: [id], onDelete: Cascade)
+
+  @@id([sesiId, lokasiId])
 }
 
 enum TipePerulangan {
