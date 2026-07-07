@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Pencil, Check, X, ToggleLeft, ToggleRight, MapPin } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, ToggleLeft, ToggleRight, MapPin, Crosshair } from "lucide-react";
 
 type Kegiatan = {
   id: string;
@@ -33,6 +33,31 @@ export function PengaturanKegiatanClient({ initialList, initialLokasi }: { initi
   const [isAddingLokasi, setIsAddingLokasi] = useState(false);
   const [editLokasiId, setEditLokasiId] = useState<string | null>(null);
   const [editLokasiData, setEditLokasiData] = useState({ nama: "", latitude: "", longitude: "", radius: "50" });
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleAutoLocation = (target: "new" | "edit") => {
+    if (!navigator.geolocation) {
+      toast.error("Browser Anda tidak mendukung deteksi lokasi (GPS).");
+      return;
+    }
+    setIsLocating(true);
+    const tid = toast.loading("Mencari sinyal GPS terbaik...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsLocating(false);
+        const lat = pos.coords.latitude.toString();
+        const lng = pos.coords.longitude.toString();
+        if (target === "new") setNewLokasi(prev => ({ ...prev, latitude: lat, longitude: lng }));
+        else setEditLokasiData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+        toast.success("Berhasil menemukan lokasi saat ini!", { id: tid });
+      },
+      (err) => {
+        setIsLocating(false);
+        toast.error("Gagal mendapatkan lokasi. Pastikan izin GPS menyala.", { id: tid });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
 
   // ===================== KEGIATAN ACTIONS =====================
   const handleAdd = async () => {
@@ -325,17 +350,18 @@ export function PengaturanKegiatanClient({ initialList, initialLokasi }: { initi
                     className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-emerald-500"
                   />
                </div>
-               <div>
+               <div className="col-span-2 flex gap-2">
                   <input
-                    type="text" placeholder="Latitude (-7.xxx)" value={newLokasi.latitude} onChange={(e) => setNewLokasi({...newLokasi, latitude: e.target.value})}
+                    type="text" placeholder="Latitude" value={newLokasi.latitude} onChange={(e) => setNewLokasi({...newLokasi, latitude: e.target.value})}
                     className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500"
                   />
-               </div>
-               <div>
                   <input
-                    type="text" placeholder="Longitude (112.xxx)" value={newLokasi.longitude} onChange={(e) => setNewLokasi({...newLokasi, longitude: e.target.value})}
+                    type="text" placeholder="Longitude" value={newLokasi.longitude} onChange={(e) => setNewLokasi({...newLokasi, longitude: e.target.value})}
                     className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500"
                   />
+                  <button onClick={() => handleAutoLocation("new")} disabled={isLocating} title="Dapatkan Koordinat Anda Saat Ini dari GPS" className="px-3 py-2 bg-gray-100 text-gray-700 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl transition disabled:opacity-50 border border-gray-300">
+                    <Crosshair size={18} className={isLocating ? "animate-spin" : ""} />
+                  </button>
                </div>
                <div className="col-span-2 flex gap-3">
                   <div className="w-1/3 relative">
@@ -369,6 +395,9 @@ export function PengaturanKegiatanClient({ initialList, initialLokasi }: { initi
                      <div className="flex gap-2">
                         <input type="text" value={editLokasiData.latitude} onChange={(e) => setEditLokasiData({...editLokasiData, latitude: e.target.value})} className="w-1/2 rounded-lg border border-emerald-500 bg-white px-2 py-1 text-xs" />
                         <input type="text" value={editLokasiData.longitude} onChange={(e) => setEditLokasiData({...editLokasiData, longitude: e.target.value})} className="w-1/2 rounded-lg border border-emerald-500 bg-white px-2 py-1 text-xs" />
+                        <button onClick={() => handleAutoLocation("edit")} title="Dapatkan Koordinat Anda Saat Ini dari GPS" className="px-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-emerald-100 hover:text-emerald-600 border border-gray-300 shrink-0">
+                          <Crosshair size={14} className={isLocating ? "animate-spin" : ""} />
+                        </button>
                      </div>
                      <div className="flex gap-2">
                         <input type="number" value={editLokasiData.radius} onChange={(e) => setEditLokasiData({...editLokasiData, radius: e.target.value})} className="w-16 rounded-lg border border-emerald-500 bg-white px-2 py-1 text-xs" />
