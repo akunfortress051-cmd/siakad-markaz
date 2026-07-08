@@ -224,24 +224,34 @@ export function SantriSidebar({
 export function SantriBottomNav() {
   const pathname = usePathname();
 
+  // Hanya tampilkan 5 icon utama di bottom nav agar tidak berjejalan (sisanya di sidemenu / menu cepat)
+  const bottomItems = navItems.filter(item => 
+    ["Beranda", "Absensi", "Absen Mandiri", "Nilai", "Perizinan"].includes(item.label)
+  );
+
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t"
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t bg-white"
       style={{
-        background: "var(--bg-sidebar)",
         borderColor: "var(--color-surface-dark)",
         boxShadow: "0 -2px 10px rgba(0,0,0,0.06)",
+        paddingBottom: "env(safe-area-inset-bottom)", // Fix untuk iPhone tab bar
       }}
     >
       <div className="flex items-center justify-around py-1.5 px-1 max-w-lg mx-auto">
-        {navItems.map((item) => {
+        {bottomItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
+          
+          // Singkat teks khusus bottom nav jika perlu
+          let shortLabel = item.label;
+          if (item.label === "Absen Mandiri") shortLabel = "Absen GPS";
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all"
+              className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-xl transition-all"
               style={{
                 color: isActive
                   ? "var(--color-primary)"
@@ -251,10 +261,10 @@ export function SantriBottomNav() {
             >
               <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               <span
-                className="text-[9px] font-bold"
+                className="text-[9px] font-bold text-center leading-tight mt-0.5 truncate w-[52px]"
                 style={{ letterSpacing: "0.03em" }}
               >
-                {item.label}
+                {shortLabel}
               </span>
             </Link>
           );

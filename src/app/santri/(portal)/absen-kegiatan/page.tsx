@@ -39,6 +39,7 @@ export default function SantriAbsenMandiriPage() {
   const [hasSesiAktif, setHasSesiAktif] = useState<boolean | null>(null);
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLng, setUserLng] = useState<number | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<"loading" | "active" | "denied" | "unavailable">("loading");
   const watchRef = useRef<number | null>(null);
 
@@ -66,13 +67,14 @@ export default function SantriAbsenMandiriPage() {
       (pos) => {
         setUserLat(pos.coords.latitude);
         setUserLng(pos.coords.longitude);
+        setGpsAccuracy(pos.coords.accuracy);
         setGpsStatus("active");
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) setGpsStatus("denied");
         else setGpsStatus("unavailable");
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
 
     return () => {
@@ -89,6 +91,7 @@ export default function SantriAbsenMandiriPage() {
 
   const nearest = lokasiWithDistance.length > 0 ? lokasiWithDistance[0] : null;
   const anyInRange = lokasiWithDistance.some(l => l.isInRange);
+  const isGpsWarmingUp = gpsStatus === "active" && (!gpsAccuracy || gpsAccuracy > 50);
 
   const handleAbsen = () => {
     if (!kode || kode.length !== 6) {
@@ -97,6 +100,10 @@ export default function SantriAbsenMandiriPage() {
     }
     if (userLat === null || userLng === null) {
       toast.error("GPS belum aktif. Izinkan akses lokasi terlebih dahulu.");
+      return;
+    }
+    if (isGpsWarmingUp) {
+      toast.error("Akurasi GPS masih rendah. Tunggu beberapa detik agar warna akurasi hijau.");
       return;
     }
 
@@ -158,21 +165,28 @@ export default function SantriAbsenMandiriPage() {
       {/* ====== LIVE LOCATION STATUS CARD ====== */}
       <div className="rounded-2xl border overflow-hidden" style={{ borderColor: anyInRange ? "#10b981" : "var(--color-surface-dark)", background: anyInRange ? "#ecfdf5" : "#fff" }}>
         {/* GPS Status Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: "var(--color-surface-dark)", background: anyInRange ? "#d1fae5" : "var(--color-surface-light)" }}>
+        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: "var(--color-surface-dark)", background: (!isGpsWarmingUp && anyInRange) ? "#d1fae5" : "var(--color-surface-light)" }}>
           <div className="flex items-center gap-2">
             {gpsStatus === "active" ? (
-              <Wifi size={14} className="text-emerald-600" />
+              <Wifi size={14} className={isGpsWarmingUp ? "text-amber-500 animate-pulse" : "text-emerald-600"} />
             ) : (
               <WifiOff size={14} className="text-red-400" />
             )}
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: gpsStatus === "active" ? "#059669" : "#ef4444" }}>
-              {gpsStatus === "active" ? "GPS Aktif" : gpsStatus === "denied" ? "GPS Ditolak" : gpsStatus === "loading" ? "Mencari Sinyal..." : "GPS Tidak Tersedia"}
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: gpsStatus === "active" ? (isGpsWarmingUp ? "#f59e0b" : "#059669") : "#ef4444" }}>
+              {gpsStatus === "active" ? (isGpsWarmingUp ? "Mengunci Fix GPS..." : "GPS Terkunci") : gpsStatus === "denied" ? "GPS Ditolak" : gpsStatus === "loading" ? "Mencari Sinyal..." : "GPS Tidak Tersedia"}
             </span>
           </div>
           {gpsStatus === "active" && (
-            <span className="text-[9px] text-gray-400 font-mono">
-              {userLat?.toFixed(6)}, {userLng?.toFixed(6)}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] text-gray-400 font-mono">
+                {userLat?.toFixed(6)}, {userLng?.toFixed(6)}
+              </span>
+              {gpsAccuracy !== null && (
+                <span className={`text-[9px] font-bold ${isGpsWarmingUp ? "text-amber-500 animate-pulse" : "text-emerald-600"}`}>
+                  Akurasi: ±{Math.round(gpsAccuracy)}m {isGpsWarmingUp ? "(Lemah)" : "(Optimal)"}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -235,10 +249,17 @@ export default function SantriAbsenMandiriPage() {
         )}
 
         {/* Bottom banner */}
-        {anyInRange && (
+        {!isGpsWarmingUp && anyInRange && (
           <div className="bg-emerald-500 text-white py-2.5 px-4 text-center">
             <p className="text-xs font-black uppercase tracking-widest animate-pulse">
               ✓ Anda berada di area kegiatan — Silakan absen!
+            </p>
+          </div>
+        )}
+        {isGpsWarmingUp && !anyInRange && (
+          <div className="bg-amber-100/50 text-amber-700 py-2.5 px-4 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-widest animate-pulse">
+              Menunggu sinyal GPS stabil...
             </p>
           </div>
         )}
@@ -262,20 +283,23 @@ export default function SantriAbsenMandiriPage() {
 
         <button
           onClick={handleAbsen}
-          disabled={isLoading || kode.length !== 6 || gpsStatus !== "active"}
-          className="w-full font-bold neu-button-primary py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+          disabled={isLoading || kode.length !== 6 || gpsStatus !== "active" || isGpsWarmingUp}
+          className={`w-full font-bold py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-all ${isGpsWarmingUp ? 'bg-amber-100 text-amber-500 border-2 border-amber-200' : 'neu-button-primary'}`}
         >
           {isLoading ? <Crosshair size={20} className="animate-spin" /> : <MapPin size={20} />}
-          {isLoading ? "Memproses Absen..." : "Absen Sekarang"}
+          {isLoading ? "Memproses Absen..." : isGpsWarmingUp ? "Menunggu GPS Stabil..." : "Absen Sekarang"}
         </button>
       </div>
 
       {/* Warning */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-amber-800 text-xs font-bold shadow-sm">
-        <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-        <p>
-          Izinkan akses lokasi saat popup muncul dan pastikan GPS perangkat Anda telah menyala. Jarak akan terupdate otomatis.
-        </p>
+      <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3 text-amber-900 text-xs font-bold shadow-sm">
+        <AlertTriangle size={24} className="shrink-0 mt-0.5 text-amber-600" />
+        <div className="space-y-1">
+          <p className="font-black uppercase tracking-wider text-[11px] mb-1">LOKASI MACET ATAU LONCAT?</p>
+          <p>1. Wajib izinkan akses lokasi di browser (situs ini).</p>
+          <p>2. Pastikan Mode Lokasi HP diatur ke <b>Akurasi Tinggi</b>.</p>
+          <p className="text-red-600">3. <b>NYALAKAN WIFI HP</b> (Cukup nyalakan fiturnya saja, tidak perlu konek). Ini yang paling ampuh!</p>
+        </div>
       </div>
     </div>
   );
