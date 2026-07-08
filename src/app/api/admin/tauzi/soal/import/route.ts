@@ -109,35 +109,62 @@ export async function POST(request: Request) {
       jawabanList: JawabanImport[];
     }
 
+    let noColIdx = 0;
+    let pertColIdx = 1;
+    let kunciColIdx = 6;
+    
+    // Scan headers (row 0)
+    for (let c = 0; c <= range.e.c; c++) {
+      const headerCell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+      const headerVal = String(headerCell?.v || "").toLowerCase().trim();
+      if (headerVal === "no" || headerVal === "nomor") {
+        noColIdx = c;
+      } else if (headerVal.includes("pertanyaan") || headerVal.includes("soal")) {
+        pertColIdx = c;
+      } else if (headerVal.includes("kunci")) {
+        kunciColIdx = c;
+      }
+    }
+
+    if (kunciColIdx <= pertColIdx) {
+       return NextResponse.json({ error: "Format salah. Kolom 'Kunci Jawaban' harus berada di sebelah kanan kolom opsi." }, { status: 400 });
+    }
+
     const soalListToCreate: SoalImport[] = [];
+    const LETTERS = ["A","B","C","D","E","F","G","H","I","J"];
 
     for (let r = 1; r <= range.e.r; r++) { // skip header r=0
-      const pertCell = ws[XLSX.utils.encode_cell({ r, c: 1 })]; // Kolom B
+      const pertCell = ws[XLSX.utils.encode_cell({ r, c: pertColIdx })]; 
       if (!pertCell || !pertCell.v) continue; // Skip baris kosong
 
-      const urutanCell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+      const urutanCell = ws[XLSX.utils.encode_cell({ r, c: noColIdx })];
       const urutanVal = urutanCell?.v ? parseInt(String(urutanCell.v)) : r;
 
       const pertanyaan = getRichTextFromCell(pertCell);
+      const kunciCell = ws[XLSX.utils.encode_cell({ r, c: kunciColIdx })];
+      const kunci = String(kunciCell?.w || kunciCell?.v || "").trim().toUpperCase(); 
+
+      const jawabanArr: JawabanImport[] = [];
       
-      const opsiACell = ws[XLSX.utils.encode_cell({ r, c: 2 })]; // C
-      const opsiBCell = ws[XLSX.utils.encode_cell({ r, c: 3 })]; // D
-      const opsiCCell = ws[XLSX.utils.encode_cell({ r, c: 4 })]; // E
-      const opsiDCell = ws[XLSX.utils.encode_cell({ r, c: 5 })]; // F
-      const kunciCell = ws[XLSX.utils.encode_cell({ r, c: 6 })]; // G
+      // Loop tiap kolom opsi di antara Pertanyaan dan Kunci
+      for (let c = pertColIdx + 1; c < kunciColIdx; c++) {
+         const opsiCell = ws[XLSX.utils.encode_cell({ r, c })];
+         const opsiLabel = LETTERS[c - (pertColIdx + 1)]; // 0->A, 1->B ...
+         const teks = getRichTextFromCell(opsiCell);
+         
+         if (teks !== "") {
+           jawabanArr.push({
+             teks,
+             isCorrect: kunci === opsiLabel,
+             urutan: c - pertColIdx // 1, 2, 3...
+           });
+         }
+      }
 
-      const kunci = String(kunciCell?.w || kunciCell?.v || "").trim().toUpperCase();
-
-      const jawabanArr: JawabanImport[] = [
-        { teks: getRichTextFromCell(opsiACell), isCorrect: kunci === 'A', urutan: 1 },
-        { teks: getRichTextFromCell(opsiBCell), isCorrect: kunci === 'B', urutan: 2 },
-        { teks: getRichTextFromCell(opsiCCell), isCorrect: kunci === 'C', urutan: 3 },
-        { teks: getRichTextFromCell(opsiDCell), isCorrect: kunci === 'D', urutan: 4 },
-      ].filter(o => o.teks !== "");
-
-      if (jawabanArr.length < 2) continue; // Invalid soal
+      // Minimal harus ada 2 opsi agar disebut soal pilihan ganda
+      if (jawabanArr.length < 2) continue; 
       
-      // Jika ternyata ga satupun yang benar, set opsi pertama sebagai benar.
+      // Jika ternyata ga satupun yang benar (kunci tidak match A/B/C...), set opsi pertama sebagai benar.
       if (!jawabanArr.some(j => j.isCorrect)) {
         jawabanArr[0].isCorrect = true;
       }
@@ -195,6 +222,9 @@ export async function POST(request: Request) {
           }
         });
       }
+    }, {
+      maxWait: 10000,
+      timeout: 60000
     });
 
     return NextResponse.json({ success: true, count: soalListToCreate.length });
