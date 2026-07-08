@@ -10,8 +10,38 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Tampilkan form absen mandiri jika santri aktif, dsb.
-  return NextResponse.json({ success: true });
+  // Return active (open, not expired) sessions with their locations
+  const now = new Date();
+  const sesiAktif = await prisma.sesiAbsenKegiatan.findMany({
+    where: {
+      isClosed: false,
+      ditutupPada: { gt: now }
+    },
+    include: {
+      kategori: true,
+      lokasiList: {
+        include: {
+          lokasi: { select: { id: true, nama: true, latitude: true, longitude: true, radius: true } }
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // Flatten all unique locations from active sessions
+  const lokasiMap = new Map<string, { id: string; nama: string; latitude: number; longitude: number; radius: number }>();
+  for (const sesi of sesiAktif) {
+    for (const sl of sesi.lokasiList) {
+      lokasiMap.set(sl.lokasi.id, sl.lokasi);
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    hasSesiAktif: sesiAktif.length > 0,
+    lokasiAktif: Array.from(lokasiMap.values()),
+    sesiCount: sesiAktif.length
+  });
 }
 
 export async function POST(request: Request) {
