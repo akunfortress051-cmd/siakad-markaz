@@ -71,7 +71,9 @@ export async function POST() {
     let newRiwayatCount = 0;
 
     // ===== 1. Sync Dufah table terlebih dahulu =====
+    // Collect all dufah names from PPDB data
     const validDufahNames = new Set<string>();
+    const santriDufahMap = new Map<string, string>(); // santriNIS -> dufahNama from PPDB
     for (const santri of validSantri) {
       const assignedRiwayat = santri.riwayat?.find(
         (r: any) => r.status === "ASSIGNED"
@@ -79,6 +81,7 @@ export async function POST() {
       const dufahNama = assignedRiwayat?.dufah?.nama;
       if (dufahNama && dufahNama !== "-") {
         validDufahNames.add(dufahNama);
+        if (santri.nis) santriDufahMap.set(santri.nis, dufahNama);
       }
     }
 
@@ -90,12 +93,79 @@ export async function POST() {
       (name) => !existingDufahNames.has(name)
     );
 
-    if (missingDufahs.length > 0) {
+    // ===== RENAME DETECTION =====
+    // Before creating new dufahs, check if this is actually a RENAME scenario.
+    // If most santri pointing to a "new" dufah name already have riwayat under a different dufah name,
+    // it's a rename — not a genuinely new dufah.
+    let renamedDufahCount = 0;
+    for (const newDufahName of missingDufahs) {
+      // Get all santri IDs that PPDB says belong to this "new" dufah
+      const santriInNewDufah = Array.from(santriDufahMap.entries())
+        .filter(([_, dufName]) => dufName === newDufahName)
+        .map(([nis]) => nis);
+
+      if (santriInNewDufah.length === 0) continue;
+
+      // Check if these santri already have riwayat under a DIFFERENT dufah name
+      const existingRiwayatForThese = await prisma.riwayatSantri.findMany({
+        where: { santriId: { in: santriInNewDufah } },
+        select: { santriId: true, dufahNama: true },
+        orderBy: { id: "desc" }
+      });
+
+      // Count how many of these santri have riwayat under other dufah names
+      const otherDufahCounts = new Map<string, number>();
+      const seenSantri = new Set<string>();
+      for (const r of existingRiwayatForThese) {
+        if (seenSantri.has(r.santriId)) continue;
+        seenSantri.add(r.santriId);
+        if (r.dufahNama !== newDufahName && r.dufahNama !== "-") {
+          otherDufahCounts.set(r.dufahNama, (otherDufahCounts.get(r.dufahNama) || 0) + 1);
+        }
+      }
+
+      // If >50% of santri already have riwayat under a single other dufah,
+      // this is a rename scenario.
+      for (const [oldDufahName, count] of otherDufahCounts.entries()) {
+        if (count >= santriInNewDufah.length * 0.5) {
+          console.log(`[SYNC] Detected dufah RENAME: "${oldDufahName}" → "${newDufahName}" (${count}/${santriInNewDufah.length} santri match)`);
+          
+          // Rename in riwayatSantri
+          await prisma.riwayatSantri.updateMany({
+            where: { dufahNama: oldDufahName },
+            data: { dufahNama: newDufahName }
+          });
+          // Rename in santriInternal
+          await prisma.santriInternal.updateMany({
+            where: { dufahNama: oldDufahName },
+            data: { dufahNama: newDufahName }
+          });
+          // Rename the dufah record itself
+          await prisma.dufah.updateMany({
+            where: { nama: oldDufahName },
+            data: { nama: newDufahName }
+          });
+          
+          renamedDufahCount++;
+          break; // Only one rename per new dufah name
+        }
+      }
+    }
+
+    // Re-check which dufahs are actually still missing after renames
+    const existingDufahsAfterRename = await prisma.dufah.findMany({ select: { nama: true } });
+    const existingDufahNamesAfterRename = new Set(existingDufahsAfterRename.map(d => d.nama));
+    const trulyMissingDufahs = Array.from(validDufahNames).filter(
+      (name) => !existingDufahNamesAfterRename.has(name)
+    );
+
+    if (trulyMissingDufahs.length > 0) {
       await prisma.dufah.createMany({
-        data: missingDufahs.map((nama) => ({ nama })),
+        data: trulyMissingDufahs.map((nama) => ({ nama })),
         skipDuplicates: true,
       });
     }
+
 
     // ===== 2. Upsert semua santri ke SantriInternal =====
     for (const santri of validSantri) {
@@ -356,10 +426,10 @@ export async function POST() {
     }
 
     // ===== 4. Auto-toggle Akbarnas classes jika ada Dufah baru =====
-    // DETERMINISTIC TOGGLE: Jika ada Dufah baru, hindari "blind toggle"
+    // DETERMINISTIC TOGGLE: Jika ada Dufah baru (bukan rename), hindari "blind toggle"
     // Gunakan fakta: jika ada santri yg dilanjutkan (carry over), maka WAJIB Bulan 2.
     // Jika tidak ada yg dilanjutkan (Bulan 1 baru), maka WAJIB Bulan 1.
-    if (missingDufahs.length > 0) {
+    if (trulyMissingDufahs.length > 0) {
       try {
         const akbarnasPrograms = await prisma.program.findMany({
           where: {
