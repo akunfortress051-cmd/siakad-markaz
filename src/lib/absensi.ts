@@ -51,6 +51,7 @@ export type SantriAbsenTarget = {
   kelasNama: string | null;
   programId: string | null;
   programNama: string | null;
+  isCheckedOut: boolean;
 };
 
 /**
@@ -122,6 +123,7 @@ export async function getActiveRiwayatListForAbsen(
       kelasNama: r.kelas?.nama ?? null,
       programId: r.programId,
       programNama: r.program?.nama_indo ?? null,
+      isCheckedOut: s?.isCheckedOut ?? false,
     };
   });
 

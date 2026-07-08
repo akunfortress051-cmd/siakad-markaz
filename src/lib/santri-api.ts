@@ -18,6 +18,7 @@ export type MasterSantri = {
   noWaSantri: string;
   kabupaten: string;
   bulanKe: number;
+  isCheckedOut: boolean;
 };
 
 /**
@@ -53,6 +54,7 @@ export async function getMasterSantriList(): Promise<MasterSantri[]> {
       noWaSantri: s.noWaSantri ?? "-",
       kabupaten: s.kabupaten ?? "-",
       bulanKe: s.bulanKe ?? 0,
+      isCheckedOut: s.isCheckedOut ?? false,
     }));
   } catch (error) {
     console.error("Gagal membaca data santri dari database lokal:", error);
@@ -88,6 +90,7 @@ export async function getMasterSantriById(
       noWaSantri: s.noWaSantri ?? "-",
       kabupaten: s.kabupaten ?? "-",
       bulanKe: s.bulanKe ?? 0,
+      isCheckedOut: s.isCheckedOut ?? false,
     };
   } catch (error) {
     console.error("Gagal membaca data santri by ID dari database:", error);

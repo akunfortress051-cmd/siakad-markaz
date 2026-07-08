@@ -16,6 +16,7 @@ type SantriAbsenTarget = {
   kelasNama: string | null;
   programId: string | null;
   programNama: string | null;
+  isCheckedOut: boolean;
 };
 
 type AbsenStatus = "HADIR" | "IZIN" | "SAKIT" | "ALPHA";
@@ -123,6 +124,7 @@ export function AbsensiKegiatanClient({
   const setAllStatus = (status: AbsenStatus) => {
     const newMap = { ...absenMap };
     santriList.forEach((s) => {
+      if (s.isCheckedOut) return;
       const current = newMap[s.riwayatId];
       // Jika diset ke HADIR tapi santri sudah punya tasrih (keterangan ada [TRS-]), biarkan status bawaannya
       if (status === "HADIR" && current?.keterangan?.includes("[TRS-")) {
@@ -309,13 +311,20 @@ export function AbsensiKegiatanClient({
                       <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)]">
                         <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
                         <td className="px-6 py-4">
-                          <p className="font-bold text-[var(--color-text)]">
-                            {santri.nama}
-                            {unconfirmedIds.has(santri.riwayatId) && (
-                              <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
-                                ⚠️ Belum Kembali
-                              </span>
+                          <div className="flex items-center gap-2">
+                            <p className={`font-bold ${santri.isCheckedOut ? "text-red-900" : "text-[var(--color-text)]"}`}>
+                              {santri.nama}
+                              {unconfirmedIds.has(santri.riwayatId) && (
+                                <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                                  ⚠️ Belum Kembali
+                                </span>
+                              )}
+                            </p>
+                            {santri.isCheckedOut && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-black tracking-wide bg-red-100 text-red-600 rounded">CHECK OUT</span>
                             )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
                             {currentKet.includes("[TRS-") && currentStatus === "IZIN" && (() => {
                               const match = currentKet.match(/\[(TRS-[\d-]+)\]/);
                               const nomorTasrih = match ? match[1] : null;
@@ -333,8 +342,6 @@ export function AbsensiKegiatanClient({
                                 </span>
                               );
                             })()}
-                          </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-muted)]">
                               {santri.sakan ?? "-"}
                             </span>
@@ -361,8 +368,9 @@ export function AbsensiKegiatanClient({
                             {(["HADIR", "IZIN", "SAKIT", "ALPHA"] as AbsenStatus[]).map((st) => (
                               <button
                                 key={st}
+                                disabled={santri.isCheckedOut}
                                 onClick={() => handleStatusChange(santri.riwayatId, st)}
-                                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${currentStatus === st
+                                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${currentStatus === st
                                     ? st === "HADIR"
                                       ? "bg-[var(--color-primary)] text-white"
                                       : st === "IZIN"
@@ -383,6 +391,7 @@ export function AbsensiKegiatanClient({
                             type="text"
                             placeholder="Catatan..."
                             value={currentKet}
+                            disabled={santri.isCheckedOut}
                             onChange={(e) => handleKeteranganChange(santri.riwayatId, e.target.value)}
                             className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white px-3 py-1.5 text-sm outline-none transition focus:border-amber-500"
                           />

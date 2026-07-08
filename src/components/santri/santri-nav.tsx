@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   MapPin,
+  DoorOpen,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/santri/riwayat", label: "Riwayat", icon: Clock },
   { href: "/santri/perizinan", label: "Perizinan", icon: Shield },
   { href: "/santri/daftar-ulang", label: "Daftar Ulang", icon: RefreshCw },
+  { href: "/santri/checkout", label: "Check Out", icon: DoorOpen },
 ];
 
 export function SantriSidebar({

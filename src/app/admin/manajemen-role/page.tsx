@@ -54,6 +54,8 @@ const AVAILABLE_PERMISSIONS = [
   { id: "perizinan_keluar_pare_edit", label: "Izin Keluar Pare (Aksi)", desc: "Akses membuat/mengedit izin keluar Pare", category: "Divisi Perizinan", type: "aksi" },
   { id: "perizinan_data", label: "Data Santri Izin (Lihat)", desc: "Akses melihat data santri izin", category: "Divisi Perizinan", type: "lihat" },
   { id: "perizinan_data_edit", label: "Data Santri Izin (Aksi)", desc: "Akses konfirmasi kehadiran & approve request", category: "Divisi Perizinan", type: "aksi" },
+  { id: "checkout_pengajuan", label: "Check Out Santri (Aksi)", desc: "Akses melihat dan merespon pengajuan check out santri", category: "Divisi Perizinan", type: "aksi" },
+  { id: "checkout_config", label: "Konfigurasi Check Out (Aksi)", desc: "Akses menentukan siapa yang berwenang men-approve check out", category: "Divisi Perizinan", type: "aksi" },
 
   // Divisi Kelas
   { id: "alokasi_kelas", label: "Alokasi Kelas (Lihat)", desc: "Akses melihat alokasi kelas santri", category: "Divisi Kelas", type: "lihat" },

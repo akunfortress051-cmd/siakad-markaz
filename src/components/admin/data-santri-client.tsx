@@ -68,6 +68,7 @@ export function DataSantriClient({
   const [filterSakan, setFilterSakan] = useState("ALL");
   const [filterProgram, setFilterProgram] = useState("ALL");
   const [filterKelas, setFilterKelas] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
 
   // Sort
   const [sortField, setSortField] = useState<SortField>("nama");
@@ -95,8 +96,10 @@ export function DataSantriClient({
     if (filterSakan !== "ALL") data = data.filter((r) => r.sakan === filterSakan);
     if (filterProgram !== "ALL") data = data.filter((r) => r.programNama === filterProgram);
     if (filterKelas !== "ALL") data = data.filter((r) => r.kelasNama === filterKelas);
+    if (filterStatus === "CHECK_OUT") data = data.filter((r) => r.isCheckedOut);
+    if (filterStatus === "AKTIF") data = data.filter((r) => !r.isCheckedOut);
     return data;
-  }, [rows, search, filterGender, filterKategori, filterSakan, filterProgram, filterKelas]);
+  }, [rows, search, filterGender, filterKategori, filterSakan, filterProgram, filterKelas, filterStatus]);
 
   // Sort
   const sorted = useMemo(() => {
@@ -126,12 +129,14 @@ export function DataSantriClient({
   const totalBaru = filtered.filter((r) => r.kategori === "BARU").length;
   const totalLama = filtered.filter((r) => r.kategori === "LAMA").length;
   const totalKsu = filtered.filter((r) => r.kategori === "KSU").length;
+  const totalCheckout = filtered.filter((r) => r.isCheckedOut).length;
 
-  const hasFilters = search || filterGender !== "ALL" || filterKategori !== "ALL" || filterSakan !== "ALL" || filterProgram !== "ALL" || filterKelas !== "ALL";
+  const hasFilters = search || filterGender !== "ALL" || filterKategori !== "ALL" || filterSakan !== "ALL" || filterProgram !== "ALL" || filterKelas !== "ALL" || filterStatus !== "ALL";
 
   function resetFilters() {
     setSearch(""); setFilterGender("ALL"); setFilterKategori("ALL");
     setFilterSakan("ALL"); setFilterProgram("ALL"); setFilterKelas("ALL");
+    setFilterStatus("ALL");
     setPage(1);
   }
 
@@ -267,6 +272,11 @@ export function DataSantriClient({
               : uniqueKelas
             ).map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} className="rounded-xl neu-input">
+            <option value="ALL">Semua Status</option>
+            <option value="AKTIF">Aktif</option>
+            <option value="CHECK_OUT">Telah Check Out</option>
+          </select>
           {hasFilters && (
             <button onClick={resetFilters} className="flex items-center justify-center gap-1.5 text-sm font-bold text-[var(--color-danger)] bg-[var(--color-danger-light)] hover:bg-[var(--color-danger-light)] px-3 py-2.5 rounded-xl border border-[var(--color-danger)] transition">
               <X size={14} /> Reset Filter
@@ -320,10 +330,15 @@ export function DataSantriClient({
               ) : paginated.map((r, i) => {
                 const waNum = normalizeWaNumber(r.noWaSantri);
                 return (
-                  <tr key={r.id} className="hover:bg-[var(--color-primary-50)]/30 transition-colors">
+                  <tr key={r.id} className={`transition-colors ${r.isCheckedOut ? "bg-red-50/50 hover:bg-red-50" : "hover:bg-[var(--color-primary-50)]/30"}`}>
                     <td className="px-4 py-3 text-[var(--color-text-subtle)] font-semibold">{(safePage - 1) * perPage + i + 1}</td>
                     <td className="px-4 py-3">
-                      <p className="font-bold text-[var(--color-text)]">{r.nama}</p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-bold ${r.isCheckedOut ? "text-red-900" : "text-[var(--color-text)]"}`}>{r.nama}</p>
+                        {r.isCheckedOut && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-black tracking-wide bg-red-100 text-red-600 rounded">CHECK OUT</span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-[var(--color-text-subtle)] font-mono mt-0.5">{r.id}</p>
                     </td>
                     <td className="px-4 py-3">

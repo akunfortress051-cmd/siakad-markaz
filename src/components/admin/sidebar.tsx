@@ -80,6 +80,8 @@ const navigationGroups = [
   {
     title: "Manajemen Aplikasi",
     items: [
+      { href: "/admin/checkout", label: "Check Out Santri", icon: DoorOpen, permissionId: "checkout_pengajuan" },
+      { href: "/admin/checkout/config", label: "Konfigurasi Approver", icon: UserCog, permissionId: "checkout_config" },
       { href: "/admin/manajemen-user", label: "Manajemen User", icon: UserCog, permissionId: "manajemen_user" },
       { href: "/admin/manajemen-role", label: "Hak Akses (Role)", icon: ShieldCheck, permissionId: "manajemen_role" },
       { href: "/admin/manajemen-konten/agenda", label: "Agenda Rutinan", icon: CalendarDays, permissionId: "agenda_rutinan" },

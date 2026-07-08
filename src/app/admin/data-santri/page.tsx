@@ -24,6 +24,7 @@ export type SantriDufahRow = {
   bulanKe: number;
   kategori: string;
   noWaSantri: string;
+  isCheckedOut?: boolean;
 };
 
 export default async function DataSantriPage() {
@@ -78,6 +79,7 @@ export default async function DataSantriPage() {
       bulanKe: ms.bulanKe,
       kategori: ms.kategori,
       noWaSantri: ms.noWaSantri,
+      isCheckedOut: ms.isCheckedOut,
     };
   });
 
