@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-hot-toast";
-import { MapPin, CheckCircle, Crosshair, AlertTriangle, Navigation, Wifi, WifiOff } from "lucide-react";
+import { MapPin, CheckCircle, Crosshair, AlertTriangle, Navigation, Wifi, WifiOff, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type LokasiAktif = {
@@ -57,11 +57,18 @@ export default function SantriAbsenMandiriPage() {
   }, []);
 
   // Start GPS watch
-  useEffect(() => {
+  const startGpsWatch = useCallback(() => {
     if (!navigator.geolocation) {
       setGpsStatus("unavailable");
       return;
     }
+
+    if (watchRef.current !== null) {
+      navigator.geolocation.clearWatch(watchRef.current);
+    }
+    
+    setGpsStatus("loading");
+    setGpsAccuracy(null);
 
     watchRef.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -76,11 +83,14 @@ export default function SantriAbsenMandiriPage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
+  }, []);
 
+  useEffect(() => {
+    startGpsWatch();
     return () => {
       if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
     };
-  }, []);
+  }, [startGpsWatch]);
 
   // Calculate distances
   const lokasiWithDistance: LokasiWithDistance[] = lokasiAktif.map(lok => {
@@ -178,8 +188,11 @@ export default function SantriAbsenMandiriPage() {
           </div>
           {gpsStatus === "active" && (
             <div className="flex flex-col items-end">
-              <span className="text-[9px] text-gray-400 font-mono">
+              <span className="text-[9px] text-gray-400 font-mono flex items-center justify-end gap-2 w-full">
                 {userLat?.toFixed(6)}, {userLng?.toFixed(6)}
+                <button onClick={startGpsWatch} className="text-blue-500 bg-blue-50 p-1 rounded hover:bg-blue-100 transition-colors" title="Refresh GPS">
+                  <RefreshCcw size={10} />
+                </button>
               </span>
               {gpsAccuracy !== null && (
                 <span className={`text-[9px] font-bold ${isGpsWarmingUp ? "text-amber-500 animate-pulse" : "text-emerald-600"}`}>
