@@ -28,7 +28,8 @@ type ProgramItem = {
 
 type ModalMode =
   | { type: "add"; targetKelasId: string; targetKelasNama: string }
-  | { type: "move"; santriId: string; santriNama: string; fromKelasNama: string };
+  | { type: "move"; santriId: string; santriNama: string; fromKelasNama: string }
+  | { type: "setProgram"; santriId: string; santriNama: string; currentProgramNama: string };
 
 export function ManajemenKelasClient({
   santriRows,
@@ -156,6 +157,10 @@ export function ManajemenKelasClient({
     setModal({ type: "move", santriId, santriNama, fromKelasNama });
   };
 
+  const openSetProgramModal = (santriId: string, santriNama: string, currentProgramNama: string) => {
+    setModal({ type: "setProgram", santriId, santriNama, currentProgramNama });
+  };
+
   const closeModal = () => {
     setModal(null);
     setModalSearch("");
@@ -193,6 +198,25 @@ export function ManajemenKelasClient({
   const handleMoveSubmit = (kelasId: string) => {
     if (modal?.type !== "move") return;
     handleAssign([modal.santriId], kelasId);
+  };
+
+  const handleSetProgramSubmit = async (programId: string) => {
+    if (modal?.type !== "setProgram") return;
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/admin/manajemen-kelas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ santriIds: [modal.santriId], programId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      closeModal();
+      router.refresh();
+    } catch {
+      alert("Gagal memindahkan program.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -248,9 +272,23 @@ export function ManajemenKelasClient({
                           <p className="text-sm font-bold text-[var(--color-text)] truncate">{s.nama}</p>
                           <p className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">{s.lokasi}</p>
                         </div>
-                        <span className={`shrink-0 ml-2 text-[10px] font-bold px-2 py-0.5 rounded-md ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
-                          {s.gender}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
+                            {s.gender}
+                          </span>
+                          <button
+                            onClick={() => openSetProgramModal(s.id, s.nama, progName)}
+                            disabled={isSaving}
+                            className={`flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-[11px] font-bold transition disabled:opacity-50 ${
+                              isBelumDiatur 
+                                ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300' 
+                                : 'border-[var(--color-surface-dark)] text-[var(--color-text-muted)] hover:border-[var(--color-warning)] hover:text-[var(--color-warning-dark)]'
+                            }`}
+                          >
+                            <BookOpen className="h-3 w-3" />
+                            Pindah Program
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -495,6 +533,59 @@ export function ManajemenKelasClient({
             </div>
 
             {/* Modal Footer */}
+            <div className="border-t border-[var(--color-surface-dark)] px-6 py-4 bg-[var(--color-secondary)] flex justify-end shrink-0">
+              <button
+                onClick={closeModal}
+                className="px-5 py-2 rounded-full text-sm font-bold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-dark)] transition"
+                disabled={isSaving}
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL: PINDAH PROGRAM ===== */}
+      {modal?.type === "setProgram" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-text)]/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl neu-card flex flex-col max-h-[85vh]">
+            <div className="border-b border-[var(--color-surface-dark)] px-6 py-4 flex justify-between items-center bg-[var(--color-surface-light)] shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-[var(--color-text)]">Pindah Program</h3>
+                <p className="text-xs font-medium text-[var(--color-text-muted)] mt-0.5">
+                  <span className="font-bold text-[var(--color-text)]">{modal.santriNama}</span>
+                  <span className="mx-1.5">→</span>
+                  <span className="text-[var(--color-warning-dark)] font-bold">dari {modal.currentProgramNama}</span>
+                </p>
+              </div>
+              <button onClick={closeModal} disabled={isSaving} className="text-[var(--color-text-subtle)] hover:text-[var(--color-text-muted)] transition">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {programList.map((program) => {
+                const isCurrentProgram = program.nama_indo === modal.currentProgramNama;
+                return (
+                  <button
+                    key={program.id}
+                    onClick={() => handleSetProgramSubmit(program.id)}
+                    disabled={isSaving || isCurrentProgram}
+                    className={`flex flex-col items-center justify-center rounded-xl border p-4 text-center transition active:scale-95 ${
+                      isCurrentProgram
+                        ? "border-[var(--color-warning-light)] bg-[var(--color-warning-light)]/30 text-[var(--color-warning)] cursor-not-allowed"
+                        : "border-[var(--color-surface-dark)] text-[var(--color-text)] hover:border-[var(--color-warning)] hover:bg-[var(--color-warning-light)]/20 hover:text-[var(--color-warning-dark)] disabled:opacity-50"
+                    }`}
+                  >
+                    <BookOpen className={`h-5 w-5 mb-2 ${isCurrentProgram ? "text-[var(--color-warning)]" : "text-[var(--color-text-subtle)]"}`} />
+                    <span className="text-sm font-bold">{program.nama_indo}</span>
+                    {isCurrentProgram && <span className="mt-1 text-[10px] font-bold">(program saat ini)</span>}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="border-t border-[var(--color-surface-dark)] px-6 py-4 bg-[var(--color-secondary)] flex justify-end shrink-0">
               <button
                 onClick={closeModal}

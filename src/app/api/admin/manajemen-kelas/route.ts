@@ -17,23 +17,34 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as {
       santriIds?: string[];
       kelasId?: string;
+      programId?: string;
     };
 
     if (!payload.santriIds || payload.santriIds.length === 0) {
       return NextResponse.json({ error: "Pilih minimal satu santri." }, { status: 400 });
     }
 
-    if (!payload.kelasId) {
-      return NextResponse.json({ error: "Kamar / Rombel tujuan wajib dipilih." }, { status: 400 });
+    if (!payload.kelasId && !payload.programId) {
+      return NextResponse.json({ error: "Kamar / Rombel atau Program tujuan wajib dipilih." }, { status: 400 });
     }
 
     // Verify kelasId exists
-    const kelas = await prisma.kelas.findUnique({
-      where: { id: payload.kelasId },
-    });
+    let kelas = null;
+    if (payload.kelasId) {
+      kelas = await prisma.kelas.findUnique({
+        where: { id: payload.kelasId },
+      });
+      if (!kelas) {
+        return NextResponse.json({ error: "Ruang Kelas (Nama Kelas) tidak valid." }, { status: 404 });
+      }
+    }
 
-    if (!kelas) {
-      return NextResponse.json({ error: "Ruang Kelas (Nama Kelas) tidak valid." }, { status: 404 });
+    let finalProgramId = payload.programId || null;
+    let finalKelasId = payload.kelasId || null;
+
+    if (kelas) {
+      finalProgramId = kelas.programId;
+      finalKelasId = kelas.id;
     }
 
     // Fetch master data to get current dufahNama
@@ -87,20 +98,25 @@ export async function POST(request: Request) {
         );
         
         // Upsert RiwayatSantri for the active dufah
+        const updateData: any = {};
+        if (finalProgramId) updateData.programId = finalProgramId;
+        if (finalKelasId) updateData.kelasId = finalKelasId;
+        // Jika sedang mengubah program secara manual tapi tidak menset kelas, hapus kelas (reset kelas ke unassigned)
+        if (payload.programId && !payload.kelasId) {
+          updateData.kelasId = null;
+        }
+
         operations.push(
           prisma.riwayatSantri.upsert({
             where: {
               santriId_dufahNama: { santriId: id, dufahNama: targetDufah }
             },
-            update: {
-              programId: kelas.programId,
-              kelasId: kelas.id
-            },
+            update: updateData,
             create: {
               santriId: id,
               dufahNama: targetDufah,
-              programId: kelas.programId,
-              kelasId: kelas.id
+              programId: finalProgramId,
+              kelasId: finalKelasId
             }
           })
         );
