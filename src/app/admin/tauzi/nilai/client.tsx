@@ -188,7 +188,7 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
               <tr>
                 <th className="px-4 py-4 font-bold rounded-tl-2xl w-12 text-center">No</th>
                 <th className="px-4 py-4 font-bold">Santri</th>
-                <th className="px-4 py-4 font-bold text-center w-28">N. Syafawi</th>
+                <th className="px-4 py-4 font-bold text-center w-28">N. Tahriri</th>
                 <th className="px-4 py-4 font-bold text-center w-32">N. Muqobalah</th>
                 <th className="px-4 py-4 font-bold w-48">Rekomendasi</th>
                 <th className="px-4 py-4 font-bold w-40">Penyimak</th>
@@ -218,7 +218,7 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
                       </td>
                       <td className="px-4 py-4 text-center">
                         {p.sudahUjian ? (
-                          <span className="font-bold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200">{p.nilaiSyafawi}</span>
+                          <span className="font-bold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200">{p.nilaiTahriri}</span>
                         ) : (
                           <span className="text-[11px] text-gray-400 font-semibold bg-gray-100 px-2 py-1 rounded-md border border-gray-200">Belum Ujian</span>
                         )}

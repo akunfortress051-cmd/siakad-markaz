@@ -69,7 +69,7 @@ export async function GET() {
         nis: peserta.santri.id,
         program: peserta.program?.nama_indo || '-'
       },
-      nilaiSyafawi: peserta.nilaiSyafawi,
+      nilaiTahriri: peserta.nilaiTahriri,
       breakdown
     });
   } catch (error) {

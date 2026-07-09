@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const nilaiSyafawi = Math.round((correctCount / allSoal.length) * 100);
+    const nilaiTahriri = Math.round((correctCount / allSoal.length) * 100);
 
     // Gunakan transaction untuk menyimpan response dan mengupdate peserta
     await prisma.$transaction(async (tx) => {
@@ -77,13 +77,13 @@ export async function POST(request: Request) {
       await tx.pesertaTauzi.update({
         where: { id: session.pesertaId },
         data: {
-          nilaiSyafawi,
+          nilaiTahriri,
           sudahUjian: true
         }
       });
     });
 
-    return NextResponse.json({ success: true, nilaiSyafawi });
+    return NextResponse.json({ success: true, nilaiTahriri });
   } catch (error) {
     console.error('Error submitting tauzi exam:', error);
     return NextResponse.json({ error: 'Gagal memproses jawaban' }, { status: 500 });

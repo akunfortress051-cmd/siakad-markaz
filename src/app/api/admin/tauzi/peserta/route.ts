@@ -84,7 +84,7 @@ export async function GET(request: Request) {
           program: r.program,
           currentProgram: r.program,
           sudahUjian: false,
-          nilaiSyafawi: null,
+          nilaiTahriri: null,
           nilaiMuqobalah: null,
           programRekomendasiId: null,
           programRekomendasi: null,

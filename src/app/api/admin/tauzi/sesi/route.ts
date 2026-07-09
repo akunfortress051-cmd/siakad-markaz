@@ -5,8 +5,15 @@ import { checkPermission } from "@/lib/permission";
 
 export async function GET() {
   const session = await getSession();
-  const hasPermission = await checkPermission("tauzi_sesi");
-  if (!session || (!hasPermission && session.role !== 'ADMIN')) {
+  const [hasSesi, hasNilai, hasHasil, hasSoal] = await Promise.all([
+    checkPermission("tauzi_sesi"),
+    checkPermission("tauzi_nilai"),
+    checkPermission("tauzi_hasil"),
+    checkPermission("tauzi_soal")
+  ]);
+  const canView = hasSesi || hasNilai || hasHasil || hasSoal;
+
+  if (!session || (!canView && session.role !== 'ADMIN')) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

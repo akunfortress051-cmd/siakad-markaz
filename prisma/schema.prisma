@@ -580,7 +580,7 @@ model PesertaTauzi {
   sesiTauziId          String
   santriId             String
   programId            String
-  nilaiSyafawi         Float?
+  nilaiTahriri         Float?
   nilaiMuqobalah       Float?
   programRekomendasiId String?
   penyimakNama         String?

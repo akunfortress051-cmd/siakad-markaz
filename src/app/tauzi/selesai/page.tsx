@@ -62,7 +62,7 @@ export default function UjianSelesaiPage() {
         </div>
         <h2 className="text-3xl font-bold font-display mb-2 text-gray-800">Alhamdulillah, Selesai!</h2>
         <p className="text-gray-500 mb-6 font-medium max-w-md">
-          Ujian Anda telah berhasil dikumpulkan. Berikut adalah rekapitulasi nilai Syafawi (Objektif) Anda.
+          Ujian Anda telah berhasil dikumpulkan. Berikut adalah rekapitulasi nilai Tahriri (Objektif) Anda.
         </p>
 
         <div className="flex flex-col md:flex-row items-center gap-6 w-full max-w-xl mx-auto mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-100">
@@ -76,8 +76,8 @@ export default function UjianSelesaiPage() {
           <div className="h-20 w-px bg-gray-200 hidden md:block" />
           <div className="flex-shrink-0 text-center">
             <div className="text-sm text-gray-500 font-bold mb-1">NILAI AKHIR</div>
-            <div className={`text-5xl font-black font-display ${data.nilaiSyafawi >= 70 ? 'text-[var(--color-primary)]' : 'text-orange-500'}`}>
-              {data.nilaiSyafawi}
+            <div className={`text-5xl font-black font-display ${data.nilaiTahriri >= 70 ? 'text-[var(--color-primary)]' : 'text-orange-500'}`}>
+              {data.nilaiTahriri}
             </div>
           </div>
         </div>

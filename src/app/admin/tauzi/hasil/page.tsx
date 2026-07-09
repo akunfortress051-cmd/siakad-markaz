@@ -105,7 +105,7 @@ export default function HasilTauziPage() {
               <tr>
                 <th className="px-6 py-4 font-bold rounded-tl-2xl">Santri</th>
                 <th className="px-6 py-4 font-bold">Prog. Pilihan</th>
-                <th className="px-6 py-4 font-bold text-center">N. Syafawi</th>
+                <th className="px-6 py-4 font-bold text-center">N. Tahriri</th>
                 <th className="px-6 py-4 font-bold text-center">N. Muqobalah</th>
                 <th className="px-6 py-4 font-bold bg-green-50/50">Prog. Rekomendasi</th>
                 <th className="px-6 py-4 font-bold rounded-tr-2xl">Penyimak</th>
@@ -126,8 +126,8 @@ export default function HasilTauziPage() {
                       </td>
                       <td className="px-6 py-4 text-gray-600 font-medium">{p.program?.nama_indo || '-'}</td>
                       <td className="px-6 py-4 text-center">
-                        {p.nilaiSyafawi !== null ? (
-                          <span className="font-bold">{p.nilaiSyafawi}</span>
+                        {p.nilaiTahriri !== null ? (
+                          <span className="font-bold">{p.nilaiTahriri}</span>
                         ) : (
                           <span className="text-[11px] text-gray-400">-</span>
                         )}

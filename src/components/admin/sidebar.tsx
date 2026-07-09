@@ -57,7 +57,7 @@ const navigationGroups = [
     items: [
       { href: "/admin/tauzi", label: "Sesi Tauzi'", icon: CalendarCheck, permissionId: "tauzi_sesi" },
       { href: "/admin/tauzi/soal", label: "Bank Soal", icon: Database, permissionId: "tauzi_soal" },
-      { href: "/admin/tauzi/nilai", label: "Input Nilai Syafawi", icon: ClipboardEdit, permissionId: "tauzi_nilai" },
+      { href: "/admin/tauzi/nilai", label: "Input Nilai Tahriri", icon: ClipboardEdit, permissionId: "tauzi_nilai" },
       { href: "/admin/tauzi/hasil", label: "Hasil Tauzi'", icon: ListChecks, permissionId: "tauzi_hasil" },
     ]
   },
