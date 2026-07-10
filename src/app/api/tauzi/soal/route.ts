@@ -60,9 +60,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Data peserta tidak valid' }, { status: 401 });
     }
 
-    if (peserta.sudahUjian) {
-      return NextResponse.json({ error: 'Anda sudah menyelesaikan ujian' }, { status: 403 });
-    }
+    // (peserta.sudahUjian check removed to allow retakes)
 
     const soalRawList = await prisma.soalTauzi.findMany({
       where: {
