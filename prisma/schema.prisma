@@ -601,6 +601,7 @@ model ResponseTauzi {
   pesertaId String
   soalId    String
   jawabanId String?
+  ragu      Boolean @default(false)
 
   peserta PesertaTauzi @relation(fields: [pesertaId], references: [id], onDelete: Cascade)
   soal    SoalTauzi    @relation(fields: [soalId], references: [id], onDelete: Cascade)

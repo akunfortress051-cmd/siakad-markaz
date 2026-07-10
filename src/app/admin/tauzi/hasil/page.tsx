@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function HasilTauziPage() {
   const [sesiList, setSesiList] = useState<any[]>([]);
@@ -63,6 +64,37 @@ export default function HasilTauziPage() {
     }
   };
 
+  const handleExport = () => {
+    if (pesertaList.length === 0) {
+      toast.error("Tidak ada data untuk di-export");
+      return;
+    }
+
+    const exportedData = pesertaList.map((p, index) => ({
+      "No": index + 1,
+      "NIS": p.santri.id,
+      "Nama Santri": p.santri.nama,
+      "Program Pilihan": p.program?.nama_indo || "-",
+      "Nilai Tahriri": p.nilaiTahriri ?? "-",
+      "Nilai Muqobalah": p.nilaiMuqobalah ?? "-",
+      "Program Rekomendasi": p.programRekomendasi?.nama_indo || "Belum ditentukan",
+      "Penyimak / Ustadz": p.penyimakNama || "-"
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportedData);
+    
+    // Auto-size columns
+    const cols = Object.keys(exportedData[0] || {}).map(key => ({ wch: Math.max(key.length, 15) }));
+    worksheet["!cols"] = cols;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Tauzi");
+    
+    const activeSesiName = sesiList.find(s => s.id === selectedSesi)?.nama || "Sesi";
+    XLSX.writeFile(workbook, `Laporan_Hasil_Tauzi_${activeSesiName.replace(/\s+/g, '_')}.xlsx`);
+    toast.success("Berhasil mengekspor data");
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -73,12 +105,10 @@ export default function HasilTauziPage() {
           <p className="text-sm mt-1" style={{ color: "var(--color-text-subtle)" }}>Lihat rekapitulasi nilai dan rekomendasi program santri.</p>
         </div>
         <button 
-          onClick={() => {
-            alert("Fitur export akan membuka CSV.");
-          }}
-          className="neu-button font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2"
+          onClick={handleExport}
+          className="neu-button-primary font-bold text-sm px-5 py-2.5 rounded-xl flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
         >
-          <Download size={16} /> Export Data
+          <FileSpreadsheet size={18} /> Export Excel
         </button>
       </div>
 

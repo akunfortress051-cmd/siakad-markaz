@@ -34,13 +34,16 @@ export async function POST(request: Request) {
       pesertaId: string;
       soalId: string;
       jawabanId: string | null;
+      ragu?: boolean;
     }
     
     let correctCount = 0;
     const responseArray: ResponsePayload[] = [];
 
     for (const soal of allSoal) {
-      const userAnswerId = jawaban[soal.id];
+      const ansData = jawaban[soal.id];
+      const userAnswerId = (ansData && typeof ansData === 'object') ? ansData.jawabanId : ansData;
+      const ragu = (ansData && typeof ansData === 'object') ? !!ansData.ragu : false;
       const correctJawaban = soal.jawabanList.find(j => j.isCorrect);
 
       if (userAnswerId && correctJawaban && userAnswerId === correctJawaban.id) {
@@ -50,7 +53,8 @@ export async function POST(request: Request) {
       responseArray.push({
         pesertaId: session.pesertaId,
         soalId: soal.id,
-        jawabanId: userAnswerId || null
+        jawabanId: userAnswerId || null, // Allow adding ragu here later if we want it passed
+        ragu
       });
     }
 
@@ -68,9 +72,15 @@ export async function POST(request: Request) {
             }
           },
           update: {
-            jawabanId: res.jawabanId
+            jawabanId: res.jawabanId,
+            ragu: (res as any).ragu
           },
-          create: res
+          create: {
+            pesertaId: res.pesertaId,
+            soalId: res.soalId,
+            jawabanId: res.jawabanId,
+            ragu: (res as any).ragu
+          }
         });
       }
 
