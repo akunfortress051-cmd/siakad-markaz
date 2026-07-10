@@ -275,7 +275,7 @@ export default function HasilTauziPage({ hasEditAccess }: { hasEditAccess: boole
                                type="number"
                                className="neu-input w-20 py-1.5 px-2 text-center text-sm font-bold mx-auto border-dashed hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                placeholder="--"
-                               value={editedData[p.santriId]?.nilaiTahriri !== undefined ? editedData[p.santriId].nilaiTahriri : (p.nilaiTahriri ?? '')}
+                               value={(editedData[p.santriId] && 'nilaiTahriri' in editedData[p.santriId]) ? (editedData[p.santriId].nilaiTahriri ?? '') : (p.nilaiTahriri ?? '')}
                                onChange={(e) => handleInputChange(p.santriId, 'nilaiTahriri', e.target.value ? Number(e.target.value) : null)}
                                onBlur={() => performSave(p.santriId, p)}
                                onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
@@ -298,7 +298,7 @@ export default function HasilTauziPage({ hasEditAccess }: { hasEditAccess: boole
                                type="number"
                                className="neu-input w-20 py-1.5 px-2 text-center text-sm font-bold mx-auto border-dashed hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                placeholder="--"
-                               value={editedData[p.santriId]?.nilaiMuqobalah !== undefined ? editedData[p.santriId].nilaiMuqobalah : (p.nilaiMuqobalah ?? '')}
+                               value={(editedData[p.santriId] && 'nilaiMuqobalah' in editedData[p.santriId]) ? (editedData[p.santriId].nilaiMuqobalah ?? '') : (p.nilaiMuqobalah ?? '')}
                                onChange={(e) => handleInputChange(p.santriId, 'nilaiMuqobalah', e.target.value ? Number(e.target.value) : null)}
                                onBlur={() => performSave(p.santriId, p)}
                                onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
