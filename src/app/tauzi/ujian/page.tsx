@@ -140,11 +140,14 @@ export default function UjianTauziCBTPage() {
   };
 
   const getAnsweredCount = () => {
-    return Object.values(answers).filter(a => a.jawabanId !== null && a.jawabanId !== undefined).length;
+    return soalList.filter(s => {
+      const a = answers[s.id];
+      return a && a.jawabanId !== null && a.jawabanId !== undefined;
+    }).length;
   };
 
-  const isAllAnswered = getAnsweredCount() === soalList.length;
-  const raguCount = Object.values(answers).filter(a => a.ragu).length;
+  const isAllAnswered = soalList.length > 0 && getAnsweredCount() === soalList.length;
+  const raguCount = soalList.filter(s => answers[s.id]?.ragu).length;
   const isReadyToSubmit = isAllAnswered && raguCount === 0;
 
   const handleSubmit = async () => {
