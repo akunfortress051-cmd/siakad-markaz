@@ -70,6 +70,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: "tauzi_soal", label: "Bank Soal (Lihat/Aksi)", desc: "Akses mengelola soal ujian tauzi", category: "Divisi Tauzi'", type: "aksi" },
   { id: "tauzi_nilai", label: "Input Nilai Tahriri (Aksi)", desc: "Akses melihat dan menginput hasil ujian muqobalah / tahriri", category: "Divisi Tauzi'", type: "aksi" },
   { id: "tauzi_hasil", label: "Hasil Ujian (Lihat)", desc: "Akses melihat papan rekap data hasil tauzi'", category: "Divisi Tauzi'", type: "lihat" },
+  { id: "tauzi_hasil_edit", label: "Hasil Ujian (Aksi Edit)", desc: "Akses memanipulasi (edit manual) nilai dari tabel laporan hasil ujian", category: "Divisi Tauzi'", type: "aksi" },
 
   // Divisi Syahadah
   { id: "data_syahadah", label: "Data Syahadah (Lihat)", desc: "Akses melihat data syahadah & profil santri", category: "Divisi Syahadah", type: "lihat" },
