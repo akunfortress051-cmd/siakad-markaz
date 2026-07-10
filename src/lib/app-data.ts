@@ -389,6 +389,7 @@ export const getDashboardSantriRows = cache(async function getDashboardSantriRow
         dufahNama: masterSantri.dufahNama,
         riwayatId: riwayat?.id ?? null,
         average,
+        averagePredikat,
         programKategori: isUsbuain ? "USBUAIN" : ((program as any)?.kategori ?? "REGULER"),
         bulanKe: masterSantri.bulanKe,
       };
