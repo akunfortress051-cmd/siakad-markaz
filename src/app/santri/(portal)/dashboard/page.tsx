@@ -18,6 +18,7 @@ import {
   Hourglass,
   Calendar,
   ClipboardList,
+  CreditCard
 } from "lucide-react";
 
 type SantriData = {
@@ -445,6 +446,31 @@ export default function SantriDashboardPage() {
                   Duf&apos;ah: {currentRiwayat?.dufahNama ?? "-"}
                 </span>
               </div>
+            </div>
+            
+            {/* Download Kartu Digital Button */}
+            <div className="mt-4 pt-4 border-t border-slate-100 flex">
+              {currentRiwayat ? (
+                <a
+                  href={`https://ppdb.markazarabiyah.site/digital-card/${currentRiwayat.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all tracking-wide shadow-sm hover:scale-[1.02] hover:shadow-md"
+                  style={{
+                    background: "var(--color-primary)",
+                    color: "white",
+                  }}
+                >
+                  <CreditCard size={15} /> Unduh Kartu Digital
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed tracking-wide"
+                >
+                  <CreditCard size={15} /> Kartu Belum Tersedia
+                </button>
+              )}
             </div>
           </div>
         </div>
