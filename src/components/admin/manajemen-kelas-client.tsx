@@ -14,6 +14,7 @@ type DashboardSantri = {
   kelasId: string | null;
   isAktif: boolean;
   dufahNama: string;
+  bulanKe?: number;
 };
 
 type ProgramItem = {
@@ -273,6 +274,9 @@ export function ManajemenKelasClient({
                           <p className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">{s.lokasi}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${s.bulanKe === 1 ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"}`}>
+                            {s.bulanKe === 1 ? "BARU" : "LAMA"}
+                          </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
                             {s.gender}
                           </span>
@@ -448,9 +452,14 @@ export function ManajemenKelasClient({
                           <p className="text-sm font-bold text-[var(--color-text)] truncate">{s.nama}</p>
                           <p className="text-[11px] text-[var(--color-text-muted)] truncate">{s.lokasi}</p>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
-                          {s.gender}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${s.bulanKe === 1 ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"}`}>
+                            {s.bulanKe === 1 ? "BARU" : "LAMA"}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${s.gender === "BANIN" ? "bg-[var(--color-primary-50)] text-[var(--color-primary)]" : "bg-[var(--color-danger-light)] text-[var(--color-danger)]"}`}>
+                            {s.gender}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
