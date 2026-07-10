@@ -18,7 +18,6 @@ import {
   Hourglass,
   Calendar,
   ClipboardList,
-  CreditCard
 } from "lucide-react";
 
 type SantriData = {
@@ -98,10 +97,10 @@ export default function SantriDashboardPage() {
     fetch("/api/santri/me/tauzi")
       .then(res => res.json())
       .then(data => {
-        if(!data.error && data.programs) {
+        if (!data.error && data.programs) {
           setTauziData(data);
           if (data.riwayat?.programId) {
-             setSelectedTauziProg(data.riwayat.programId);
+            setSelectedTauziProg(data.riwayat.programId);
           }
         }
       })
@@ -164,19 +163,19 @@ export default function SantriDashboardPage() {
   const kehadiranKelas =
     currentRiwayat && currentRiwayat.rekapAbsenKelas.total > 0
       ? Math.round(
-          (currentRiwayat.rekapAbsenKelas.hadir /
-            currentRiwayat.rekapAbsenKelas.total) *
-            100
-        )
+        (currentRiwayat.rekapAbsenKelas.hadir /
+          currentRiwayat.rekapAbsenKelas.total) *
+        100
+      )
       : 0;
 
   const kehadiranSakan =
     currentRiwayat && currentRiwayat.rekapAbsenSakan.total > 0
       ? Math.round(
-          (currentRiwayat.rekapAbsenSakan.hadir /
-            currentRiwayat.rekapAbsenSakan.total) *
-            100
-        )
+        (currentRiwayat.rekapAbsenSakan.hadir /
+          currentRiwayat.rekapAbsenSakan.total) *
+        100
+      )
       : 0;
 
   const adjustDufahName = (name?: string) => {
@@ -190,7 +189,7 @@ export default function SantriDashboardPage() {
   const sisaBulan = statusData?.masaAktif?.sisaKoutaBulan;
   const berakhirDufah = adjustDufahName(statusData?.masaAktif?.berakhirPadaDufahNama);
   const dufahSekarang = adjustDufahName(statusData?.masaAktif?.dufahSekarangSistem?.nama);
-  
+
   const isDurasiLow = sisaBulan !== undefined && sisaBulan !== null && sisaBulan <= 2;
 
   return (
@@ -350,7 +349,7 @@ export default function SantriDashboardPage() {
         <div className="neu-card p-5" style={{ background: "linear-gradient(135deg, var(--bg-card), var(--color-primary-50))", border: "2px solid var(--color-primary)" }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-xl" style={{ background: "var(--color-primary)", color: "white" }}>
-              <ClipboardList size={22}/>
+              <ClipboardList size={22} />
             </div>
             <div>
               <h3 className="font-bold text-sm" style={{ color: "var(--color-text)" }}>Program Pembelajaran</h3>
@@ -359,40 +358,40 @@ export default function SantriDashboardPage() {
               </p>
             </div>
           </div>
-          
+
           <div className="space-y-3 mt-3">
-             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pilih Tujuan Program Anda</label>
-             <select 
-               value={selectedTauziProg} 
-               onChange={e => setSelectedTauziProg(e.target.value)}
-               className="neu-input w-full p-2.5 text-sm font-bold"
-               style={{ color: "var(--color-text)" }}
-             >
-               <option value="">-- Pilih Kategori Program --</option>
-               {tauziData.programs.map((p:any) => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
-             </select>
-             <button 
-               onClick={async () => {
-                  if(!selectedTauziProg) return;
-                  setSubmittingTauzi(true);
-                  try {
-                    const res = await fetch("/api/santri/me/tauzi", { method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ programId: selectedTauziProg }) });
-                    if(res.ok) {
-                      const updated = await res.json();
-                      setTauziData((prev: any) => ({ ...prev, riwayat: updated.riwayat }));
-                      alert("Berhasil menyimpan program Anda!");
-                      // Option to force reload to show new program in Profile Card
-                      window.location.reload();
-                    } else {
-                      alert("Gagal menyimpan program. Silakan coba lagi.");
-                    }
-                  } finally { setSubmittingTauzi(false); }
-               }}
-               disabled={!selectedTauziProg || submittingTauzi || selectedTauziProg === tauziData.riwayat?.programId}
-               className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${(!selectedTauziProg || submittingTauzi || selectedTauziProg === tauziData.riwayat?.programId) ? "bg-gray-100 text-gray-400" : "neu-button-primary"}`}
-             >
-               {submittingTauzi ? "Menyimpan..." : (selectedTauziProg === tauziData.riwayat?.programId ? "Program Telah Disimpan" : "Simpan Pilihan Program")}
-             </button>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pilih Tujuan Program Anda</label>
+            <select
+              value={selectedTauziProg}
+              onChange={e => setSelectedTauziProg(e.target.value)}
+              className="neu-input w-full p-2.5 text-sm font-bold"
+              style={{ color: "var(--color-text)" }}
+            >
+              <option value="">-- Pilih Kategori Program --</option>
+              {tauziData.programs.map((p: any) => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
+            </select>
+            <button
+              onClick={async () => {
+                if (!selectedTauziProg) return;
+                setSubmittingTauzi(true);
+                try {
+                  const res = await fetch("/api/santri/me/tauzi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ programId: selectedTauziProg }) });
+                  if (res.ok) {
+                    const updated = await res.json();
+                    setTauziData((prev: any) => ({ ...prev, riwayat: updated.riwayat }));
+                    alert("Berhasil menyimpan program Anda!");
+                    // Option to force reload to show new program in Profile Card
+                    window.location.reload();
+                  } else {
+                    alert("Gagal menyimpan program. Silakan coba lagi.");
+                  }
+                } finally { setSubmittingTauzi(false); }
+              }}
+              disabled={!selectedTauziProg || submittingTauzi || selectedTauziProg === tauziData.riwayat?.programId}
+              className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${(!selectedTauziProg || submittingTauzi || selectedTauziProg === tauziData.riwayat?.programId) ? "bg-gray-100 text-gray-400" : "neu-button-primary"}`}
+            >
+              {submittingTauzi ? "Menyimpan..." : (selectedTauziProg === tauziData.riwayat?.programId ? "Program Telah Disimpan" : "Simpan Pilihan Program")}
+            </button>
           </div>
         </div>
       )}
@@ -446,31 +445,6 @@ export default function SantriDashboardPage() {
                   Duf&apos;ah: {currentRiwayat?.dufahNama ?? "-"}
                 </span>
               </div>
-            </div>
-            
-            {/* Download Kartu Digital Button */}
-            <div className="mt-4 pt-4 border-t border-slate-100 flex">
-              {currentRiwayat ? (
-                <a
-                  href={`https://ppdb.markazarabiyah.site/digital-card/${currentRiwayat.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all tracking-wide shadow-sm hover:scale-[1.02] hover:shadow-md"
-                  style={{
-                    background: "var(--color-primary)",
-                    color: "white",
-                  }}
-                >
-                  <CreditCard size={15} /> Unduh Kartu Digital
-                </a>
-              ) : (
-                <button
-                  disabled
-                  className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed tracking-wide"
-                >
-                  <CreditCard size={15} /> Kartu Belum Tersedia
-                </button>
-              )}
             </div>
           </div>
         </div>
