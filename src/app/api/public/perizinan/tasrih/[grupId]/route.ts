@@ -52,7 +52,8 @@ export async function GET(request: Request, props: { params: Promise<{ grupId: s
       tanggalMulai: records[0].tanggalMulai,
       tanggalSelesai: records[0].tanggalSelesai,
       nomorTasrih: records[0].nomorTasrih,
-      createdAt: records[0].createdAt
+      createdAt: records[0].createdAt,
+      createdBy: records[0].createdBy
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch tasrih detail" }, { status: 500 });

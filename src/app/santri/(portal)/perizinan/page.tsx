@@ -11,7 +11,10 @@ import {
   AlertCircle,
   Timer,
   FileText,
+  Plus
 } from "lucide-react";
+import SantriPerizinanForm from "@/components/santri/santri-perizinan-form";
+import TasrihDigital from "@/components/public/tasrih-digital";
 
 type PerizinanItem = {
   id: string;
@@ -29,6 +32,7 @@ type PerizinanItem = {
 type RiwayatData = {
   id: string;
   dufahNama: string;
+  kelasNama: string;
   perizinan: PerizinanItem[];
 };
 
@@ -54,12 +58,18 @@ export default function SantriPerizinanPage() {
   const [riwayat, setRiwayat] = useState<RiwayatData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDufah, setActiveDufah] = useState(0);
+  const [viewMode, setViewMode] = useState<"RIWAYAT" | "FORM">("RIWAYAT");
+  const [santriData, setSantriData] = useState<any>(null);
+  const [selectedTasrihData, setSelectedTasrihData] = useState<any>(null);
 
   useEffect(() => {
     fetch("/api/santri/me")
       .then((r) => r.json())
       .then((d) => {
-        if (d.success) setRiwayat(d.riwayat);
+        if (d.success) {
+          setRiwayat(d.riwayat);
+          setSantriData(d.santri);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -77,23 +87,13 @@ export default function SantriPerizinanPage() {
     r.perizinan.map((p) => ({ ...p, dufahNama: r.dufahNama }))
   );
 
-  if (allPerizinan.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>Riwayat Perizinan</h1>
-          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Status izin dan tasrih</p>
-        </div>
-        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
-          <Shield size={32} style={{ color: "var(--color-text-subtle)" }} />
-          <p className="text-sm font-semibold" style={{ color: "var(--color-text-muted)" }}>Belum ada riwayat perizinan</p>
-        </div>
-      </div>
-    );
-  }
+
 
   const current = riwayat[activeDufah];
   const perizinanList = current?.perizinan ?? [];
+  
+  // Ambil kelas dari riwayat aktif, fallback ke santriData kalo ada
+  const kelasNama = current?.kelasNama || "Tanpa Kelas";
 
   // Stats
   const totalIzin = perizinanList.length;
@@ -102,112 +102,206 @@ export default function SantriPerizinanPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>Riwayat Perizinan</h1>
-        <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Status izin dan tasrih</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>Perizinan Santri</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Kelola pengajuan izin dan riwayat tasrih</p>
+        </div>
       </div>
 
-      {/* Dufah Selector */}
-      {riwayat.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {riwayat.map((r, i) => (
-            <button
-              key={r.id}
-              onClick={() => setActiveDufah(i)}
-              className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${i === activeDufah ? "" : "neu-button"}`}
-              style={i === activeDufah ? { background: "var(--color-primary)", color: "#fff", boxShadow: "3px 3px 8px rgba(0,102,102,0.3)" } : { color: "var(--color-text-muted)" }}
-            >
-              {r.dufahNama}
-            </button>
-          ))}
+      <div className="flex bg-slate-100/50 p-1 rounded-xl w-full sm:w-fit border border-slate-200/60 shadow-sm">
+        <button 
+          onClick={() => setViewMode("RIWAYAT")} 
+          className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-lg transition-all ${viewMode === "RIWAYAT" ? "bg-white shadow-sm text-[var(--color-primary)] border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+        >
+          Riwayat Izin
+        </button>
+        <button 
+          onClick={() => setViewMode("FORM")} 
+          className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${viewMode === "FORM" ? "bg-white shadow-sm text-[var(--color-primary)] border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+        >
+           <Plus size={16} /> Buat Izin
+        </button>
+      </div>
+
+      {viewMode === "FORM" && current && santriData ? (
+        <SantriPerizinanForm 
+          currentSantri={{
+            riwayatId: current.id,
+            nama: santriData.nama,
+            kelasNama: kelasNama,
+            sakan: santriData.sakan || "-"
+          }}
+          onSuccess={() => {
+            // Refresh data upon success
+            setLoading(true);
+            fetch("/api/santri/me").then(r => r.json()).then(d => {
+              if (d.success) {
+                setRiwayat(d.riwayat);
+                setSantriData(d.santri);
+              }
+              setLoading(false);
+              setViewMode("RIWAYAT");
+            }).catch(() => {
+              setLoading(false);
+              setViewMode("RIWAYAT");
+            });
+          }}
+        />
+      ) : (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Dufah Selector */}
+          {riwayat.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {riwayat.map((r, i) => (
+                <button
+                  key={r.id}
+                  onClick={() => setActiveDufah(i)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${i === activeDufah ? "" : "neu-button"}`}
+                  style={i === activeDufah ? { background: "var(--color-primary)", color: "#fff", boxShadow: "3px 3px 8px rgba(0,102,102,0.3)" } : { color: "var(--color-text-muted)" }}
+                >
+                  {r.dufahNama}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="neu-card-white p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText size={14} style={{ color: "var(--color-primary)" }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Total Izin</span>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>{totalIzin}</p>
+            </div>
+            <div className="neu-card-white p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle size={14} style={{ color: "var(--color-info)" }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Sedang Aktif</span>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: aktifCount > 0 ? "var(--color-info)" : "var(--color-text)" }}>{aktifCount}</p>
+            </div>
+          </div>
+
+          {/* Perizinan List */}
+          <div className="space-y-3">
+            {perizinanList.length === 0 ? (
+              <div className="neu-card p-8 text-center">
+                <p className="text-xs" style={{ color: "var(--color-text-subtle)" }}>Tidak ada perizinan di duf&apos;ah ini</p>
+              </div>
+            ) : (
+              perizinanList.map((p) => {
+                const cfg = statusConfig[p.statusIzin] || statusConfig.SELESAI;
+                const StatusIcon = cfg.icon;
+
+                return (
+                  <div 
+                    key={p.id} 
+                    className="neu-card p-4 space-y-3 cursor-pointer hover:bg-slate-50 transition-colors relative"
+                    onClick={() => {
+                        setSelectedTasrihData({
+                          grupId: p.id,
+                          tipeIzin: p.tipeIzin,
+                          statusIzin: p.statusIzin,
+                          alasan: p.alasan,
+                          tanggalMulai: p.tanggalMulai,
+                          tanggalSelesai: p.tanggalSelesai,
+                          batasJamAkhir: p.tipeIzin === "KELUAR_PARE" ? "19:00" : null,
+                          nomorTasrih: p.nomorTasrih,
+                          createdAt: p.createdAt,
+                          createdBy: null,
+                          records: [
+                            {
+                              id: p.id,
+                              sakan: santriData?.sakan || "-",
+                              riwayat: {
+                                santri: { 
+                                  nama: santriData?.nama || "Santri",
+                                  kelas: { nama: kelasNama }
+                                },
+                                kelas: { nama: kelasNama }
+                              }
+                            }
+                          ]
+                        });
+                    }}
+                  >
+                    {/* Top Row */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
+                          {p.nomorTasrih}
+                        </p>
+                        <span
+                          className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                          style={{
+                            background: p.tipeIzin === "KELUAR_PARE" ? "var(--color-danger-light)" : "var(--color-primary-50)",
+                            color: p.tipeIzin === "KELUAR_PARE" ? "var(--color-danger)" : "var(--color-primary)",
+                          }}
+                        >
+                          {tipeLabel[p.tipeIzin] || p.tipeIzin}
+                        </span>
+                      </div>
+                      <span
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                        style={{ background: cfg.bg, color: cfg.color }}
+                      >
+                        <StatusIcon size={12} />
+                        {cfg.label}
+                      </span>
+                    </div>
+
+                    {/* Details */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                        <Calendar size={12} style={{ color: "var(--color-text-subtle)" }} />
+                        <span>
+                          {formatDate(p.tanggalMulai)}
+                          {p.tanggalSelesai && ` - ${formatDate(p.tanggalSelesai)}`}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2 text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                        <FileText size={12} className="flex-shrink-0 mt-0.5" style={{ color: "var(--color-text-subtle)" }} />
+                        <span className="line-clamp-1">{p.alasan}</span>
+                      </div>
+                      {p.tanggalKembali && (
+                        <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--color-success)" }}>
+                          <CheckCircle size={12} />
+                          <span>Kembali: {formatDate(p.tanggalKembali)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                        <Clock size={12} />
+                        <span>Dicatat: {formatDate(p.createdAt)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-50 sm:hidden">
+                       <Plus size={16} /> {/* just a placeholder to indicate clickable if we want, or do nothing */}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="neu-card-white p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText size={14} style={{ color: "var(--color-primary)" }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Total Izin</span>
-          </div>
-          <p className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>{totalIzin}</p>
+      {/* Modal Tasrih */}
+      {selectedTasrihData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedTasrihData(null)}>
+           <div className="relative w-full max-w-md animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+              <button 
+                onClick={() => setSelectedTasrihData(null)} 
+                className="absolute -top-12 right-0 text-white hover:text-slate-200 flex items-center gap-2 text-sm font-bold bg-slate-800/50 px-3 py-1.5 rounded-full backdrop-blur-md"
+              >
+                Tutup <XCircle size={18} />
+              </button>
+              <TasrihDigital data={selectedTasrihData} hideQR={true} hideDownload={true} />
+           </div>
         </div>
-        <div className="neu-card-white p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle size={14} style={{ color: "var(--color-info)" }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Sedang Aktif</span>
-          </div>
-          <p className="text-2xl font-bold" style={{ color: aktifCount > 0 ? "var(--color-info)" : "var(--color-text)" }}>{aktifCount}</p>
-        </div>
-      </div>
-
-      {/* Perizinan List */}
-      <div className="space-y-3">
-        {perizinanList.length === 0 ? (
-          <div className="neu-card p-8 text-center">
-            <p className="text-xs" style={{ color: "var(--color-text-subtle)" }}>Tidak ada perizinan di duf&apos;ah ini</p>
-          </div>
-        ) : (
-          perizinanList.map((p) => {
-            const cfg = statusConfig[p.statusIzin] || statusConfig.SELESAI;
-            const StatusIcon = cfg.icon;
-
-            return (
-              <div key={p.id} className="neu-card p-4 space-y-3">
-                {/* Top Row */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
-                      {p.nomorTasrih}
-                    </p>
-                    <span
-                      className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
-                      style={{
-                        background: p.tipeIzin === "KELUAR_PARE" ? "var(--color-danger-light)" : "var(--color-primary-50)",
-                        color: p.tipeIzin === "KELUAR_PARE" ? "var(--color-danger)" : "var(--color-primary)",
-                      }}
-                    >
-                      {tipeLabel[p.tipeIzin] || p.tipeIzin}
-                    </span>
-                  </div>
-                  <span
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                    style={{ background: cfg.bg, color: cfg.color }}
-                  >
-                    <StatusIcon size={12} />
-                    {cfg.label}
-                  </span>
-                </div>
-
-                {/* Details */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--color-text-muted)" }}>
-                    <Calendar size={12} style={{ color: "var(--color-text-subtle)" }} />
-                    <span>
-                      {formatDate(p.tanggalMulai)}
-                      {p.tanggalSelesai && ` - ${formatDate(p.tanggalSelesai)}`}
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2 text-[11px]" style={{ color: "var(--color-text-muted)" }}>
-                    <FileText size={12} className="flex-shrink-0 mt-0.5" style={{ color: "var(--color-text-subtle)" }} />
-                    <span>{p.alasan}</span>
-                  </div>
-                  {p.tanggalKembali && (
-                    <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--color-success)" }}>
-                      <CheckCircle size={12} />
-                      <span>Kembali: {formatDate(p.tanggalKembali)}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
-                    <Clock size={12} />
-                    <span>Dicatat: {formatDate(p.createdAt)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+      )}
     </div>
   );
 }

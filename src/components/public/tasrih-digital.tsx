@@ -26,10 +26,11 @@ type TasrihData = {
   batasJamAkhir: string | null;
   nomorTasrih: string;
   createdAt: string;
+  createdBy: string | null;
   records: Record[];
 };
 
-export default function TasrihDigital({ data, autoDownload = false }: { data: TasrihData, autoDownload?: boolean }) {
+export default function TasrihDigital({ data, autoDownload = false, hideQR = false, hideDownload = false }: { data: TasrihData, autoDownload?: boolean, hideQR?: boolean, hideDownload?: boolean }) {
   const tasrihRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,11 +110,13 @@ export default function TasrihDigital({ data, autoDownload = false }: { data: Ta
             {status.label}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", padding: "8px 0" }}>
-            <div style={{ padding: "8px", backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9" }}>
-              <QRCode value={verifyUrl} size={120} level="M" />
+          {!hideQR && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "8px 0" }}>
+              <div style={{ padding: "8px", backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9" }}>
+                <QRCode value={verifyUrl} size={120} level="M" />
+              </div>
             </div>
-          </div>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "12px" }}>
             <div>
@@ -139,6 +142,15 @@ export default function TasrihDigital({ data, autoDownload = false }: { data: Ta
                 {data.alasan}
               </span>
             </div>
+
+            {data.createdBy && data.records.length > 1 && (
+              <div>
+                <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "4px" }}>Penanggung Jawab</span>
+                <span style={{ fontWeight: 700, color: "#0f172a", display: "block", backgroundColor: "#f8fafc", padding: "8px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
+                  {data.createdBy}
+                </span>
+              </div>
+            )}
             
             <div>
               <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "8px" }}>Daftar Santri ({data.records.length})</span>
@@ -158,13 +170,15 @@ export default function TasrihDigital({ data, autoDownload = false }: { data: Ta
         </div>
       </div>
 
-      <button 
-        onClick={handleDownload}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-sm"
-      >
-        <Download size={18} />
-        Download Tasrih (PNG)
-      </button>
+      {!hideDownload && (
+        <button 
+          onClick={handleDownload}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <Download size={18} />
+          Download Tasrih (PNG)
+        </button>
+      )}
     </div>
   );
 }
