@@ -392,6 +392,20 @@ export default function SantriDashboardPage() {
             >
               {submittingTauzi ? "Menyimpan..." : (selectedTauziProg === tauziData.riwayat?.programId ? "Program Telah Disimpan" : "Simpan Pilihan Program")}
             </button>
+
+            {/* TOMBOL TAUZI HANYA MUNCUL JIKA SUDAH MEMILIH PROGRAM */}
+            {tauziData.riwayat?.programId && (
+              <div className="pt-4 mt-2 border-t border-slate-200">
+                <Link 
+                  href="/tauzi"
+                  className="w-full inline-flex justify-center items-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:scale-[1.02] hover:shadow-lg"
+                  style={{ background: "var(--color-primary)", color: "white" }}
+                >
+                  <ClipboardList size={18} /> Mengerjakan Tauzi&apos; Fushul
+                </Link>
+                <p className="text-[10px] text-center mt-2 font-semibold" style={{ color: "var(--color-text-muted)" }}>Tekan tombol di atas untuk masuk ke portal ujian</p>
+              </div>
+            )}
           </div>
         </div>
       )}
