@@ -10,6 +10,7 @@ export default function HasilTauziPage() {
   const [programList, setProgramList] = useState<any[]>([]);
   const [selectedSesi, setSelectedSesi] = useState("");
   const [selectedProgram, setSelectedProgram] = useState("");
+  const [selectedKategori, setSelectedKategori] = useState("all");
   
   const [pesertaList, setPesertaList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,21 +65,27 @@ export default function HasilTauziPage() {
     }
   };
 
+  const filteredPesertaClient = pesertaList.filter(p => {
+    if (selectedKategori === "baru" && p.santri?.bulanKe !== 1) return false;
+    if (selectedKategori === "lama" && p.santri?.bulanKe === 1) return false;
+    return true;
+  });
+
   const handleExport = () => {
-    if (pesertaList.length === 0) {
+    if (filteredPesertaClient.length === 0) {
       toast.error("Tidak ada data untuk di-export");
       return;
     }
 
-    const exportedData = pesertaList.map((p, index) => ({
+    const exportedData = filteredPesertaClient.map((p, index) => ({
       "No": index + 1,
-      "NIS": p.santri.id,
-      "Nama Santri": p.santri.nama,
-      "Program Pilihan": p.program?.nama_indo || "-",
+      "Nama": p.santri.nama,
       "Nilai Tahriri": p.nilaiTahriri ?? "-",
       "Nilai Muqobalah": p.nilaiMuqobalah ?? "-",
+      "Kategori": p.santri.bulanKe === 1 ? "Santri Baru" : "Santri Lama",
+      "Program Pilihan": p.program?.nama_indo || "-",
       "Program Rekomendasi": p.programRekomendasi?.nama_indo || "Belum ditentukan",
-      "Penyimak / Ustadz": p.penyimakNama || "-"
+      "Penyimak": p.penyimakNama || "-"
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportedData);
@@ -91,7 +98,7 @@ export default function HasilTauziPage() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Tauzi");
     
     const activeSesiName = sesiList.find(s => s.id === selectedSesi)?.nama || "Sesi";
-    XLSX.writeFile(workbook, `Laporan_Hasil_Tauzi_${activeSesiName.replace(/\s+/g, '_')}.xlsx`);
+    XLSX.writeFile(workbook, `Hasil_Tauzi_${activeSesiName.replace(/\s+/g, '_')}.xlsx`);
     toast.success("Berhasil mengekspor data");
   };
 
@@ -112,19 +119,47 @@ export default function HasilTauziPage() {
         </button>
       </div>
 
-      <div className="neu-card rounded-2xl p-4 mb-6 flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Sesi Tauzi'</label>
-          <select value={selectedSesi} onChange={e => setSelectedSesi(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
-            {sesiList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
-          </select>
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="neu-card p-4 rounded-xl flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Sesi Tauzi'</label>
+            <select value={selectedSesi} onChange={e => setSelectedSesi(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
+              {sesiList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+            </select>
+          </div>
+          <div className="neu-card p-4 rounded-xl flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Kategori Santri (Durasi)</label>
+            <select value={selectedKategori} onChange={e => setSelectedKategori(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
+               <option value="all">Semua Kategori</option>
+               <option value="baru">Santri Baru (Bulan 1)</option>
+               <option value="lama">Santri Lama (Bulan {'>'} 1)</option>
+            </select>
+          </div>
         </div>
-        <div className="flex-1">
-          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Filter Program Asal</label>
-          <select value={selectedProgram} onChange={e => setSelectedProgram(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
-            <option value="">-- Semua Program --</option>
-            {programList.map(p => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
-          </select>
+        
+        {/* Horizontal Navigation Tabs for Program */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-4">
+          <button 
+            onClick={() => setSelectedProgram("")}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${selectedProgram === "" ? "bg-amber-400 text-amber-950 shadow-md" : "bg-white border text-gray-500 hover:bg-gray-50"}`}
+          >
+            Semua Program
+          </button>
+          <button 
+            onClick={() => setSelectedProgram("none")}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${selectedProgram === "none" ? "bg-amber-400 text-amber-950 shadow-md" : "bg-white border text-gray-500 hover:bg-gray-50"}`}
+          >
+            Belum Memilih Program
+          </button>
+          {programList.map(p => (
+            <button 
+              key={p.id}
+              onClick={() => setSelectedProgram(p.id)}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${selectedProgram === p.id ? "bg-amber-400 text-amber-950 shadow-md" : "bg-white border text-gray-500 hover:bg-gray-50"}`}
+            >
+              {p.nama_indo}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -133,51 +168,70 @@ export default function HasilTauziPage() {
           <table className="w-full text-sm text-left">
             <thead className="text-xs uppercase" style={{ background: "var(--color-surface-hover)", color: "var(--color-text-subtle)" }}>
               <tr>
-                <th className="px-6 py-4 font-bold rounded-tl-2xl">Santri</th>
-                <th className="px-6 py-4 font-bold">Prog. Pilihan</th>
+                <th className="px-6 py-4 font-bold rounded-tl-2xl">Nama</th>
                 <th className="px-6 py-4 font-bold text-center">N. Tahriri</th>
                 <th className="px-6 py-4 font-bold text-center">N. Muqobalah</th>
-                <th className="px-6 py-4 font-bold bg-green-50/50">Prog. Rekomendasi</th>
-                <th className="px-6 py-4 font-bold rounded-tr-2xl">Penyimak</th>
+                <th className="px-6 py-4 font-bold">Kelas Rekomendasi</th>
+                <th className="px-6 py-4 font-bold rounded-tr-2xl">Status</th>
               </tr>
             </thead>
             <tbody>
               {loadingData ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td></tr>
-              ) : pesertaList.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada data.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500 font-bold">Memuat data...</td></tr>
+              ) : filteredPesertaClient.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500 font-bold">Tidak ada data santri terkait.</td></tr>
               ) : (
-                pesertaList.map((p) => {
+                filteredPesertaClient.map((p) => {
                   return (
                     <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors" style={{ borderColor: "var(--color-surface-hover)" }}>
                       <td className="px-6 py-4">
                         <div className="font-bold whitespace-nowrap" style={{ color: "var(--color-text)" }}>{p.santri.nama}</div>
-                        <div className="text-[11px] font-semibold tracking-wider text-gray-400 mt-0.5">{p.santri.id}</div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${p.santri.gender === "BANIN" ? "bg-blue-100/70 text-blue-700" : "bg-pink-100/70 text-pink-700"}`}>
+                            {p.santri.gender || '-'}
+                          </span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${p.santri.bulanKe === 1 ? "bg-amber-100/70 text-amber-700" : "bg-slate-100 text-slate-500"}`}>
+                            {p.santri.bulanKe === 1 ? "BARU" : "LAMA"}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-600 font-medium">{p.program?.nama_indo || '-'}</td>
-                      <td className="px-6 py-4 text-center">
-                        {p.nilaiTahriri !== null ? (
-                          <span className="font-bold">{p.nilaiTahriri}</span>
-                        ) : (
-                          <span className="text-[11px] text-gray-400">-</span>
-                        )}
+                      
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          {p.nilaiTahriri !== null ? (
+                            <span className="font-bold text-sm bg-gray-100 border border-gray-200 px-4 py-1.5 rounded-lg text-gray-700 shadow-sm">{p.nilaiTahriri}</span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-4 py-1.5 rounded-lg shadow-sm">Kosong</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        {p.nilaiMuqobalah !== null ? (
-                          <span className="font-bold">{p.nilaiMuqobalah}</span>
-                        ) : (
-                          <span className="text-[11px] text-gray-400">-</span>
-                        )}
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          {p.nilaiMuqobalah !== null ? (
+                            <span className="font-bold text-sm bg-gray-100 border border-gray-200 px-4 py-1.5 rounded-lg text-gray-700 shadow-sm">{p.nilaiMuqobalah}</span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-4 py-1.5 rounded-lg shadow-sm">Kosong</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 bg-green-50/30">
+                      <td className="px-6 py-4">
                         {p.programRekomendasi ? (
-                          <span className="font-bold text-green-700">{p.programRekomendasi.nama_indo}</span>
+                          <div className="inline-flex items-center justify-between w-[200px] bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 shadow-sm">
+                             <span className="truncate">{p.programRekomendasi.nama_indo}</span>
+                             <span className="text-[9px] text-gray-400 ml-2 uppercase">▼</span>
+                          </div>
                         ) : (
-                          <span className="text-gray-400 italic">Belum ditentukan</span>
+                           <div className="inline-flex items-center justify-between w-[200px] bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-400 shadow-sm opacity-60">
+                             <span className="italic">Belum Direkomendasikan</span>
+                          </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-600 italic">
-                        {p.penyimakNama || '-'}
+                      <td className="px-6 py-4">
+                        {p.sudahUjian || (p.nilaiTahriri !== null || p.nilaiMuqobalah !== null) ? (
+                          <span className="text-[10px] font-bold bg-green-100 text-green-700 px-3 py-1.5 rounded-lg border border-green-200 uppercase tracking-widest">Selesai</span>
+                        ) : (
+                          <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-3 py-1.5 rounded-lg border border-gray-200 uppercase tracking-widest">Belum</span>
+                        )}
                       </td>
                     </tr>
                   )

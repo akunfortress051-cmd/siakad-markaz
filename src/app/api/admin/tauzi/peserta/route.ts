@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     const riwayatList = await prisma.riwayatSantri.findMany({
       where: riwayatWhere,
       include: {
-        santri: { select: { nama: true, id: true } },
+        santri: { select: { nama: true, id: true, gender: true, bulanKe: true } },
         program: { select: { nama_indo: true, nama_arab: true } }
       }
     });
