@@ -127,6 +127,7 @@ export default function HasilTauziPage({ hasEditAccess }: { hasEditAccess: boole
     setSavingId(id);
     try {
       const payload = {
+        id: p.id,
         sesiTauziId: selectedSesi,
         santriId: p.santriId,
         programId: p.programId || p.currentProgram?.id,
@@ -137,8 +138,8 @@ export default function HasilTauziPage({ hasEditAccess }: { hasEditAccess: boole
         penyimakNama: p.penyimakNama
       };
 
-      const res = await fetch("/api/admin/tauzi/nilai/save", {
-        method: "POST",
+      const res = await fetch("/api/admin/tauzi/nilai", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });

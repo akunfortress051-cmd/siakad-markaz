@@ -6,14 +6,15 @@ import { checkPermission } from "@/lib/permission";
 export async function PUT(request: Request) {
   const session = await getSession();
   const hasPermission = await checkPermission("tauzi_nilai");
+  const hasHasilEdit = await checkPermission("tauzi_hasil_edit");
   
-  if (!session || (!hasPermission && session.role !== 'ADMIN')) {
+  if (!session || (!hasPermission && !hasHasilEdit && session.role !== 'ADMIN')) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await request.json();
-    const { id, nilaiMuqobalah, programRekomendasiId, penyimakNama, santriId, sesiTauziId, programId } = body;
+    const { id, nilaiMuqobalah, nilaiTahriri, programRekomendasiId, penyimakNama, santriId, sesiTauziId, programId } = body;
 
     if (!id) {
       return NextResponse.json({ error: "id peserta wajib dikirim" }, { status: 400 });
@@ -31,6 +32,7 @@ export async function PUT(request: Request) {
             programId,
             sudahUjian: false,
             nilaiMuqobalah: nilaiMuqobalah !== undefined ? Number(nilaiMuqobalah) : null,
+            nilaiTahriri: nilaiTahriri !== undefined ? Number(nilaiTahriri) : null,
             programRekomendasiId: programRekomendasiId || null,
             penyimakNama: penyimakNama || null,
           },
@@ -44,6 +46,7 @@ export async function PUT(request: Request) {
           where: { id },
           data: {
             nilaiMuqobalah: nilaiMuqobalah !== undefined ? Number(nilaiMuqobalah) : null,
+            nilaiTahriri: nilaiTahriri !== undefined ? Number(nilaiTahriri) : undefined,
             programRekomendasiId: programRekomendasiId || null,
             penyimakNama: penyimakNama || null,
           },
