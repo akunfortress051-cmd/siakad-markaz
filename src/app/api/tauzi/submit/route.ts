@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       pesertaId: string;
       soalId: string;
       jawabanId: string | null;
+      ragu?: boolean;
     }
 
     let correctCount = 0;
