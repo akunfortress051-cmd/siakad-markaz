@@ -171,6 +171,7 @@ export default function HasilTauziPage() {
                 <th className="px-6 py-4 font-bold rounded-tl-2xl">Nama</th>
                 <th className="px-6 py-4 font-bold text-center">N. Tahriri</th>
                 <th className="px-6 py-4 font-bold text-center">N. Muqobalah</th>
+                <th className="px-6 py-4 font-bold">Prog. Asal</th>
                 <th className="px-6 py-4 font-bold">Kelas Rekomendasi</th>
                 <th className="px-6 py-4 font-bold rounded-tr-2xl">Status</th>
               </tr>
@@ -213,6 +214,9 @@ export default function HasilTauziPage() {
                             <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-4 py-1.5 rounded-lg shadow-sm">Kosong</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600 font-medium">
+                        {p.program?.nama_indo || '-'}
                       </td>
                       <td className="px-6 py-4">
                         {p.programRekomendasi ? (
