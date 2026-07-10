@@ -163,6 +163,7 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
         <div className="flex-1">
           <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Program Asal (Pilihan)</label>
           <select value={selectedProgram} onChange={e => setSelectedProgram(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
+            <option value="none">-- Santri Belum Diatur Program --</option>
             {programList.map(p => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
           </select>
         </div>

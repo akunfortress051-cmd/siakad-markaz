@@ -32,7 +32,11 @@ export async function GET(request: Request) {
     if (search && search.trim() !== "") {
       riwayatWhere.santri = { nama: { contains: search.trim(), mode: "insensitive" } };
     } else if (programId) {
-      riwayatWhere.programId = programId;
+      if (programId === "none") {
+        riwayatWhere.programId = null;
+      } else {
+        riwayatWhere.programId = programId;
+      }
     }
 
     const riwayatList = await prisma.riwayatSantri.findMany({
