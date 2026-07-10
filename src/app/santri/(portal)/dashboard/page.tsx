@@ -397,7 +397,7 @@ export default function SantriDashboardPage() {
             {tauziData.riwayat?.programId && (
               <div className="pt-4 mt-2 border-t border-slate-200">
                 <Link 
-                  href="/tauzi"
+                  href="/tauzi/login"
                   className="w-full inline-flex justify-center items-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:scale-[1.02] hover:shadow-lg"
                   style={{ background: "var(--color-primary)", color: "white" }}
                 >
