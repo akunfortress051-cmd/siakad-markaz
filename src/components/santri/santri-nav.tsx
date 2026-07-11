@@ -17,10 +17,11 @@ import {
   X,
   MapPin,
   DoorOpen,
+  ClipboardCheck,
 } from "lucide-react";
 import { useState } from "react";
 
-const navItems = [
+const baseNavItems = [
   { href: "/santri/dashboard", label: "Beranda", icon: LayoutDashboard },
   { href: "/santri/nilai", label: "Nilai", icon: FileText },
   { href: "/santri/absen-kegiatan", label: "Absen Mandiri", icon: MapPin },
@@ -34,14 +35,21 @@ const navItems = [
 export function SantriSidebar({
   nama,
   isAktif,
+  isKetuaKelas,
 }: {
   nama: string;
   isAktif: boolean;
+  isKetuaKelas?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Add Berita Acara conditionally if they are a class leader
+  const navItems = isKetuaKelas 
+    ? [...baseNavItems, { href: "/santri/berita-acara", label: "Berita Acara", icon: ClipboardCheck }]
+    : baseNavItems;
 
   const handleLogout = async () => {
     await fetch("/api/santri/auth/logout", { method: "POST" });
@@ -227,7 +235,7 @@ export function SantriBottomNav() {
   const pathname = usePathname();
 
   // Hanya tampilkan 5 icon utama di bottom nav agar tidak berjejalan (sisanya di sidemenu / menu cepat)
-  const bottomItems = navItems.filter(item => 
+  const bottomItems = baseNavItems.filter((item: any) => 
     ["Beranda", "Absensi", "Absen Mandiri", "Nilai", "Perizinan"].includes(item.label)
   );
 

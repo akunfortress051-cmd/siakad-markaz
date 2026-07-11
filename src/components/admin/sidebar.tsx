@@ -25,6 +25,7 @@ const navigationGroups = [
     title: "Divisi Data Santri",
     items: [
       { href: "/admin/data-santri", label: "Data Santri Duf'ah", icon: Users, permissionId: "data_santri_dufah" },
+      { href: "/admin/ketua-kelas", label: "Ketua Kelas", icon: ShieldCheck, permissionId: "data_santri" },
     ]
   },
   {

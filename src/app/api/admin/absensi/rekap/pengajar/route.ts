@@ -52,6 +52,7 @@ export async function GET(request: Request) {
         user: { select: { id: true, nama: true, username: true } },
         kelas: { select: { id: true, nama: true, program: { select: { id: true, nama_indo: true } } } },
         pengajarDigantikan: { select: { id: true, nama: true } },
+        beritaAcara: true,
       }
     });
 

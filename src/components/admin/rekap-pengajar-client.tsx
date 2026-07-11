@@ -26,6 +26,11 @@ type PengajarRecord = {
     bros: boolean;
   };
   terlambatMenit?: number;
+  beritaAcara?: {
+    id: string;
+    konfirmasiHadir: boolean;
+    catatan: string | null;
+  } | null;
 };
 
 const HARI_OPTIONS = [
@@ -467,6 +472,7 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
                         <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider">Materi</th>
                         <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center">Waktu</th>
                         <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center">Atribut</th>
+                        <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center">Verifikasi</th>
                         {isAdmin && <th className="px-4 py-3 font-bold text-[var(--color-text-muted)] text-xs uppercase tracking-wider text-center w-20">Aksi</th>}
                       </tr>
                     </thead>
@@ -529,6 +535,27 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
                                 {r.atribut.nametag ? <span className="bg-[var(--color-primary-100)] text-[var(--color-primary)] text-[10px] font-bold px-1.5 py-0.5 rounded">Tag ✓</span> : <span className="bg-[var(--color-danger-light)] text-[var(--color-danger)] text-[10px] font-bold px-1.5 py-0.5 rounded">Tag X</span>}
                                 {r.atribut.bros ? <span className="bg-[var(--color-primary-100)] text-[var(--color-primary)] text-[10px] font-bold px-1.5 py-0.5 rounded">Bros ✓</span> : <span className="bg-[var(--color-danger-light)] text-[var(--color-danger)] text-[10px] font-bold px-1.5 py-0.5 rounded">Bros X</span>}
                               </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {r.status === "ALPHA" ? (
+                               <span className="text-[var(--color-text-muted)] font-bold text-lg">-</span>
+                            ) : (
+                               r.beritaAcara ? (
+                                  r.beritaAcara.konfirmasiHadir ? (
+                                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title={r.beritaAcara.catatan || ""}>
+                                        TERVERIFIKASI
+                                     </span>
+                                  ) : (
+                                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-200" title={r.beritaAcara.catatan || ""}>
+                                        TDK HADIR
+                                     </span>
+                                  )
+                               ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                     MENUNGGU
+                                  </span>
+                               )
                             )}
                           </td>
                           {isAdmin && (

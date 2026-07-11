@@ -38,6 +38,7 @@ model Kelas {
   is_akbarnas_b2    Boolean         @default(false)
   jumlah_kolom_usbu Int             @default(0) // 0=normal, 1=satu kolom, 2=dua kolom
   urutan_haflah     Int             @default(0)
+  ketuaKelasList    KetuaKelas[]
 }
 
 model Mapel {
@@ -87,6 +88,8 @@ model SantriInternal {
   riwayatRecords        RiwayatSantri[]
   pesertaTauziList      PesertaTauzi[]
   checkoutPengajuanList CheckoutPengajuan[]
+  ketuaKelasList        KetuaKelas[]
+  beritaAcaraList       BeritaAcara[]
 }
 
 model Dufah {
@@ -400,6 +403,7 @@ model AbsenPengajar {
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  beritaAcara BeritaAcara?
 
   @@unique([userId, tanggal, sesi, kelasId])
 }
@@ -648,4 +652,31 @@ model CheckoutApproval {
   user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([pengajuanId, userId])
+}
+
+// ===== KETUA KELAS & BERITA ACARA =====
+
+model KetuaKelas {
+  id        String   @id @default(cuid())
+  santriId  String
+  kelasId   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  santri SantriInternal @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  kelas  Kelas          @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+
+  @@unique([kelasId, isActive]) // Hanya 1 ketua kelas aktif per kelas
+}
+
+model BeritaAcara {
+  id               String   @id @default(cuid())
+  absenPengajarId  String   @unique
+  santriId         String   // Ketua kelas yang mengisi
+  konfirmasiHadir  Boolean
+  catatan          String?
+  createdAt        DateTime @default(now())
+
+  absenPengajar AbsenPengajar  @relation(fields: [absenPengajarId], references: [id], onDelete: Cascade)
+  santri        SantriInternal @relation(fields: [santriId], references: [id], onDelete: Cascade)
 }
