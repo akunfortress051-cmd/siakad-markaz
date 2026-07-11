@@ -9,6 +9,7 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
   const [programList, setProgramList] = useState<any[]>([]);
   const [selectedSesi, setSelectedSesi] = useState("");
   const [selectedProgram, setSelectedProgram] = useState("");
+  const [selectedKategori, setSelectedKategori] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   
@@ -137,10 +138,57 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
     }
   };
 
+  const handleSaveAll = async () => {
+    const ids = Object.keys(editedData);
+    if (ids.length === 0) return;
+    setLoadingData(true);
+    let allOk = true;
+    for (const id of ids) {
+      const p = pesertaList.find(x => x.id === id);
+      if (!p) continue;
+      const dataToSave = editedData[id];
+      const payload = {
+        id: p.id,
+        santriId: p.santri.id,
+        sesiTauziId: selectedSesi,
+        programId: p.programId || p.currentProgram?.id,
+        nilaiMuqobalah: dataToSave.nilaiMuqobalah !== undefined ? parseFloat(dataToSave.nilaiMuqobalah) : (p.nilaiMuqobalah || 0),
+        programRekomendasiId: dataToSave.programRekomendasiId !== undefined ? dataToSave.programRekomendasiId : (p.programRekomendasiId || p.programId),
+        penyimakNama: dataToSave.penyimakNama !== undefined ? dataToSave.penyimakNama : (p.penyimakNama || userName),
+      };
+      
+      try {
+        const res = await fetch("/api/admin/tauzi/nilai", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) allOk = false;
+      } catch {
+        allOk = false;
+      }
+    }
+    setLoadingData(false);
+    if (!allOk) toast.error("Beberapa baris gagal disimpan");
+    else {
+      toast.success("Semua perubahan berhasil disimpan (Batch)");
+      setEditedData({});
+      fetchPeserta();
+    }
+  };
+
   const filteredPeserta = useMemo(() => {
-    if (!search) return pesertaList;
-    return pesertaList.filter(p => p.santri.nama.toLowerCase().includes(search.toLowerCase()));
-  }, [pesertaList, search]);
+    let result = pesertaList;
+    if (search) {
+      result = result.filter(p => p.santri.nama.toLowerCase().includes(search.toLowerCase()));
+    }
+    if (selectedKategori === "baru") {
+      result = result.filter(p => p.santri.bulanKe === 1);
+    } else if (selectedKategori === "lama") {
+      result = result.filter(p => p.santri.bulanKe !== 1);
+    }
+    return result;
+  }, [pesertaList, search, selectedKategori]);
 
   if (loading) return <div>Loading...</div>;
 
@@ -153,32 +201,60 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
         </div>
       </div>
 
-      <div className="neu-card rounded-2xl p-4 mb-6 flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Sesi Tauzi'</label>
-          <select value={selectedSesi} onChange={e => setSelectedSesi(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
-            {sesiList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Program Asal (Pilihan)</label>
-          <select value={selectedProgram} onChange={e => setSelectedProgram(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
-            <option value="none">-- Santri Belum Diatur Program --</option>
-            {programList.map(p => <option key={p.id} value={p.id}>{p.nama_indo}</option>)}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Cari Nama Santri</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-subtle)]" />
-            <input
-              type="text"
-              placeholder="Cari santri..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white pl-9 pr-4 py-2 font-semibold outline-none transition focus:border-[var(--color-primary)] text-sm"
-            />
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="neu-card p-4 rounded-xl flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Sesi Tauzi'</label>
+            <select value={selectedSesi} onChange={e => setSelectedSesi(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
+              {sesiList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+            </select>
           </div>
+          <div className="neu-card p-4 rounded-xl flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Kategori Santri (Durasi)</label>
+            <select value={selectedKategori} onChange={e => setSelectedKategori(e.target.value)} className="neu-input w-full py-2.5 text-sm font-semibold">
+               <option value="all">Semua Kategori</option>
+               <option value="baru">Santri Baru (Bulan 1)</option>
+               <option value="lama">Santri Lama (Bulan {'>'} 1)</option>
+            </select>
+          </div>
+          <div className="neu-card p-4 rounded-xl flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>Cari Nama Santri</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-subtle)]" />
+              <input
+                type="text"
+                placeholder="Cari santri..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-[var(--color-surface-dark)] bg-white pl-9 pr-4 py-2 font-semibold outline-none transition focus:border-[var(--color-primary)] text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Horizontal Navigation Tabs for Program */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-4">
+          <button 
+            onClick={() => setSelectedProgram("")}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${selectedProgram === "" ? "bg-amber-400 text-amber-950 shadow-md" : "bg-white border text-gray-500 hover:bg-gray-50"}`}
+          >
+            Semua Program
+          </button>
+          <button 
+            onClick={() => setSelectedProgram("none")}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${selectedProgram === "none" ? "bg-amber-400 text-amber-950 shadow-md" : "bg-white border text-gray-500 hover:bg-gray-50"}`}
+          >
+            Belum Memilih Program
+          </button>
+          {programList.map(p => (
+            <button 
+              key={p.id}
+              onClick={() => setSelectedProgram(p.id)}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${selectedProgram === p.id ? "bg-amber-400 text-amber-950 shadow-md" : "bg-white border text-gray-500 hover:bg-gray-50"}`}
+            >
+              {p.nama_indo}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -215,7 +291,14 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
                       <td className="px-4 py-4 text-center font-medium text-gray-500">{idx + 1}</td>
                       <td className="px-4 py-4">
                         <div className="font-bold whitespace-nowrap" style={{ color: "var(--color-text)" }}>{p.santri.nama}</div>
-                        <div className="text-[11px] font-semibold tracking-wider text-gray-400 mt-0.5">{p.santri.id}</div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${p.santri.gender === "BANIN" ? "bg-blue-100/70 text-blue-700" : "bg-pink-100/70 text-pink-700"}`}>
+                            {p.santri.gender || '-'}
+                          </span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${p.santri.bulanKe === 1 ? "bg-amber-100/70 text-amber-700" : "bg-slate-100 text-slate-500"}`}>
+                            {p.santri.bulanKe === 1 ? "BARU" : "LAMA"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-center">
                         {p.sudahUjian ? (
@@ -271,6 +354,18 @@ export default function InputNilaiTauziClient({ userName }: { userName: string }
           </table>
         </div>
       </div>
+
+      {/* Floating Action Button for saving all dirty data */}
+      {Object.keys(editedData).length > 0 && (
+        <button
+          onClick={handleSaveAll}
+          title="Simpan Semua Perubahan"
+          className="fixed bottom-6 right-6 z-50 flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-95 transition-transform px-5 py-3.5 rounded-full font-bold text-sm"
+        >
+          {loadingData ? <span className="animate-spin inline-block">⚙</span> : <Save size={20} />}
+          Simpan ({Object.keys(editedData).length})
+        </button>
+      )}
     </div>
   );
 }

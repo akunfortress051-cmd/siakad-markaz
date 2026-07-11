@@ -361,6 +361,17 @@ export default function UjianTauziCBTPage() {
             </div>
           </div>
 
+        <div className="flex flex-col gap-3 mt-4">
+          {currentIndex === soalList.length - 1 && !isReadyToSubmit && (
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-sm text-xs sm:text-sm font-semibold flex items-start gap-2">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <div>
+                <p>Anda belum dapat menyelesaikan ujian.</p>
+                <p className="font-normal mt-1 text-amber-700">Terdapat <b>{soalList.length - answeredCount}</b> soal belum terjawab dan <b>{raguCount}</b> soal ragu-ragu. Silakan periksa <b>Navigasi Soal</b> untuk melengkapinya.</p>
+              </div>
+            </div>
+          )}
+
           {/* PREV/NEXT NAVIGATION BAR */}
           <div className="flex items-center justify-between gap-3">
             <button
@@ -374,17 +385,32 @@ export default function UjianTauziCBTPage() {
               <ChevronLeft size={16} /> <span>Sebelumnya</span>
             </button>
 
-            <button
-              onClick={() => setCurrentIndex(prev => Math.min(soalList.length - 1, prev + 1))}
-              disabled={currentIndex === soalList.length - 1}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-sm font-bold text-xs sm:text-sm transition-colors ${currentIndex === soalList.length - 1
-                  ? 'text-slate-300 bg-slate-100 cursor-not-allowed'
-                  : 'text-white bg-[var(--color-primary)] hover:opacity-90'
-                }`}
-            >
-              <span>Selanjutnya</span> <ChevronRight size={16} />
-            </button>
+            {currentIndex === soalList.length - 1 ? (
+              <button
+                onClick={isReadyToSubmit ? handleSubmit : undefined}
+                disabled={!isReadyToSubmit || submitting}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-sm font-bold text-xs sm:text-sm transition-colors ${!isReadyToSubmit || submitting
+                    ? 'text-slate-300 bg-slate-100 cursor-not-allowed'
+                    : 'text-white bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+              >
+                {submitting ? (
+                   <span className="animate-spin inline-block">⚙</span>
+                ) : (
+                   <span>Selesai Ujian</span> 
+                )}
+                {!submitting && <CheckCircle2 size={16} />}
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrentIndex(prev => Math.min(soalList.length - 1, prev + 1))}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-sm font-bold text-xs sm:text-sm transition-colors text-white bg-[var(--color-primary)] hover:opacity-90"
+              >
+                <span>Selanjutnya</span> <ChevronRight size={16} />
+              </button>
+            )}
           </div>
+        </div>
         </div>
 
         {/* RIGHT COLUMN: NAV PANEL */}
