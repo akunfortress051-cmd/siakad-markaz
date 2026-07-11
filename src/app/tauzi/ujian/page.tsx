@@ -13,6 +13,7 @@ export default function UjianTauziCBTPage() {
   // Format answers: { [soalId]: { jawabanId: string | null, ragu: boolean } }
   const [answers, setAnswers] = useState<{ [soalId: string]: { jawabanId: string | null, ragu: boolean } }>({});
   const answersRef = useRef(answers);
+  const dirtyAnswersRef = useRef<{ [soalId: string]: { jawabanId: string | null, ragu: boolean } }>({});
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +21,6 @@ export default function UjianTauziCBTPage() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [savingStatus, setSavingStatus] = useState<"idle" | "saving" | "error">("idle");
-  const lastSavedRef = useRef<string>("");
 
   useEffect(() => {
     answersRef.current = answers;
@@ -42,7 +42,6 @@ export default function UjianTauziCBTPage() {
 
           if (data.savedResponses) {
             setAnswers(data.savedResponses);
-            lastSavedRef.current = JSON.stringify(data.savedResponses);
           }
         } else if (data?.error) {
           toast.error(data.error);
@@ -93,22 +92,26 @@ export default function UjianTauziCBTPage() {
     if (soalList.length === 0) return;
 
     const autoSave = async () => {
-      if (Object.keys(answersRef.current).length === 0) return;
+      const dirtyKeys = Object.keys(dirtyAnswersRef.current);
+      if (dirtyKeys.length === 0) return;
 
-      const currentAnswersStr = JSON.stringify(answersRef.current);
-      if (currentAnswersStr === lastSavedRef.current) return;
+      // Copy delta untuk payload agar aman dari mutasi bareng
+      const payloadToSave = { ...dirtyAnswersRef.current };
 
       setSavingStatus("saving");
       try {
         const res = await fetch("/api/tauzi/autosave", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jawaban: answersRef.current })
+          body: JSON.stringify({ jawaban: payloadToSave })
         });
         if (res.ok) {
           setLastSaved(new Date());
           setSavingStatus("idle");
-          lastSavedRef.current = currentAnswersStr;
+          // Hapus key yang berhasil dikirim dari antrean dirty
+          Object.keys(payloadToSave).forEach(key => {
+            delete dirtyAnswersRef.current[key];
+          });
         } else {
           setSavingStatus("error");
         }
@@ -122,21 +125,29 @@ export default function UjianTauziCBTPage() {
   }, [soalList.length]);
 
   const handleSelectAnswer = (soalId: string, jawabanId: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [soalId]: { ...prev[soalId], jawabanId, ragu: prev[soalId]?.ragu || false }
-    }));
+    setAnswers(prev => {
+      const newState = {
+        ...prev,
+        [soalId]: { ...prev[soalId], jawabanId, ragu: prev[soalId]?.ragu || false }
+      };
+      dirtyAnswersRef.current[soalId] = newState[soalId];
+      return newState;
+    });
   };
 
   const toggleRagu = (soalId: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [soalId]: {
-        ...prev[soalId],
-        ragu: !prev[soalId]?.ragu,
-        jawabanId: prev[soalId]?.jawabanId || null
-      }
-    }));
+    setAnswers(prev => {
+      const newState = {
+        ...prev,
+        [soalId]: {
+          ...prev[soalId],
+          ragu: !prev[soalId]?.ragu,
+          jawabanId: prev[soalId]?.jawabanId || null
+        }
+      };
+      dirtyAnswersRef.current[soalId] = newState[soalId];
+      return newState;
+    });
   };
 
   const getAnsweredCount = () => {
