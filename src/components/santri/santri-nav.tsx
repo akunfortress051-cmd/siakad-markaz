@@ -24,7 +24,7 @@ import { useState } from "react";
 const baseNavItems = [
   { href: "/santri/dashboard", label: "Beranda", icon: LayoutDashboard },
   { href: "/santri/nilai", label: "Nilai", icon: FileText },
-  { href: "/santri/absen-kegiatan", label: "Absen Mandiri", icon: MapPin },
+  { href: "/santri/absen-kegiatan", label: "Absen Mandiri", icon: CalendarCheck },
   { href: "/santri/absensi", label: "Absensi", icon: CalendarCheck },
   { href: "/santri/riwayat", label: "Riwayat", icon: Clock },
   { href: "/santri/perizinan", label: "Perizinan", icon: Shield },
@@ -255,7 +255,7 @@ export function SantriBottomNav() {
           
           // Singkat teks khusus bottom nav jika perlu
           let shortLabel = item.label;
-          if (item.label === "Absen Mandiri") shortLabel = "Absen GPS";
+          if (item.label === "Absen Mandiri") shortLabel = "Absen";
 
           return (
             <Link

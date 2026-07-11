@@ -53,9 +53,15 @@ export async function POST(request: Request) {
 
     const { kode, latitude, longitude } = await request.json();
 
-    if (!kode || latitude === undefined || longitude === undefined) {
-      return NextResponse.json({ error: "Kode akses dan Lokasi GPS wajib diisi" }, { status: 400 });
+    if (!kode) {
+      return NextResponse.json({ error: "Kode akses wajib diisi" }, { status: 400 });
     }
+
+    // [GEOFENCING DISABLED] — Validasi koordinat dinonaktifkan sementara.
+    // Untuk mengaktifkan kembali, uncomment baris berikut:
+    // if (latitude === undefined || longitude === undefined) {
+    //   return NextResponse.json({ error: "Kode akses dan Lokasi GPS wajib diisi" }, { status: 400 });
+    // }
 
     const upperKode = kode.trim().toUpperCase();
 
@@ -102,28 +108,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Anda sudah tercatat ${existingAbsen.status} pada absen ini.` }, { status: 400 });
     }
 
-    // 4. Validasi Lokasi (Haversine)
-    let isLocationValid = false;
-    let closestDistance = Infinity;
-
-    for (const locRel of sesi.lokasiList) {
-      const { lokasi } = locRel;
-      const distance = haversineDistance(latitude, longitude, lokasi.latitude, lokasi.longitude);
-      
-      if (distance < closestDistance) closestDistance = distance;
-      
-      if (distance <= lokasi.radius) {
-        isLocationValid = true;
-        break; // Within at least one location radius
-      }
-    }
-
-    if (!isLocationValid) {
-      return NextResponse.json({ 
-        error: "Lokasi tidak valid", 
-        detail: `Anda terdeteksi berada ~${Math.round(closestDistance)} meter dari titik pusat yang terdekat. Mohon mendekat ke lokasi kegiatan.` 
-      }, { status: 400 });
-    }
+    // ===================================================================
+    // [GEOFENCING DISABLED] — Validasi Lokasi (Haversine)
+    // Dinonaktifkan sementara karena masih tahap awal. Untuk mengaktifkan
+    // kembali, uncomment blok di bawah ini.
+    // ===================================================================
+    // let isLocationValid = false;
+    // let closestDistance = Infinity;
+    //
+    // for (const locRel of sesi.lokasiList) {
+    //   const { lokasi } = locRel;
+    //   const distance = haversineDistance(latitude, longitude, lokasi.latitude, lokasi.longitude);
+    //   
+    //   if (distance < closestDistance) closestDistance = distance;
+    //   
+    //   if (distance <= lokasi.radius) {
+    //     isLocationValid = true;
+    //     break; // Within at least one location radius
+    //   }
+    // }
+    //
+    // if (!isLocationValid) {
+    //   return NextResponse.json({ 
+    //     error: "Lokasi tidak valid", 
+    //     detail: `Anda terdeteksi berada ~${Math.round(closestDistance)} meter dari titik pusat yang terdekat. Mohon mendekat ke lokasi kegiatan.` 
+    //   }, { status: 400 });
+    // }
 
     // 5. Success! Insert HADIR
     await prisma.absenKegiatan.create({
