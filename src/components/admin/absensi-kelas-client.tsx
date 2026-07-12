@@ -865,13 +865,39 @@ export function AbsensiKelasClient({
   }, [santriList]);
 
   const handleCopyLaporan = (className: string, students: SantriAbsenTarget[]) => {
-    let text = `Kelas: ${className}\n\n`;
-    students.forEach((s, idx) => {
+    let text = `*Kelas: ${className}*\n\n`;
+    
+    // Urutkan berdasarkan abjad
+    const sortedStudents = [...students].sort((a, b) => a.nama.localeCompare(b.nama));
+    sortedStudents.forEach((s, idx) => {
       text += `${idx + 1}. ${s.nama}\n`;
     });
 
     navigator.clipboard.writeText(text).then(() => {
       toast.success(`Daftar santri kelas ${className} berhasil disalin`, { icon: '📋' });
+    }).catch(() => {
+      toast.error("Gagal menyalin teks");
+    });
+  };
+
+  const handleCopySemuaLaporan = () => {
+    let text = "";
+    
+    // Urutkan kelas berdasarkan abjad
+    const sortedClasses = Object.keys(groupedSantri).sort((a, b) => a.localeCompare(b));
+    
+    sortedClasses.forEach((className) => {
+      text += `*Kelas: ${className}*\n\n`;
+      const sortedStudents = [...groupedSantri[className]].sort((a, b) => a.nama.localeCompare(b.nama));
+      
+      sortedStudents.forEach((s, idx) => {
+        text += `${idx + 1}. ${s.nama}\n`;
+      });
+      text += `\n`;
+    });
+
+    navigator.clipboard.writeText(text.trim()).then(() => {
+      toast.success(`Daftar semua santri berhasil disalin`, { icon: '📋' });
     }).catch(() => {
       toast.error("Gagal menyalin teks");
     });
@@ -1060,6 +1086,15 @@ export function AbsensiKelasClient({
           )}
 
           <div className="flex gap-2">
+            {santriList.length > 0 && (
+              <button
+                onClick={handleCopySemuaLaporan}
+                className="rounded-full flex items-center gap-2 px-4 py-2 bg-[var(--color-primary-50)] text-xs font-bold text-[var(--color-primary-dark)] transition hover:bg-[var(--color-primary-100)]"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Ke WA (Semua Kelas)
+              </button>
+            )}
             <button
               onClick={() => setAllStatus("HADIR")}
               className="rounded-full bg-[var(--color-surface-dark)] px-4 py-2 text-xs font-bold text-[var(--color-text)] transition hover:bg-[var(--color-surface-dark)]"
