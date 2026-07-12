@@ -79,28 +79,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
-    const { absenPengajarId, konfirmasiHadir, catatan } = await request.json();
+    const { absenPengajarId, konfirmasiHadir, catatan, terlambatMenit } = await request.json();
 
     if (!absenPengajarId || konfirmasiHadir === undefined) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    // Upsert Berita Acara (Update jika sudah ada, Create jika belum)
-    const result = await prisma.beritaAcara.upsert({
-      where: {
-        absenPengajarId: absenPengajarId
-      },
-      update: {
-        konfirmasiHadir,
-        catatan,
-        santriId: session.santriId // perbarui ID santri jika yg ngisi ganti org (e.g. ganti periode)
-      },
-      create: {
-        absenPengajarId,
-        konfirmasiHadir,
-        catatan,
-        santriId: session.santriId
+    const result = await prisma.$transaction(async (tx) => {
+      // Upsert Berita Acara (Update jika sudah ada, Create jika belum)
+      const ba = await tx.beritaAcara.upsert({
+        where: { absenPengajarId },
+        update: {
+          konfirmasiHadir,
+          catatan,
+          santriId: session.santriId
+        },
+        create: {
+          absenPengajarId,
+          konfirmasiHadir,
+          catatan,
+          santriId: session.santriId
+        }
+      });
+
+      // Update waktu keterlambatan di tabel absen guru jika guru hadir
+      if (konfirmasiHadir && terlambatMenit !== undefined) {
+        await tx.absenPengajar.update({
+          where: { id: absenPengajarId },
+          data: {
+            terlambatMenit: terlambatMenit >= 0 ? Number(terlambatMenit) : null
+          }
+        });
       }
+
+      return ba;
     });
 
     return NextResponse.json({ success: true, data: result });

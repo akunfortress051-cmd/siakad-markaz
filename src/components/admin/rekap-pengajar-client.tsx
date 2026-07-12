@@ -170,6 +170,35 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
     }));
   }, [filteredData]);
 
+  const summaryByPengajar = useMemo(() => {
+    const stats: Record<string, { total: number, alpha: number, terverifikasi: number, belum: number, tdkHadir: number }> = {};
+    
+    filteredData.forEach(r => {
+      if (!stats[r.pengajar]) {
+        stats[r.pengajar] = { total: 0, alpha: 0, terverifikasi: 0, belum: 0, tdkHadir: 0 };
+      }
+      
+      const st = stats[r.pengajar];
+      st.total += 1;
+      
+      if (r.status === "ALPHA") {
+        st.alpha += 1;
+      } else if (!r.beritaAcaraAktif) {
+        st.terverifikasi += 1;
+      } else if (r.beritaAcara) {
+        if (r.beritaAcara.konfirmasiHadir) {
+          st.terverifikasi += 1;
+        } else {
+          st.tdkHadir += 1;
+        }
+      } else {
+        st.belum += 1;
+      }
+    });
+
+    return Object.entries(stats).map(([nama, s]) => ({ nama, ...s })).sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [filteredData]);
+
   const exportToExcel = async () => {
     if (!dari || !sampai || !data.length) return;
 
@@ -434,6 +463,41 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
               </button>
             )}
           </div>
+
+          {/* Verification Summary */}
+          {summaryByPengajar.length > 0 && !isLoading && (
+             <div className="mt-6 border border-[var(--color-surface-dark)] rounded-2xl overflow-hidden bg-white">
+                <div className="bg-slate-50 px-4 py-3 border-b border-[var(--color-surface-dark)] flex items-center justify-between">
+                   <h3 className="text-sm font-bold text-[var(--color-primary)]">Ringkasan Verifikasi & Kehadiran (Sesuai Filter)</h3>
+                </div>
+                <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+                   <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-white sticky top-0 border-b border-[var(--color-surface-dark)] shadow-sm">
+                         <tr>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase">Pengajar</th>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-24">Total Sesi</th>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-28">Terverifikasi</th>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-28">Menunggu</th>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-24">Tdk Hadir</th>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-24">Alpha</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-surface)]">
+                         {summaryByPengajar.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50 transition">
+                               <td className="px-4 py-2 font-bold text-[var(--color-text)]">{item.nama}</td>
+                               <td className="px-4 py-2 text-center font-bold text-[var(--color-primary)]">{item.total}</td>
+                               <td className="px-4 py-2 text-center text-emerald-600 font-bold">{item.terverifikasi > 0 ? item.terverifikasi : "-"}</td>
+                               <td className="px-4 py-2 text-center text-amber-500 font-bold">{item.belum > 0 ? item.belum : "-"}</td>
+                               <td className="px-4 py-2 text-center text-red-500 font-bold">{item.tdkHadir > 0 ? item.tdkHadir : "-"}</td>
+                               <td className="px-4 py-2 text-center text-[var(--color-text-muted)] font-bold">{item.alpha > 0 ? item.alpha : "-"}</td>
+                            </tr>
+                         ))}
+                      </tbody>
+                   </table>
+                </div>
+             </div>
+          )}
         </div>
 
         {isLoading ? (

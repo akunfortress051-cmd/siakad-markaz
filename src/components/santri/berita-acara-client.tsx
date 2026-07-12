@@ -57,7 +57,7 @@ export function BeritaAcaraClient() {
     }
   };
 
-  const handleSubmit = async (absenId: string, konfirmasiHadir: boolean, catatan: string) => {
+  const handleSubmit = async (absenId: string, konfirmasiHadir: boolean, catatan: string, terlambatMenit: number) => {
     setSubmittingId(absenId);
     try {
       const res = await fetch("/api/santri/me/berita-acara", {
@@ -66,7 +66,8 @@ export function BeritaAcaraClient() {
         body: JSON.stringify({
           absenPengajarId: absenId,
           konfirmasiHadir,
-          catatan: catatan || null
+          catatan: catatan || null,
+          terlambatMenit
         })
       });
 
@@ -78,6 +79,7 @@ export function BeritaAcaraClient() {
           if (item.id === absenId) {
             return {
               ...item,
+              terlambatMenit: konfirmasiHadir ? (terlambatMenit > 0 ? terlambatMenit : null) : item.terlambatMenit,
               beritaAcara: {
                 id: json.data.id || "new",
                 konfirmasiHadir,
@@ -186,11 +188,12 @@ function BeritaAcaraCard({ absen, isComplete, ba, onSubmit, isSubmitting }: {
    absen: AbsenPengajar, 
    isComplete: boolean, 
    ba: { konfirmasiHadir: boolean, catatan: string | null } | null,
-   onSubmit: (id: string, hadir: boolean, catatan: string) => void,
+   onSubmit: (id: string, hadir: boolean, catatan: string, terlambatMenit: number) => void,
    isSubmitting: boolean
 }) {
    const [konfirmasi, setKonfirmasi] = useState<boolean | null>(ba ? ba.konfirmasiHadir : null);
    const [catatan, setCatatan] = useState<string>(ba?.catatan || "");
+   const [terlambatMenit, setTerlambatMenit] = useState<number>(absen.terlambatMenit || 0);
    const [isEditing, setIsEditing] = useState<boolean>(!isComplete);
 
    const sesiLabel = absen.sesi.replace('_', ' ');
@@ -200,7 +203,7 @@ function BeritaAcaraCard({ absen, isComplete, ba, onSubmit, isSubmitting }: {
          toast.error("Pilih status kehadiran terlebih dahulu");
          return;
       }
-      onSubmit(absen.id, konfirmasi, catatan);
+      onSubmit(absen.id, konfirmasi, catatan, terlambatMenit);
       setIsEditing(false);
    };
 
@@ -265,6 +268,31 @@ function BeritaAcaraCard({ absen, isComplete, ba, onSubmit, isSubmitting }: {
                      <span className="text-xs font-bold text-center">Tidak, Guru Tdk Hadir</span>
                   </button>
                </div>
+               
+               {konfirmasi === true && (
+                  <div className="bg-emerald-50/50 rounded-xl p-3 border border-emerald-100 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+                     <span className="text-xs font-bold text-emerald-800">Menit Keterlambatan:</span>
+                     <div className="flex items-center gap-2">
+                        <button
+                           type="button"
+                           onClick={() => setTerlambatMenit(0)}
+                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${terlambatMenit === 0 ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+                        >
+                           Tepat Waktu
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={terlambatMenit === 0 ? "0" : (terlambatMenit || "")}
+                           onChange={(e) => setTerlambatMenit(e.target.value === "" ? 0 : Number(e.target.value))}
+                           placeholder="0"
+                           className="w-16 px-3 py-1.5 text-center text-sm font-bold border border-emerald-200 rounded-lg outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        />
+                        <span className="text-xs font-medium text-emerald-700">menit</span>
+                     </div>
+                  </div>
+               )}
 
                <div>
                   <textarea 
@@ -281,6 +309,7 @@ function BeritaAcaraCard({ absen, isComplete, ba, onSubmit, isSubmitting }: {
                         onClick={() => {
                            setKonfirmasi(ba?.konfirmasiHadir ?? null);
                            setCatatan(ba?.catatan || "");
+                           setTerlambatMenit(absen.terlambatMenit || 0);
                            setIsEditing(false);
                         }}
                         className="px-4 py-2 text-xs font-bold rounded-xl border border-[var(--color-surface-dark)] bg-white text-[var(--color-text)]"
