@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Bed, BookOpen, Activity, Settings, BarChart3, FileText, ClipboardList } from "lucide-react";
+import { Bed, BookOpen, Activity, Settings, BarChart3, FileText, ClipboardList, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +32,14 @@ const menus = [
     icon: Activity,
     color: "bg-amber-100 text-amber-700",
     accent: "group-hover:border-amber-200",
+  },
+  {
+    title: "Absen Ta'birot",
+    description: "Pendataan kehadiran santri untuk kelompok Ta'birot (per tempat dan bulan).",
+    href: "/admin/absensi/tabirot",
+    icon: Users,
+    color: "bg-pink-100 text-pink-700",
+    accent: "group-hover:border-pink-200",
   },
   {
     title: "Rekapitulasi Absen",

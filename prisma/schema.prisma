@@ -90,6 +90,8 @@ model SantriInternal {
   checkoutPengajuanList CheckoutPengajuan[]
   ketuaKelasList        KetuaKelas[]
   beritaAcaraList       BeritaAcara[]
+  anggotaTabirotList    AnggotaTabirot[]
+  absenTabirotList      AbsenTabirot[]
 }
 
 model Dufah {
@@ -679,4 +681,45 @@ model BeritaAcara {
 
   absenPengajar AbsenPengajar  @relation(fields: [absenPengajarId], references: [id], onDelete: Cascade)
   santri        SantriInternal @relation(fields: [santriId], references: [id], onDelete: Cascade)
+}
+
+// ===== ABSENSI TA'BIROT =====
+
+model KelompokTabirot {
+  id        String   @id @default(cuid())
+  tempat    String          // Nama tempat, misal "Qoah Baharun"
+  bulanKe   Int             // Bulan ke-1, ke-2, dst
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  anggotaList  AnggotaTabirot[]
+  absenList    AbsenTabirot[]
+
+  @@unique([tempat, bulanKe])
+}
+
+model AnggotaTabirot {
+  id          String   @id @default(cuid())
+  kelompokId  String
+  santriId    String
+  createdAt   DateTime @default(now())
+
+  kelompok  KelompokTabirot @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
+  santri    SantriInternal  @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@unique([kelompokId, santriId])
+}
+
+model AbsenTabirot {
+  id          String       @id @default(cuid())
+  kelompokId  String
+  santriId    String
+  tanggal     DateTime     @db.Date
+  status      StatusAbsen
+  keterangan  String?
+
+  kelompok  KelompokTabirot @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
+  santri    SantriInternal  @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@unique([kelompokId, santriId, tanggal])
 }

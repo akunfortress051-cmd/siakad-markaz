@@ -49,6 +49,10 @@ export async function GET() {
             perizinanList: { orderBy: { createdAt: 'desc' } },
           },
         },
+        absenTabirotList: {
+          include: { kelompok: true },
+          orderBy: { tanggal: 'desc' },
+        },
       },
     });
 
@@ -160,6 +164,7 @@ export async function GET() {
         rekapAbsenKelas: hitungRekap(riwayat.absenKelasList),
         rekapAbsenSakan: hitungRekap(riwayat.absenSakanList),
         rekapAbsenKegiatan: hitungRekap(riwayat.absenKegiatanList),
+        rekapAbsenTabirot: hitungRekap(santri.absenTabirotList),
 
         // Detail absensi
         absenKelas: riwayat.absenKelasList.map((a) => ({
@@ -177,6 +182,12 @@ export async function GET() {
           tanggal: a.tanggal,
           status: a.status,
           namaKegiatan: a.kategori.nama,
+          keterangan: a.keterangan,
+        })),
+        absenTabirot: santri.absenTabirotList.map((a) => ({
+          tanggal: a.tanggal,
+          status: a.status,
+          namaKelompok: `${a.kelompok.tempat} (Bulan ke-${a.kelompok.bulanKe})`,
           keterangan: a.keterangan,
         })),
 

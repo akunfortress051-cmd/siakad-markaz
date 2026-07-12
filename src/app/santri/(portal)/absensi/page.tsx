@@ -11,12 +11,14 @@ import {
   XCircle,
   AlertCircle,
   MinusCircle,
+  Users,
 } from "lucide-react";
 
 type RekapData = { hadir: number; izin: number; sakit: number; alpha: number; total: number };
 type AbsenKelas = { tanggal: string; sesi: string; status: string; keterangan: string | null };
 type AbsenSakan = { tanggal: string; status: string; keterangan: string | null };
 type AbsenKegiatan = { tanggal: string; status: string; namaKegiatan: string; keterangan: string | null };
+type AbsenTabirot = { tanggal: string; status: string; namaKelompok: string; keterangan: string | null };
 
 type RiwayatData = {
   id: string;
@@ -26,9 +28,11 @@ type RiwayatData = {
   rekapAbsenKelas: RekapData;
   rekapAbsenSakan: RekapData;
   rekapAbsenKegiatan: RekapData;
+  rekapAbsenTabirot: RekapData;
   absenKelas: AbsenKelas[];
   absenSakan: AbsenSakan[];
   absenKegiatan: AbsenKegiatan[];
+  absenTabirot: AbsenTabirot[];
   rekapUsbu: Array<{
     usbu: number;
     hadir: number;
@@ -96,7 +100,7 @@ export default function SantriAbsensiPage() {
   const [riwayat, setRiwayat] = useState<RiwayatData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDufah, setActiveDufah] = useState(0);
-  const [activeTab, setActiveTab] = useState<"kelas" | "sakan" | "kegiatan">("kelas");
+  const [activeTab, setActiveTab] = useState<"kelas" | "sakan" | "kegiatan" | "tabirot">("kelas");
   const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
@@ -133,6 +137,7 @@ export default function SantriAbsensiPage() {
     { key: "kelas" as const, label: "Kelas", icon: CalendarCheck, rekap: current.rekapAbsenKelas },
     { key: "sakan" as const, label: "Sakan", icon: Home, rekap: current.rekapAbsenSakan },
     { key: "kegiatan" as const, label: "Kegiatan", icon: Activity, rekap: current.rekapAbsenKegiatan },
+    { key: "tabirot" as const, label: "Ta'birot", icon: Users, rekap: current.rekapAbsenTabirot },
   ];
 
   const currentTab = tabs.find((t) => t.key === activeTab)!;
@@ -142,7 +147,9 @@ export default function SantriAbsensiPage() {
       ? current.absenKelas
       : activeTab === "sakan"
         ? current.absenSakan
-        : current.absenKegiatan;
+        : activeTab === "kegiatan"
+          ? current.absenKegiatan
+          : current.absenTabirot;
 
   return (
     <div className="space-y-6">
@@ -303,6 +310,11 @@ export default function SantriAbsensiPage() {
                       {item.namaKegiatan && (
                         <span className="font-normal ml-1.5" style={{ color: "var(--color-text-muted)" }}>
                           {item.namaKegiatan}
+                        </span>
+                      )}
+                      {item.namaKelompok && (
+                        <span className="font-normal ml-1.5" style={{ color: "var(--color-text-muted)" }}>
+                          {item.namaKelompok}
                         </span>
                       )}
                     </p>
