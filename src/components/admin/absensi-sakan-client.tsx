@@ -228,6 +228,19 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
   const statAlpha = Object.values(absenMap).filter(a => a.status === "ALPHA").length;
   const belumDiabsen = santriList.length - Object.keys(absenMap).length;
 
+  const groupedSantri = santriList.reduce<Record<string, SantriAbsenTarget[]>>((acc, santri) => {
+    const kamar = santri.kamar || "Tanpa Kamar";
+    if (!acc[kamar]) acc[kamar] = [];
+    acc[kamar].push(santri);
+    return acc;
+  }, {});
+
+  const sortedKamarKeys = Object.keys(groupedSantri).sort((a, b) => {
+    if (a === "Tanpa Kamar") return 1;
+    if (b === "Tanpa Kamar") return -1;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden neu-card-white">
@@ -338,20 +351,26 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                   <th className="px-6 py-4">Keterangan</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-surface)] text-sm text-[var(--color-text-muted)]">
-                {santriList.map((santri, index) => {
-                  const currentStatus = absenMap[santri.riwayatId]?.status;
-                  const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
+              {sortedKamarKeys.map((kamar) => (
+                <tbody key={kamar} className="divide-y divide-[var(--color-surface)] text-sm text-[var(--color-text-muted)]">
+                  <tr className="bg-[var(--color-surface-light)] border-t-2 border-[var(--color-surface-dark)]">
+                    <td colSpan={4} className="px-6 py-3 text-xs font-bold text-[var(--color-text)] uppercase tracking-wide">
+                      🏠 {kamar === "Tanpa Kamar" ? kamar : `Kamar ${kamar}`}
+                    </td>
+                  </tr>
+                  {groupedSantri[kamar].map((santri, index) => {
+                    const currentStatus = absenMap[santri.riwayatId]?.status;
+                    const currentKet = absenMap[santri.riwayatId]?.keterangan || "";
 
-                  const nomorTasrih = extractNomorTasrih(currentKet);
-                  const displayKet = stripTasrihId(currentKet);
+                    const nomorTasrih = extractNomorTasrih(currentKet);
+                    const displayKet = stripTasrihId(currentKet);
 
-                  return (
-                    <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)]">
-                      <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <p className={`font-bold ${santri.isCheckedOut ? "text-red-900" : "text-[var(--color-text)]"}`}>
+                    return (
+                      <tr key={santri.riwayatId} className="hover:bg-[var(--color-surface-light)] transition-colors">
+                        <td className="px-4 py-4 text-center font-bold text-[var(--color-text-subtle)]">{index + 1}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-bold ${santri.isCheckedOut ? "text-red-900" : "text-[var(--color-text)]"}`}>
                             {santri.nama}
                             {unconfirmedIds.has(santri.riwayatId) && (
                               <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
@@ -426,15 +445,18 @@ export function AbsensiSakanClient({ sakanList, defaultSakan }: { sakanList: str
                       </td>
                     </tr>
                   )
-                })}
-                {santriList.length === 0 && !isLoading && (
+                  })}
+                </tbody>
+              ))}
+              {santriList.length === 0 && !isLoading && (
+                <tbody>
                   <tr>
                     <td colSpan={4} className="px-6 py-8 text-center text-[var(--color-text-muted)] font-medium">
                       Tidak ada santri yang ditemukan pada filter ini.
                     </td>
                   </tr>
-                )}
-              </tbody>
+                </tbody>
+              )}
             </table>
           )}
         </div>
