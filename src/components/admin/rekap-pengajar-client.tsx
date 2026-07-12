@@ -171,25 +171,25 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
   }, [filteredData]);
 
   const summaryByPengajar = useMemo(() => {
-    const stats: Record<string, { total: number, alpha: number, terverifikasi: number, belum: number, tdkHadir: number }> = {};
+    const stats: Record<string, { total: number, berhalangan: number, terverifikasi: number, belum: number }> = {};
     
     filteredData.forEach(r => {
       if (!stats[r.pengajar]) {
-        stats[r.pengajar] = { total: 0, alpha: 0, terverifikasi: 0, belum: 0, tdkHadir: 0 };
+        stats[r.pengajar] = { total: 0, berhalangan: 0, terverifikasi: 0, belum: 0 };
       }
       
       const st = stats[r.pengajar];
       st.total += 1;
       
       if (r.status === "ALPHA") {
-        st.alpha += 1;
+        st.berhalangan += 1;
       } else if (!r.beritaAcaraAktif) {
         st.terverifikasi += 1;
       } else if (r.beritaAcara) {
         if (r.beritaAcara.konfirmasiHadir) {
           st.terverifikasi += 1;
         } else {
-          st.tdkHadir += 1;
+          st.berhalangan += 1;
         }
       } else {
         st.belum += 1;
@@ -478,8 +478,7 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
                             <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-24">Total Sesi</th>
                             <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-28">Terverifikasi</th>
                             <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-28">Menunggu</th>
-                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-24">Tdk Hadir</th>
-                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-24">Alpha</th>
+                            <th className="px-4 py-2 font-bold text-[var(--color-text-muted)] text-[11px] uppercase text-center w-36">Berhalangan Masuk</th>
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-surface)]">
@@ -489,8 +488,7 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
                                <td className="px-4 py-2 text-center font-bold text-[var(--color-primary)]">{item.total}</td>
                                <td className="px-4 py-2 text-center text-emerald-600 font-bold">{item.terverifikasi > 0 ? item.terverifikasi : "-"}</td>
                                <td className="px-4 py-2 text-center text-amber-500 font-bold">{item.belum > 0 ? item.belum : "-"}</td>
-                               <td className="px-4 py-2 text-center text-red-500 font-bold">{item.tdkHadir > 0 ? item.tdkHadir : "-"}</td>
-                               <td className="px-4 py-2 text-center text-[var(--color-text-muted)] font-bold">{item.alpha > 0 ? item.alpha : "-"}</td>
+                               <td className="px-4 py-2 text-center text-red-500 font-bold">{item.berhalangan > 0 ? item.berhalangan : "-"}</td>
                             </tr>
                          ))}
                       </tbody>
