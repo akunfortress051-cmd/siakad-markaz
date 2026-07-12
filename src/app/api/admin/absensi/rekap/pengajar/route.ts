@@ -73,6 +73,13 @@ export async function GET(request: Request) {
     // Fetch SesiTaqwim untuk mendeteksi keterlambatan program Taqwim
     const sesiTaqwimList = await prisma.sesiTaqwim.findMany({ where: { isActive: true } });
 
+    // Fetch kelas-kelas yang punya ketua kelas aktif (beritaAcara aktif)
+    const activeKetuaList = await prisma.ketuaKelas.findMany({
+      where: { isActive: true },
+      select: { kelasId: true }
+    });
+    const kelasWithKetuaSet = new Set(activeKetuaList.map(k => k.kelasId));
+
     const formatted = records.map(r => {
       // Cek apakah guru ini di-assign via program level di sesi ini
       const isProgramLevel = pengajarSesiProgramList.some(
@@ -150,6 +157,12 @@ export async function GET(request: Request) {
           bros: r.atributBros,
         },
         terlambatMenit,
+        beritaAcara: r.beritaAcara ? {
+          id: r.beritaAcara.id,
+          konfirmasiHadir: r.beritaAcara.konfirmasiHadir,
+          catatan: r.beritaAcara.catatan,
+        } : null,
+        beritaAcaraAktif: kelasWithKetuaSet.has(r.kelasId),
       };
     });
 
@@ -224,6 +237,8 @@ export async function GET(request: Request) {
             pengajarDigantikan: null,
             atribut: { nametag: false, kopiah: false, bros: false },
             terlambatMenit: 0,
+            beritaAcara: null,
+            beritaAcaraAktif: kelasWithKetuaSet.has(teacher.kelasId),
           });
         }
       }
@@ -251,6 +266,8 @@ export async function GET(request: Request) {
             pengajarDigantikan: null,
             atribut: { nametag: false, kopiah: false, bros: false },
             terlambatMenit: 0,
+            beritaAcara: null,
+            beritaAcaraAktif: false,
           });
         }
       }

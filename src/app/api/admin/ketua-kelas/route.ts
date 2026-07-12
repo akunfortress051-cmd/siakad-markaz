@@ -78,3 +78,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Terjadi kesalahan saat menyimpan data' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const kelasId = searchParams.get('kelasId');
+
+    if (!kelasId) {
+      return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    }
+
+    await prisma.ketuaKelas.updateMany({
+      where: { kelasId, isActive: true },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json({ success: true, message: 'Berhasil menonaktifkan fitur berita acara untuk kelas ini' });
+  } catch (error) {
+    console.error('Error disabling ketua kelas:', error);
+    return NextResponse.json({ error: 'Terjadi kesalahan saat menghapus data' }, { status: 500 });
+  }
+}

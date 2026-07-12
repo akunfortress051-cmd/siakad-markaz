@@ -138,6 +138,35 @@ export function KetuaKelasClient({ kelasList }: { kelasList: KelasInfo[] }) {
     }
   };
 
+  // 4. Handle penonaktifan ketua kelas
+  const handleDisableKetuaKelas = async () => {
+    if (!selectedKelas) return;
+
+    if (!confirm(`Nonaktifkan fitur berita acara untuk kelas ini?`)) return;
+
+    setIsSubmitting(true);
+    const toastId = toast.loading("Menyimpan...");
+
+    try {
+      const res = await fetch(`/api/admin/ketua-kelas?kelasId=${selectedKelas}`, {
+        method: "DELETE",
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success(result.message, { id: toastId });
+        fetchKetuaKelas(); // Refresh list
+      } else {
+        toast.error(result.error || "Gagal menonaktifkan", { id: toastId });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Terjadi kesalahan jaringan", { id: toastId });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const activeKetuaInSelectedKelas = ketuaKelasList.find(k => k.kelasId === selectedKelas);
   const filteredSantri = santriList.filter(s => s.nama.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -162,17 +191,52 @@ export function KetuaKelasClient({ kelasList }: { kelasList: KelasInfo[] }) {
               <option value="">-- Pilih Kelas --</option>
               {Object.entries(kelasByProgram).map(([programName, classes]) => (
                 <optgroup key={programName} label={programName}>
-                  {classes.map(k => (
-                    <option key={k.id} value={k.id}>{k.nama}</option>
-                  ))}
+                  {classes.map(k => {
+                    const isActiveClass = ketuaKelasList.some(ketua => ketua.kelasId === k.id);
+                    return (
+                      <option key={k.id} value={k.id}>
+                        {k.nama} {isActiveClass ? "🟢 (Aktif)" : ""}
+                      </option>
+                    )
+                  })}
                 </optgroup>
               ))}
             </select>
           </div>
 
-          {selectedKelas && (
+           {selectedKelas && (
             <div className="pt-4 border-t border-[var(--color-surface-dark)]">
-              <h3 className="text-sm font-bold text-[var(--color-text)] mb-3">Daftar Santri</h3>
+              
+              {/* STATUS INDICATOR CARD */}
+              <div className={`p-4 rounded-xl mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border ${activeKetuaInSelectedKelas ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2">
+                    Status Berita Acara: 
+                    {activeKetuaInSelectedKelas ? (
+                      <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-xs">AKTIF</span>
+                    ) : (
+                      <span className="text-slate-600 bg-slate-200 px-2 py-0.5 rounded text-xs">NON-AKTIF</span>
+                    )}
+                  </h3>
+                  <p className="text-xs font-medium text-[var(--color-text-subtle)] mt-1">
+                    {activeKetuaInSelectedKelas 
+                      ? "Absensi di kelas ini wajib diverifikasi oleh ketua kelas sebelum dianggap valid."
+                      : "Absensi di kelas ini otomatis langsung valid tanpa melalui verifikasi santri."
+                    }
+                  </p>
+                </div>
+                {activeKetuaInSelectedKelas && (
+                  <button 
+                    onClick={handleDisableKetuaKelas}
+                    disabled={isSubmitting}
+                    className="shrink-0 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition-colors border border-red-200"
+                  >
+                    Non-aktifkan
+                  </button>
+                )}
+              </div>
+
+              <h3 className="text-sm font-bold text-[var(--color-text)] mb-3">Pilih Santri Penanggung Jawab</h3>
               
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-subtle)]" />

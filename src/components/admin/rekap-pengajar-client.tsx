@@ -31,6 +31,7 @@ type PengajarRecord = {
     konfirmasiHadir: boolean;
     catatan: string | null;
   } | null;
+  beritaAcaraAktif?: boolean;
 };
 
 const HARI_OPTIONS = [
@@ -538,7 +539,7 @@ export function RekapPengajarClient({ userRole = "", pengajarList = [] }: { user
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {r.status === "ALPHA" ? (
+                            {r.status === "ALPHA" || !r.beritaAcaraAktif ? (
                                <span className="text-[var(--color-text-muted)] font-bold text-lg">-</span>
                             ) : (
                                r.beritaAcara ? (
