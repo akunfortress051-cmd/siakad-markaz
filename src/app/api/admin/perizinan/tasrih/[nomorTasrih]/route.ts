@@ -36,7 +36,25 @@ export async function GET(request: Request, props: { params: Promise<{ nomorTasr
       if (user) petugasNama = user.nama;
     }
 
-    return NextResponse.json({ ...data, batasJam, petugasNama });
+    // Enrich with sakan & program/kelas from SantriInternal
+    let sakan: string | null = null;
+    let kelasNama = data.riwayat?.kelas?.nama || null;
+    if (data.riwayat?.santri) {
+      const santriMaster = await prisma.santriInternal.findUnique({
+        where: { id: data.riwayat.santri.id },
+        select: { sakan: true }
+      });
+      if (santriMaster) sakan = santriMaster.sakan;
+    }
+    if (!kelasNama && data.riwayat) {
+      const riwayatFull = await prisma.riwayatSantri.findUnique({
+        where: { id: data.riwayat.id },
+        select: { program: { select: { nama_indo: true } } }
+      });
+      if (riwayatFull?.program) kelasNama = riwayatFull.program.nama_indo;
+    }
+
+    return NextResponse.json({ ...data, batasJam, petugasNama, sakan, riwayat: { ...data.riwayat, kelas: data.riwayat?.kelas || { nama: kelasNama } } });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch perizinan detail" }, { status: 500 });
   }

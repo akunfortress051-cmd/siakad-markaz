@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
-import { ArrowLeft, Users, Save, X, Plus, Search, Calendar } from "lucide-react";
+import { ArrowLeft, Users, Save, X, Plus, Search, Calendar, FileText } from "lucide-react";
+import TasrihModal, { TasrihDetail } from "./tasrih-modal";
 
 type Anggota = {
   id: string;
@@ -41,6 +42,18 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
+
+  const viewTasrih = async (nomorTasrih: string) => {
+    try {
+      const res = await fetch(`/api/admin/perizinan/tasrih/${nomorTasrih}`);
+      if (!res.ok) throw new Error("Gagal load tasrih");
+      const json = await res.json();
+      setSelectedTasrih(json);
+    } catch (error) {
+      toast.error("Gagal memuat detail tasrih");
+    }
+  };
 
   useEffect(() => {
     // Set default tanggal = today
@@ -304,15 +317,41 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
                 {kelompok.anggotaList.map((anggota, idx) => {
                   const s = anggota.santri;
                   const currentStatus = absenMap[anggota.santriId]?.status;
+                  const rawKet = absenMap[anggota.santriId]?.keterangan || "";
+                  
+                  const hasTasrih = rawKet.includes("[TRS-");
+                  let tasrihText = "";
+                  let displayKet = rawKet;
+                  
+                  if (hasTasrih) {
+                    const match = rawKet.match(/\[(TRS-.*?)\]\s*(.*)/);
+                    if (match) {
+                      tasrihText = match[1];
+                      displayKet = match[2];
+                    }
+                    displayKet = displayKet.replace(/Izin Ta'birot :\s*/g, "").replace(/Izin Ta'birot\s*/g, "").replace(/Izin Harian :\s*/g, "").replace(/Izin Harian\s*/g, "").replace(/^:\s*/, "");
+                  }
+
                   return (
                     <tr key={anggota.id} className="hover:bg-[var(--color-surface-light)] transition-colors">
                       <td className="px-6 py-4 text-[var(--color-text-subtle)] font-bold text-center">{idx + 1}</td>
                       <td className="px-6 py-4">
-                        <p className="font-bold text-[var(--color-text)]">{s.nama}</p>
-                        <div className="flex gap-2 mt-1">
-                          {s.kategori && (
-                            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface)] text-[10px] font-semibold text-[var(--color-text-muted)]">{s.kategori}</span>
-                          )}
+                        <div className="flex flex-col gap-1.5">
+                          <p className="font-bold text-[var(--color-text)]">{s.nama}</p>
+                          <div className="flex gap-2 items-center flex-wrap">
+                            {hasTasrih && tasrihText && (
+                              <button
+                                onClick={() => viewTasrih(tasrihText)}
+                                className="flex items-center gap-1 w-fit rounded-lg bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 transition whitespace-nowrap"
+                                title="Lihat Tasrih"
+                              >
+                                <FileText size={12} /> {tasrihText}
+                              </button>
+                            )}
+                            {s.kategori && (
+                              <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface)] text-[10px] font-semibold text-[var(--color-text-muted)]">{s.kategori}</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -344,11 +383,14 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
                         <input
                           type="text"
                           placeholder="Bila ada catatan..."
-                          value={absenMap[anggota.santriId]?.keterangan || ""}
+                          value={displayKet}
                           onChange={(e) => {
                             setAbsenMap(prev => ({
                               ...prev,
-                              [anggota.santriId]: { status: prev[anggota.santriId]?.status || "ALPHA", keterangan: e.target.value }
+                              [anggota.santriId]: { 
+                                status: prev[anggota.santriId]?.status || "ALPHA", 
+                                keterangan: tasrihText ? `Izin Ta'birot [${tasrihText}]: ${e.target.value}` : e.target.value 
+                              }
                             }));
                           }}
                           className="w-full rounded-lg border border-[var(--color-surface-dark)] px-3 py-1.5 text-sm outline-none focus:border-blue-500 transition"
@@ -428,7 +470,7 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
 
       {/* Modal Pencarian Santri */}
       {showSearch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h3 className="font-bold text-slate-800 text-lg">Cari Santri</h3>
@@ -495,6 +537,10 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
             </div>
           </div>
         </div>
+      )}
+
+      {selectedTasrih && (
+        <TasrihModal tasrih={selectedTasrih} onClose={() => setSelectedTasrih(null)} />
       )}
     </div>
   );

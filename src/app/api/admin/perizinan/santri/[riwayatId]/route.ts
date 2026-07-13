@@ -16,6 +16,7 @@ export async function GET(request: Request, props: { params: Promise<{ riwayatId
         riwayatId: params.riwayatId,
         statusIzin: "AKTIF",
         tanggalMulai: { lte: today },
+        tipeIzin: { not: "TABIROT" as any }
       },
       orderBy: { createdAt: "desc" },
       take: 10,
