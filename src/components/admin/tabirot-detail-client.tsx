@@ -42,6 +42,7 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedSantriIds, setSelectedSantriIds] = useState<string[]>([]);
   const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
 
   const viewTasrih = async (nomorTasrih: string) => {
@@ -140,29 +141,25 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
     setAbsenMap(newMap);
   };
 
-  const handleSearchSantri = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!showSearch) return;
     if (searchQuery.length < 3) {
-      toast.error("Masukkan minimal 3 huruf");
+      setSearchResults([]);
       return;
     }
+    const timeoutId = setTimeout(() => {
+      executeSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, showSearch, tanggal]);
+
+  const executeSearch = async (query: string) => {
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/integrasi/siakad/santri?query=${searchQuery}`); // Reuse existing global search if available, 
-      // or we can just fetch all and filter in memory if the endpoint is not global.
-      // Wait, there might be a better way or we use a custom endpoint.
-      // Let's call /api/admin/santri or similar. But since we might not have a generic global search API exposed for this UI, 
-      // let's fetch active santri from our existing /api/admin/absensi/sakan route which returns active santri List?
-      // Actually, let's create a quick search logic on frontend using the master santri API if we can, or just generic API.
-      
-      // I will fallback to a simple generic fetch since I don't know the exact endpoint for global santri search.
-      // Let's assume `/api/admin/absensi/sakan?tanggal=${tanggal}` provides a massive list of santri and we can just filter it. 
-      // But it's inefficient. 
-      // We will just do a standard API call if exists, else fallback to something we know.
       const sres = await fetch(`/api/admin/absensi/sakan?tanggal=${tanggal}`);
       const sdata = await sres.json();
       if (sdata.santriList) {
-        const filtered = sdata.santriList.filter((s:any) => s.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+        const filtered = sdata.santriList.filter((s:any) => s.nama.toLowerCase().includes(query.toLowerCase()));
         setSearchResults(filtered);
       }
     } catch {
@@ -172,19 +169,25 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
     }
   };
 
-  const handleAddAnggota = async (santriId: string) => {
+  const toggleSantri = (id: string) => {
+    setSelectedSantriIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleAddSelectedAnggota = async () => {
+    if (selectedSantriIds.length === 0) return;
     setIsAdding(true);
     try {
       const res = await fetch(`/api/admin/absensi/tabirot/${kelompokId}/anggota`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ santriIds: [santriId] }),
+        body: JSON.stringify({ santriIds: selectedSantriIds }),
       });
       const result = await res.json();
       if (result.success) {
-        toast.success("Santri berhasil ditambahkan");
+        toast.success(`${selectedSantriIds.length} Santri berhasil ditambahkan`);
         fetchKelompok();
-        setSearchResults(prev => prev.filter(s => s.santriId !== santriId));
+        setSearchResults(prev => prev.filter(s => !selectedSantriIds.includes(s.santriId || s.id)));
+        setSelectedSantriIds([]);
       } else {
         toast.error(result.error);
       }
@@ -475,7 +478,7 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h3 className="font-bold text-slate-800 text-lg">Cari Santri</h3>
               <button 
-                onClick={() => { setShowSearch(false); setSearchResults([]); setSearchQuery(""); }}
+                onClick={() => { setShowSearch(false); setSearchResults([]); setSearchQuery(""); setSelectedSantriIds([]); }}
                 className="text-slate-400 hover:text-slate-600 p-1 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
               >
                 <X size={20} />
@@ -483,22 +486,15 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
             </div>
             
             <div className="p-5 border-b border-slate-100 bg-slate-50">
-              <form onSubmit={handleSearchSantri} className="flex gap-3">
+              <form onSubmit={e => e.preventDefault()} className="flex gap-3">
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Ketik minimal 3 huruf nama santri..."
+                  placeholder="Ketik minimal 3 huruf nama santri (otomatis mencari)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
-                <button
-                  type="submit"
-                  disabled={isSearching || searchQuery.length < 3}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 flex items-center gap-2"
-                >
-                  <Search size={16} /> Cari
-                </button>
               </form>
             </div>
             
@@ -509,22 +505,34 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
                 <div className="space-y-2">
                   {searchResults.map(s => {
                     const isAlreadyMember = kelompok.anggotaList.some(a => a.santriId === (s.santriId || s.id));
+                    const isSelected = selectedSantriIds.includes(s.santriId || s.id);
                     return (
-                      <div key={s.riwayatId || s.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-300 transition-colors">
-                        <div>
-                          <p className="font-bold text-slate-700 text-sm">{s.nama}</p>
-                          <div className="flex gap-2 mt-1">
-                            {s.sakan && s.sakan !== "-" && <span className="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-semibold">{s.sakan}</span>}
-                            {s.kelasNama && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">{s.kelasNama}</span>}
+                      <div 
+                        key={s.riwayatId || s.id} 
+                        onClick={() => { if(!isAlreadyMember) toggleSantri(s.santriId || s.id); }}
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
+                          isAlreadyMember ? 'border-slate-100 opacity-50 cursor-not-allowed bg-slate-50' 
+                          : isSelected ? 'border-indigo-500 bg-indigo-50/50 cursor-pointer shadow-sm' 
+                          : 'border-slate-100 hover:border-slate-300 cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          {!isAlreadyMember && (
+                            <div className={`w-5 h-5 flex flex-shrink-0 items-center justify-center rounded border transition-colors ${
+                              isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                            }`}>
+                              {isSelected && <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-bold text-slate-700 text-sm">{s.nama}</p>
+                            <div className="flex gap-2 mt-1">
+                              {s.sakan && s.sakan !== "-" && <span className="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-semibold">{s.sakan}</span>}
+                              {s.kelasNama && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">{s.kelasNama}</span>}
+                            </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleAddAnggota(s.santriId || s.id)}
-                          disabled={isAlreadyMember || isAdding}
-                          className="px-4 py-2 text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                        >
-                          {isAlreadyMember ? "Sudah di Grup" : "Tambahkan"}
-                        </button>
+                        {isAlreadyMember && <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-1 rounded font-bold uppercase tracking-wider">Terdaftar</span>}
                       </div>
                     )
                   })}
@@ -535,6 +543,18 @@ export function TabirotDetailClient({ kelompokId, canEdit }: { kelompokId: strin
                 </div>
               )}
             </div>
+
+            {selectedSantriIds.length > 0 && (
+              <div className="p-4 border-t border-slate-100 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] relative z-10">
+                <button
+                  onClick={handleAddSelectedAnggota}
+                  disabled={isAdding}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <Plus size={18} /> {isAdding ? "Menambahkan..." : `Tambahkan ${selectedSantriIds.length} Santri`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
