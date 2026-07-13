@@ -23,9 +23,10 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const canHarian = isAdmin || permissions.includes("perizinan_harian_edit");
   const canBerhari = isAdmin || permissions.includes("perizinan_berhari_edit");
   const canKeluarPare = isAdmin || permissions.includes("perizinan_keluar_pare_edit");
+  const canTabirot = isAdmin || permissions.includes("perizinan_tabirot_edit");
 
   // Defaults to whatever they have access to
-  const initialTab = canHarian ? "HARIAN" : canBerhari ? "BERHARI_HARI" : canKeluarPare ? "KELUAR_PARE" : "";
+  const initialTab = canHarian ? "HARIAN" : canBerhari ? "BERHARI_HARI" : canKeluarPare ? "KELUAR_PARE" : canTabirot ? "TABIROT" : "";
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [mode, setMode] = useState<"INDIVIDU" | "BATCH">("INDIVIDU");
@@ -172,6 +173,14 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "KELUAR_PARE" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
           >
             Izin Keluar Pare
+          </button>
+        )}
+        {canTabirot && (
+          <button 
+            onClick={() => setActiveTab("TABIROT")}
+            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "TABIROT" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
+          >
+            Izin Ta'birot
           </button>
         )}
       </div>
@@ -338,9 +347,10 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed mt-4">
               <strong>Info:</strong> 
-              {activeTab === "HARIAN" && " Izin akan otomatis berlaku untuk semua sesi kelas pada tanggal yang dipilih."}
-              {activeTab === "BERHARI_HARI" && " Izin otomatis berlaku untuk absensi Kelas, Sakan, dan Kegiatan pada rentang tanggal yang dipilih."}
-              {activeTab === "KELUAR_PARE" && ` Izin keluar Pare otomatis mengizinkan santri di absen Kelas, Sakan, & Kegiatan pada tanggal tersebut. Batas waktu kepulangan akan diset ke jam ${globalBatasJamAkhir} WIB.`}
+              {activeTab === "HARIAN" && " Izin otomatis berlaku untuk semua sesi kelas pada tanggal yang dipilih."}
+              {activeTab === "TABIROT" && " Izin otomatis berlaku untuk absensi Ta'birot pada tanggal/sesi ini."}
+              {activeTab === "BERHARI_HARI" && " Izin otomatis berlaku untuk absensi Kelas, Sakan, Kegiatan, dan Ta'birot pada rentang tanggal yang dipilih."}
+              {activeTab === "KELUAR_PARE" && ` Izin keluar Pare otomatis mengizinkan santri di absen Kelas, Sakan, Kegiatan & Ta'birot pada tanggal tersebut. Batas waktu kepulangan akan diset ke jam ${globalBatasJamAkhir} WIB.`}
             </div>
 
             <button 

@@ -502,6 +502,7 @@ enum TipeIzin {
   HARIAN
   BERHARI_HARI
   KELUAR_PARE
+  TABIROT
 }
 
 enum StatusIzin {

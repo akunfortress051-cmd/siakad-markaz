@@ -124,7 +124,7 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
     today.setHours(0,0,0,0);
     const end = d.tanggalSelesai ? new Date(d.tanggalSelesai) : new Date(d.tanggalMulai);
     
-    if (end < today && d.tipeIzin !== "HARIAN") {
+    if (end < today && (d.tipeIzin === "BERHARI_HARI" || d.tipeIzin === "KELUAR_PARE")) {
       return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-red-100 text-red-700 border border-red-200 flex items-center gap-1"><AlertTriangle size={12}/> Belum Kembali</span>;
     }
     
@@ -140,6 +140,7 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
             <option value="HARIAN">Harian</option>
             <option value="BERHARI_HARI">Berhari-hari</option>
             <option value="KELUAR_PARE">Keluar Pare</option>
+            <option value="TABIROT">Ta'birot</option>
           </select>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none">
             <option value="ALL">Semua Status</option>
@@ -183,7 +184,7 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-bold text-[var(--color-text)] text-xs">
-                      {d.tipeIzin === "HARIAN" ? "Harian" : d.tipeIzin === "BERHARI_HARI" ? "Berhari-hari" : "Keluar Pare"}
+                      {d.tipeIzin === "HARIAN" ? "Harian" : d.tipeIzin === "BERHARI_HARI" ? "Berhari-hari" : d.tipeIzin === "TABIROT" ? "Ta'birot" : "Keluar Pare"}
                     </div>
                     <div className="text-xs text-[var(--color-text-subtle)]">
                       {new Date(d.tanggalMulai).toLocaleDateString("id-ID")}
@@ -203,7 +204,7 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
                       </>
                     )}
                     
-                    {canEdit && d.statusIzin === "AKTIF" && d.tipeIzin !== "HARIAN" && (
+                    {canEdit && d.statusIzin === "AKTIF" && (d.tipeIzin === "BERHARI_HARI" || d.tipeIzin === "KELUAR_PARE") && (
                       <button onClick={() => handleAction(d.id, "KONFIRMASI", d.grupTasrihId)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded hover:bg-emerald-100" title="Konfirmasi Kehadiran (Kembali)"><Check size={16} /></button>
                     )}
 
