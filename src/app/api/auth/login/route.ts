@@ -40,7 +40,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const username = (body.username || '').trim();
+    const password = body.password;
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username dan password harus diisi' }, { status: 400 });

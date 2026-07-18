@@ -494,6 +494,14 @@ export function AbsensiKelasClient({
           setIsBadalMode(false);
           setIsAsistenMode(false);
           setIsSaved(false);
+          // Reset form pengajar agar tidak tampil data sesi lama
+          setMateri("");
+          setWaktuMulai("");
+          setWaktuSelesai("");
+          setAtribut({ kopiah: false, nametag: false, bros: false });
+          setKecerdasan([]);
+          setSantriList([]);
+          setAbsenMap({});
 
           if (nextKelasId) {
             setKelasId(nextKelasId);
@@ -577,6 +585,12 @@ export function AbsensiKelasClient({
     const fetchData = async () => {
       setIsLoading(true);
       setIsSaved(false);
+      // Reset form fields segera agar tidak tampil data sesi lama saat loading
+      setMateri("");
+      setWaktuMulai("");
+      setWaktuSelesai("");
+      setAtribut({ kopiah: false, nametag: false, bros: false });
+      setKecerdasan([]);
       try {
         const res = await fetch(`/api/admin/absensi/kelas?tanggal=${tanggal}&sesi=${sesi}&kelasId=${kelasId}`);
         const data = await res.json();
