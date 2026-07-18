@@ -16,8 +16,22 @@ export async function GET(request: Request) {
   const kelasId = searchParams.get("kelasId");
 
   let whereClause: any = {};
-  if (tipe && tipe !== "ALL") whereClause.tipeIzin = tipe;
-  if (status && status !== "ALL") whereClause.statusIzin = status;
+  if (tipe && tipe !== "ALL") {
+    if (tipe.includes(",")) {
+      whereClause.tipeIzin = { in: tipe.split(",") };
+    } else {
+      whereClause.tipeIzin = tipe;
+    }
+  }
+  
+  if (status && status !== "ALL") {
+    if (status.includes(",")) {
+      whereClause.statusIzin = { in: status.split(",") };
+    } else {
+      whereClause.statusIzin = status;
+    }
+  }
+
   if (kelasId && kelasId !== "ALL") whereClause.riwayat = { kelasId: kelasId };
 
   try {

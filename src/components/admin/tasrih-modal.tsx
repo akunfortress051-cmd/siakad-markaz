@@ -70,7 +70,7 @@ export default function TasrihModal({
             {tasrih.tipeIzin === "KELUAR_PARE" && tasrih.batasJamAkhir && (
               <>
                 <span className="text-slate-500 font-bold">Batas Jam</span>
-                <span className="font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 rounded text-yellow-800 w-fit">Maks. {tasrih.batasJamAkhir} WIB</span>
+                <span className="font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 rounded text-yellow-800 w-fit">Maks. 22:00 WIB</span>
               </>
             )}
 

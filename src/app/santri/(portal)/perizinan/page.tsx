@@ -91,7 +91,7 @@ export default function SantriPerizinanPage() {
 
   const current = riwayat[activeDufah];
   const perizinanList = current?.perizinan ?? [];
-  
+
   // Ambil kelas dari riwayat aktif, fallback ke santriData kalo ada
   const kelasNama = current?.kelasNama || "Tanpa Kelas";
 
@@ -110,22 +110,22 @@ export default function SantriPerizinanPage() {
       </div>
 
       <div className="flex bg-slate-100/50 p-1 rounded-xl w-full sm:w-fit border border-slate-200/60 shadow-sm">
-        <button 
-          onClick={() => setViewMode("RIWAYAT")} 
+        <button
+          onClick={() => setViewMode("RIWAYAT")}
           className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-lg transition-all ${viewMode === "RIWAYAT" ? "bg-white shadow-sm text-[var(--color-primary)] border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
         >
           Riwayat Izin
         </button>
-        <button 
-          onClick={() => setViewMode("FORM")} 
+        <button
+          onClick={() => setViewMode("FORM")}
           className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${viewMode === "FORM" ? "bg-white shadow-sm text-[var(--color-primary)] border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
         >
-           <Plus size={16} /> Buat Izin
+          <Plus size={16} /> Buat Izin
         </button>
       </div>
 
       {viewMode === "FORM" && current && santriData ? (
-        <SantriPerizinanForm 
+        <SantriPerizinanForm
           currentSantri={{
             riwayatId: current.id,
             nama: santriData.nama,
@@ -196,35 +196,35 @@ export default function SantriPerizinanPage() {
                 const StatusIcon = cfg.icon;
 
                 return (
-                  <div 
-                    key={p.id} 
+                  <div
+                    key={p.id}
                     className="neu-card p-4 space-y-3 cursor-pointer hover:bg-slate-50 transition-colors relative"
                     onClick={() => {
-                        setSelectedTasrihData({
-                          grupId: p.id,
-                          tipeIzin: p.tipeIzin,
-                          statusIzin: p.statusIzin,
-                          alasan: p.alasan,
-                          tanggalMulai: p.tanggalMulai,
-                          tanggalSelesai: p.tanggalSelesai,
-                          batasJamAkhir: p.tipeIzin === "KELUAR_PARE" ? "19:00" : null,
-                          nomorTasrih: p.nomorTasrih,
-                          createdAt: p.createdAt,
-                          createdBy: null,
-                          records: [
-                            {
-                              id: p.id,
-                              sakan: santriData?.sakan || "-",
-                              riwayat: {
-                                santri: { 
-                                  nama: santriData?.nama || "Santri",
-                                  kelas: { nama: kelasNama }
-                                },
+                      setSelectedTasrihData({
+                        grupId: p.id,
+                        tipeIzin: p.tipeIzin,
+                        statusIzin: p.statusIzin,
+                        alasan: p.alasan,
+                        tanggalMulai: p.tanggalMulai,
+                        tanggalSelesai: p.tanggalSelesai,
+                        batasJamAkhir: p.tipeIzin === "KELUAR_PARE" ? "22:00" : null,
+                        nomorTasrih: p.nomorTasrih,
+                        createdAt: p.createdAt,
+                        createdBy: null,
+                        records: [
+                          {
+                            id: p.id,
+                            sakan: santriData?.sakan || "-",
+                            riwayat: {
+                              santri: {
+                                nama: santriData?.nama || "Santri",
                                 kelas: { nama: kelasNama }
-                              }
+                              },
+                              kelas: { nama: kelasNama }
                             }
-                          ]
-                        });
+                          }
+                        ]
+                      });
                     }}
                   >
                     {/* Top Row */}
@@ -276,9 +276,9 @@ export default function SantriPerizinanPage() {
                         <span>Dicatat: {formatDate(p.createdAt)}</span>
                       </div>
                     </div>
-                    
+
                     <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-50 sm:hidden">
-                       <Plus size={16} /> {/* just a placeholder to indicate clickable if we want, or do nothing */}
+                      <Plus size={16} /> {/* just a placeholder to indicate clickable if we want, or do nothing */}
                     </div>
                   </div>
                 );
@@ -291,15 +291,15 @@ export default function SantriPerizinanPage() {
       {/* Modal Tasrih */}
       {selectedTasrihData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedTasrihData(null)}>
-           <div className="relative w-full max-w-md animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-              <button 
-                onClick={() => setSelectedTasrihData(null)} 
-                className="absolute -top-12 right-0 text-white hover:text-slate-200 flex items-center gap-2 text-sm font-bold bg-slate-800/50 px-3 py-1.5 rounded-full backdrop-blur-md"
-              >
-                Tutup <XCircle size={18} />
-              </button>
-              <TasrihDigital data={selectedTasrihData} hideQR={true} hideDownload={true} />
-           </div>
+          <div className="relative w-full max-w-md animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedTasrihData(null)}
+              className="absolute -top-12 right-0 text-white hover:text-slate-200 flex items-center gap-2 text-sm font-bold bg-slate-800/50 px-3 py-1.5 rounded-full backdrop-blur-md"
+            >
+              Tutup <XCircle size={18} />
+            </button>
+            <TasrihDigital data={selectedTasrihData} hideQR={true} hideDownload={true} />
+          </div>
         </div>
       )}
     </div>

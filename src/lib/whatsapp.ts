@@ -384,7 +384,9 @@ export function formatKonfirmasiSantriMessage(data: {
   lines.push(`Dimohon untuk *segera konfirmasi* ke nomor keamanan/pengurus di:`);
   lines.push(`*${data.nomorKeamanan}*`);
   lines.push("");
-  lines.push(`Anda **diwajibkan** menyertakan foto selfie di sakan dengan menunjukkan jam saat ini (bisa menggunakan HP teman).`);
+  lines.push(`Anda *diwajibkan* mengirimkan foto konfirmasi (selfie di sakan dengan jam saat ini, bisa menggunakan HP teman) paling lambat *12 jam* dari pesan ini dikirim.`);
+  lines.push("");
+  lines.push(`_Catatan: Jika Anda merasa sudah konfirmasi secara langsung namun masih mendapatkan pesan ini, harap kirim pesan pengingat ke nomor keamanan di atas agar kehadiran Anda segera di-update di sistem website._`);
   lines.push("");
   lines.push(`Harap segera direspon sebelum dikenakan sanksi indisipliner.`);
 

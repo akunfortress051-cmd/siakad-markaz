@@ -30,7 +30,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     if (data.tipeIzin === "KELUAR_PARE") {
       const setting = await prisma.pengaturanPerizinan.findUnique({ where: { id: 1 } });
       batasJam = setting?.batasJamKeluarPare || 12;
-      batasJamAkhir = setting?.batasJamAkhirKeluarPare || "19:00";
+      batasJamAkhir = setting?.batasJamAkhirKeluarPare || "22:00";
     }
 
     // Fetch petugas name if available
@@ -84,7 +84,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
   try {
     const { statusIzin } = await request.json();
-    
+
     if (!statusIzin) return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
 
     const izin = await prisma.perizinan.findUnique({ where: { id: params.id } });
@@ -110,7 +110,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
           record.alasan,
           record.nomorTasrih
         );
-        
+
         // Update createdBy to the user who approved it
         await prisma.perizinan.update({
           where: { id: record.id },

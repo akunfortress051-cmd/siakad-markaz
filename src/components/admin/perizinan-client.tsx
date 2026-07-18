@@ -31,10 +31,10 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const [activeTab, setActiveTab] = useState(initialTab);
   const [kategoriHarian, setKategoriHarian] = useState<"SEKOLAH" | "KEGIATAN" | "TABIROT">("SEKOLAH");
   const [mode, setMode] = useState<"INDIVIDU" | "BATCH">("INDIVIDU");
-  
+
   const [search, setSearch] = useState("");
   const [selectedSantri, setSelectedSantri] = useState<SantriOption | null>(null);
-  
+
   const [batchSakan, setBatchSakan] = useState("ALL");
   const [batchKelas, setBatchKelas] = useState("ALL");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -46,7 +46,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const [alasan, setAlasan] = useState("");
   const [tanggalMulai, setTanggalMulai] = useState(getTodayWIB());
   const [tanggalSelesai, setTanggalSelesai] = useState("");
-  const [globalBatasJamAkhir, setGlobalBatasJamAkhir] = useState("19:00");
+  const [globalBatasJamAkhir, setGlobalBatasJamAkhir] = useState("22:00");
   const [statusAbsen, setStatusAbsen] = useState<"IZIN" | "SAKIT">("IZIN");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,8 +93,8 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const riwayatIds = mode === "INDIVIDU" 
-      ? (selectedSantri ? [selectedSantri.riwayatId] : []) 
+    const riwayatIds = mode === "INDIVIDU"
+      ? (selectedSantri ? [selectedSantri.riwayatId] : [])
       : Array.from(selectedIds);
 
     if (riwayatIds.length === 0) {
@@ -129,7 +129,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan");
 
       toast.success(`Berhasil membuat ${data.count} tasrih izin`);
-      
+
       // Reset form
       setAlasan("");
       setTanggalMulai(getTodayWIB());
@@ -150,11 +150,11 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-surface-dark)] p-6">
-      
+
       {/* TABS */}
       <div className="flex gap-2 mb-6 border-b border-slate-100 pb-4">
         {(canHarian || canTabirot) && (
-          <button 
+          <button
             onClick={() => setActiveTab("HARIAN")}
             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "HARIAN" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
           >
@@ -162,7 +162,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
           </button>
         )}
         {canBerhari && (
-          <button 
+          <button
             onClick={() => setActiveTab("BERHARI_HARI")}
             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "BERHARI_HARI" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
           >
@@ -170,7 +170,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
           </button>
         )}
         {canKeluarPare && (
-          <button 
+          <button
             onClick={() => setActiveTab("KELUAR_PARE")}
             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "KELUAR_PARE" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
           >
@@ -180,17 +180,17 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        
+
         {/* LEFT PANEL - SANTRI SELECTION */}
         <div className="flex-1 space-y-4">
           <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
-            <button 
+            <button
               onClick={() => setMode("INDIVIDU")}
               className={`flex-1 py-1.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${mode === "INDIVIDU" ? "bg-white shadow-sm text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}
             >
               <User size={16} /> Individu
             </button>
-            <button 
+            <button
               onClick={() => setMode("BATCH")}
               className={`flex-1 py-1.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${mode === "BATCH" ? "bg-white shadow-sm text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"}`}
             >
@@ -264,8 +264,8 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
                 <div className="flex-1 overflow-y-auto p-1">
                   {filteredSantri.map(s => (
                     <label key={s.riwayatId} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={selectedIds.has(s.riwayatId)}
                         onChange={() => toggleBatchSelect(s.riwayatId)}
                         className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
@@ -286,7 +286,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
         {/* RIGHT PANEL - FORM IZIN */}
         <div className="flex-1">
           <form onSubmit={handleSubmit} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-            
+
             {activeTab === "HARIAN" && (
               <div>
                 <label className="block text-sm font-bold text-[var(--color-text)] mb-2">Pilih Kategori Izin</label>
@@ -341,7 +341,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
 
             <div>
               <label className="block text-sm font-bold text-[var(--color-text)] mb-1">Alasan {statusAbsen === "SAKIT" ? "Sakit" : "Izin"}</label>
-              <textarea 
+              <textarea
                 required
                 value={alasan}
                 onChange={(e) => setAlasan(e.target.value)}
@@ -372,7 +372,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
             )}
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed mt-4">
-              <strong>Info:</strong> 
+              <strong>Info:</strong>
               {activeTab === "HARIAN" && kategoriHarian === "SEKOLAH" && " Izin otomatis berlaku untuk semua sesi kelas pada tanggal yang dipilih."}
               {activeTab === "HARIAN" && kategoriHarian === "KEGIATAN" && " Izin otomatis berlaku untuk absensi kegiatan pada tanggal yang dipilih."}
               {activeTab === "HARIAN" && kategoriHarian === "TABIROT" && " Izin otomatis berlaku untuk absensi Ta'birot pada tanggal/sesi ini."}
@@ -380,8 +380,8 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
               {activeTab === "KELUAR_PARE" && ` Izin keluar Pare otomatis mengizinkan santri di absen Kelas, Sakan, Kegiatan & Ta'birot pada tanggal tersebut. Batas waktu kepulangan akan diset ke jam ${globalBatasJamAkhir} WIB.`}
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isSubmitting}
               className="w-full mt-4 flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white px-4 py-3 rounded-xl text-sm font-bold hover:bg-[var(--color-primary-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >

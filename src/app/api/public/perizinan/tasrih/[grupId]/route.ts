@@ -26,7 +26,7 @@ export async function GET(request: Request, props: { params: Promise<{ grupId: s
     let batasJamAkhir = null;
     if (records[0].tipeIzin === "KELUAR_PARE") {
       const setting = await prisma.pengaturanPerizinan.findUnique({ where: { id: 1 } });
-      batasJamAkhir = setting?.batasJamAkhirKeluarPare || "19:00";
+      batasJamAkhir = setting?.batasJamAkhirKeluarPare || "22:00";
     }
 
     // Enrich records with sakan from master santri API

@@ -34,10 +34,17 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
   const [data, setData] = useState<Perizinan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterTipe, setFilterTipe] = useState("ALL");
-  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterTipe, setFilterTipe] = useState("HARIAN,TABIROT");
+  const [filterStatus, setFilterStatus] = useState("AKTIF,MENUNGGU");
 
   const [selectedTasrih, setSelectedTasrih] = useState<TasrihDetail | null>(null);
+
+  // Tabs for Types
+  const TABS = [
+    { id: "HARIAN,TABIROT", label: "Harian / Ta'birot" },
+    { id: "KELUAR_PARE", label: "Keluar Pare" },
+    { id: "BERHARI_HARI", label: "Berhari-hari" },
+  ];
 
   useEffect(() => {
     fetchData();
@@ -46,7 +53,8 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/admin/perizinan?tipe=${filterTipe}&status=${filterStatus}`);
+      const apiStatus = filterStatus === "KADALUARSA" ? "ALL" : filterStatus;
+      const res = await fetch(`/api/admin/perizinan?tipe=${filterTipe}&status=${apiStatus}`);
       if (!res.ok) throw new Error("Gagal load data");
       const json = await res.json();
       // Mark rombongan: count how many records share the same grupTasrihId
@@ -108,9 +116,41 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
     }
   };
 
+  const isOverdue = (d: Perizinan) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const end = d.tanggalSelesai ? new Date(d.tanggalSelesai) : new Date(d.tanggalMulai);
+    if (d.statusIzin === "AKTIF" && end < today && (d.tipeIzin === "BERHARI_HARI" || d.tipeIzin === "KELUAR_PARE")) return true;
+    return false;
+  };
+  
+  const isKadaluarsa = (d: Perizinan) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const m = new Date(d.tanggalMulai);
+    m.setHours(0,0,0,0);
+    if ((d.tipeIzin === "HARIAN" || d.tipeIzin === "TABIROT") && (d.statusIzin === "AKTIF" || d.statusIzin === "MENUNGGU") && m < today) return true;
+    return false;
+  };
+
   const filteredData = data.filter(d => {
     if (search && !d.riwayat.santri.nama.toLowerCase().includes(search.toLowerCase())) return false;
+    
+    // Jika user pilih KADALUARSA, hanya tampilkan yang KADALUARSA
+    if (filterStatus === "KADALUARSA" && !isKadaluarsa(d)) return false;
+    
+    // Jangan tampilkan KADALUARSA di tab "AKTIF" atau "MENUNGGU" agar tidak campur
+    if ((filterStatus.includes("AKTIF") || filterStatus.includes("MENUNGGU")) && isKadaluarsa(d)) return false;
+
     return true;
+  }).sort((a, b) => {
+    // Overdue first
+    const aOverdue = isOverdue(a);
+    const bOverdue = isOverdue(b);
+    if (aOverdue && !bOverdue) return -1;
+    if (!aOverdue && bOverdue) return 1;
+    // Then default by createdAt desc
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   const getStatusBadge = (status: string, d: Perizinan) => {
@@ -120,33 +160,47 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
     if (status === "SELESAI") return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200">🏁 Selesai</span>;
     
     // AKTIF
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const end = d.tanggalSelesai ? new Date(d.tanggalSelesai) : new Date(d.tanggalMulai);
-    
-    if (end < today && (d.tipeIzin === "BERHARI_HARI" || d.tipeIzin === "KELUAR_PARE")) {
-      return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-red-100 text-red-700 border border-red-200 flex items-center gap-1"><AlertTriangle size={12}/> Belum Kembali</span>;
+    if (isOverdue(d)) {
+      return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-red-100 text-red-700 border border-red-200 flex items-center gap-1 w-fit"><AlertTriangle size={12}/> Belum Kembali (Lewat Batas)</span>;
+    }
+    if (isKadaluarsa(d)) {
+      return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-red-100 text-red-800 border border-red-200 flex items-center gap-1 w-fit"><XCircle size={12}/> Kadaluarsa</span>;
     }
     
-    return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-blue-100 text-blue-800 border border-blue-200">🔵 Aktif</span>;
+    return <span className="px-2 py-1 text-xs font-bold rounded-lg bg-blue-100 text-blue-800 border border-blue-200 w-fit inline-block">🔵 Aktif</span>;
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-surface-dark)] p-6">
+      
+      {/* TABS */}
+      <div className="flex overflow-x-auto gap-2 mb-6 hide-scrollbar pb-2">
+        {TABS.map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => setFilterTipe(tab.id)}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors whitespace-nowrap ${
+              filterTipe === tab.id 
+                ? "bg-[var(--color-primary)] text-white" 
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-        <div className="flex gap-2">
-          <select value={filterTipe} onChange={(e) => setFilterTipe(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none">
-            <option value="ALL">Semua Tipe</option>
-            <option value="HARIAN">Harian</option>
-            <option value="BERHARI_HARI">Berhari-hari</option>
-            <option value="KELUAR_PARE">Keluar Pare</option>
-            <option value="TABIROT">Ta'birot</option>
-          </select>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none">
+        <div className="flex gap-2 w-full md:w-auto">
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none w-full md:w-auto">
             <option value="ALL">Semua Status</option>
-            <option value="MENUNGGU">Menunggu</option>
-            <option value="AKTIF">Aktif</option>
+            <option value="AKTIF,MENUNGGU">Aktif & Menunggu</option>
+            <option value="MENUNGGU">Menunggu Saja</option>
+            <option value="AKTIF">Aktif Saja</option>
+            <option value="KADALUARSA">Kadaluarsa</option>
             <option value="SUDAH_KEMBALI">Sudah Kembali</option>
+            <option value="SELESAI">Selesai</option>
+            <option value="DITOLAK">Ditolak</option>
           </select>
         </div>
         <div className="relative w-full md:w-64">
@@ -159,7 +213,7 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
         <table className="w-full text-left text-sm whitespace-nowrap">
           <thead className="bg-slate-50 border-b border-slate-200 text-[var(--color-text-muted)] uppercase text-[10px] font-black tracking-wider">
             <tr>
-              <th className="px-4 py-3">Tasrih</th>
+              <th className="px-4 py-3 w-12 text-center">No</th>
               <th className="px-4 py-3">Nama Santri</th>
               <th className="px-4 py-3">Tipe & Tanggal</th>
               <th className="px-4 py-3">Status</th>
@@ -172,9 +226,9 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
             ) : filteredData.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Tidak ada data</td></tr>
             ) : (
-              filteredData.map(d => (
+              filteredData.map((d, index) => (
                 <tr key={d.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--color-primary-dark)] font-bold">{d.nomorTasrih}</td>
+                  <td className="px-4 py-3 font-bold text-center text-slate-500 w-12">{index + 1}</td>
                   <td className="px-4 py-3">
                     <div className="font-bold text-[var(--color-text)] flex items-center gap-2">
                       {d.riwayat.santri.nama}
@@ -195,22 +249,34 @@ export default function PerizinanDataClient({ permissions }: { permissions: stri
                     {getStatusBadge(d.statusIzin, d)}
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
-                    <button onClick={() => viewTasrih(d.id)} className="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100" title="Detail Tasrih"><FileText size={16} /></button>
-                    
-                    {canEdit && d.statusIzin === "MENUNGGU" && (
-                      <>
-                        <button onClick={() => handleAction(d.id, "APPROVE", d.grupTasrihId)} className="p-1.5 text-green-600 bg-green-50 rounded hover:bg-green-100" title="Setujui"><CheckCircle size={16} /></button>
-                        <button onClick={() => handleAction(d.id, "REJECT", d.grupTasrihId)} className="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100" title="Tolak"><XCircle size={16} /></button>
-                      </>
-                    )}
-                    
-                    {canEdit && d.statusIzin === "AKTIF" && (d.tipeIzin === "BERHARI_HARI" || d.tipeIzin === "KELUAR_PARE") && (
-                      <button onClick={() => handleAction(d.id, "KONFIRMASI", d.grupTasrihId)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded hover:bg-emerald-100" title="Konfirmasi Kehadiran (Kembali)"><Check size={16} /></button>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => viewTasrih(d.id)} className="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1 text-xs font-bold" title="Detail Tasrih">
+                        <FileText size={16} /> Detail
+                      </button>
+                      
+                      {canEdit && d.statusIzin === "MENUNGGU" && (
+                        <>
+                          <button onClick={() => handleAction(d.id, "APPROVE", d.grupTasrihId)} className="p-1.5 px-2 text-green-700 bg-green-100 rounded hover:bg-green-200 flex items-center gap-1 text-xs font-bold" title="Setujui">
+                            <CheckCircle size={14} /> Setujui
+                          </button>
+                          <button onClick={() => handleAction(d.id, "REJECT", d.grupTasrihId)} className="p-1.5 px-2 text-red-700 bg-red-100 rounded hover:bg-red-200 flex items-center gap-1 text-xs font-bold" title="Tolak">
+                            <XCircle size={14} /> Tolak
+                          </button>
+                        </>
+                      )}
+                      
+                      {canEdit && d.statusIzin === "AKTIF" && (d.tipeIzin === "BERHARI_HARI" || d.tipeIzin === "KELUAR_PARE") && (
+                        <button onClick={() => handleAction(d.id, "KONFIRMASI", d.grupTasrihId)} className="p-1.5 px-2 text-emerald-700 bg-emerald-100 rounded hover:bg-emerald-200 flex items-center gap-1 text-xs font-bold" title="Konfirmasi Kehadiran (Kembali)">
+                          <Check size={14} /> Konfirmasi Kehadiran
+                        </button>
+                      )}
 
-                    {canDelete && (
-                      <button onClick={() => handleAction(d.id, "DELETE", d.grupTasrihId)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus Izin"><Trash2 size={16} /></button>
-                    )}
+                      {canDelete && (
+                        <button onClick={() => handleAction(d.id, "DELETE", d.grupTasrihId)} className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded text-xs font-bold" title="Hapus Izin">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
