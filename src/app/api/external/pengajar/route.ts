@@ -10,16 +10,33 @@ function validateApiKey(request: Request): boolean {
 
 // Helper: cari periode usbu aktif dari Dufah
 async function getActivePeriode() {
-  const dufahList = await prisma.dufah.findMany();
+  const dufahList = await prisma.dufah.findMany({
+    orderBy: { nama: 'desc' }
+  });
+
   for (const d of dufahList) {
-    if (d.usbu3Active && d.usbu3StartDate && d.usbu3EndDate) {
-      return { startDate: d.usbu3StartDate, endDate: d.usbu3EndDate, dufah: d.nama, usbu: 3 };
-    }
-    if (d.usbu2Active && d.usbu2StartDate && d.usbu2EndDate) {
-      return { startDate: d.usbu2StartDate, endDate: d.usbu2EndDate, dufah: d.nama, usbu: 2 };
-    }
-    if (d.usbu1Active && d.usbu1StartDate && d.usbu1EndDate) {
-      return { startDate: d.usbu1StartDate, endDate: d.usbu1EndDate, dufah: d.nama, usbu: 1 };
+    if (d.usbu3Active || d.usbu2Active || d.usbu1Active) {
+      // startDate selalu mencoba mengambil dari usbu 1 (awal usbu aktif)
+      const startDate = d.usbu1StartDate || d.usbu2StartDate || d.usbu3StartDate;
+      
+      // endDate mengambil dari usbu terjauh yang aktif
+      let endDate = null;
+      let usbu = 1;
+      
+      if (d.usbu3Active && d.usbu3EndDate) {
+        endDate = d.usbu3EndDate;
+        usbu = 3;
+      } else if (d.usbu2Active && d.usbu2EndDate) {
+        endDate = d.usbu2EndDate;
+        usbu = 2;
+      } else if (d.usbu1Active && d.usbu1EndDate) {
+        endDate = d.usbu1EndDate;
+        usbu = 1;
+      }
+
+      if (startDate && endDate) {
+        return { startDate, endDate, dufah: d.nama, usbu };
+      }
     }
   }
   return null;
