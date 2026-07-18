@@ -49,10 +49,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { riwayatIds, tipeIzin, alasan, tanggalMulai, tanggalSelesai, statusAbsen } = body;
+    const { riwayatIds, tipeIzin, alasan, tanggalMulai, tanggalSelesai, statusAbsen, kategoriHarian } = body;
 
     if (!riwayatIds || riwayatIds.length === 0 || !tipeIzin || !alasan || !tanggalMulai) {
       return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
+    }
+
+    let actualTipeIzin = tipeIzin as TipeIzin;
+    if (tipeIzin === "HARIAN" && kategoriHarian === "TABIROT") {
+      actualTipeIzin = "TABIROT" as any;
     }
 
     const tglMulai = parseWibDateString(tanggalMulai);
@@ -67,7 +72,7 @@ export async function POST(request: Request) {
       const newIzin = await prisma.perizinan.create({
         data: {
           riwayatId,
-          tipeIzin: tipeIzin as TipeIzin,
+          tipeIzin: actualTipeIzin,
           alasan,
           tanggalMulai: tglMulai,
           tanggalSelesai: tglSelesai,
@@ -85,12 +90,13 @@ export async function POST(request: Request) {
       // Jalankan proses auto absensi
       await processAutoAbsensiIzin(
         riwayatId, 
-        tipeIzin as TipeIzin, 
+        actualTipeIzin, 
         tglMulai, 
         tglSelesai, 
         alasan, 
         nomorTasrih,
-        statusAbsen || "IZIN"
+        statusAbsen || "IZIN",
+        kategoriHarian
       );
     }
 

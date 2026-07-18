@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Users, User, Calendar, Save, FileText, CheckSquare, Search } from "lucide-react";
+import { Loader2, Users, User, Calendar, Save, FileText, CheckSquare, Search, BookOpen, Activity, PlusSquare } from "lucide-react";
 import toast from "react-hot-toast";
 
 type SantriOption = {
@@ -26,9 +26,10 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
   const canTabirot = isAdmin || permissions.includes("perizinan_tabirot_edit");
 
   // Defaults to whatever they have access to
-  const initialTab = canHarian ? "HARIAN" : canBerhari ? "BERHARI_HARI" : canKeluarPare ? "KELUAR_PARE" : canTabirot ? "TABIROT" : "";
+  const initialTab = (canHarian || canTabirot) ? "HARIAN" : canBerhari ? "BERHARI_HARI" : canKeluarPare ? "KELUAR_PARE" : "";
 
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [kategoriHarian, setKategoriHarian] = useState<"SEKOLAH" | "KEGIATAN" | "TABIROT">("SEKOLAH");
   const [mode, setMode] = useState<"INDIVIDU" | "BATCH">("INDIVIDU");
   
   const [search, setSearch] = useState("");
@@ -120,6 +121,7 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
           tanggalMulai,
           tanggalSelesai: activeTab === "BERHARI_HARI" ? tanggalSelesai : null,
           statusAbsen,
+          kategoriHarian: activeTab === "HARIAN" ? kategoriHarian : undefined,
         })
       });
 
@@ -151,12 +153,12 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
       
       {/* TABS */}
       <div className="flex gap-2 mb-6 border-b border-slate-100 pb-4">
-        {canHarian && (
+        {(canHarian || canTabirot) && (
           <button 
             onClick={() => setActiveTab("HARIAN")}
             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "HARIAN" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
           >
-            Izin Harian (Kelas)
+            Izin Harian
           </button>
         )}
         {canBerhari && (
@@ -173,14 +175,6 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "KELUAR_PARE" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
           >
             Izin Keluar Pare
-          </button>
-        )}
-        {canTabirot && (
-          <button 
-            onClick={() => setActiveTab("TABIROT")}
-            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === "TABIROT" ? "bg-[var(--color-primary-100)] text-[var(--color-primary)] shadow-sm" : "text-[var(--color-text-muted)] hover:bg-slate-50"}`}
-          >
-            Izin Ta'birot
           </button>
         )}
       </div>
@@ -292,6 +286,38 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
         {/* RIGHT PANEL - FORM IZIN */}
         <div className="flex-1">
           <form onSubmit={handleSubmit} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+            
+            {activeTab === "HARIAN" && (
+              <div>
+                <label className="block text-sm font-bold text-[var(--color-text)] mb-2">Pilih Kategori Izin</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setKategoriHarian("SEKOLAH")}
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl border flex items-center justify-center gap-1.5 transition-all ${kategoriHarian === "SEKOLAH" ? "bg-white border-[var(--color-primary)] text-[var(--color-primary)] shadow-sm" : "bg-transparent border-slate-200 text-[var(--color-text-muted)] hover:border-slate-300 hover:bg-white"}`}
+                  >
+                    <BookOpen size={16} /> Sekolah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKategoriHarian("KEGIATAN")}
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl border flex items-center justify-center gap-1.5 transition-all ${kategoriHarian === "KEGIATAN" ? "bg-white border-[var(--color-primary)] text-[var(--color-primary)] shadow-sm" : "bg-transparent border-slate-200 text-[var(--color-text-muted)] hover:border-slate-300 hover:bg-white"}`}
+                  >
+                    <Activity size={16} /> Kegiatan
+                  </button>
+                  {canTabirot && (
+                    <button
+                      type="button"
+                      onClick={() => setKategoriHarian("TABIROT")}
+                      className={`flex-1 py-2 text-sm font-bold rounded-xl border flex items-center justify-center gap-1.5 transition-all ${kategoriHarian === "TABIROT" ? "bg-white border-[var(--color-primary)] text-[var(--color-primary)] shadow-sm" : "bg-transparent border-slate-200 text-[var(--color-text-muted)] hover:border-slate-300 hover:bg-white"}`}
+                    >
+                      <Users size={16} /> Ta'birot
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Pilihan Izin / Sakit */}
             <div>
               <label className="block text-sm font-bold text-[var(--color-text)] mb-2">Status di Absen</label>
@@ -299,16 +325,16 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
                 <button
                   type="button"
                   onClick={() => setStatusAbsen("IZIN")}
-                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl border-2 transition-all ${statusAbsen === "IZIN" ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}
+                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl border-2 flex items-center justify-center gap-1.5 transition-all ${statusAbsen === "IZIN" ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm" : "border-slate-200 text-slate-400 hover:border-slate-300 bg-white"}`}
                 >
-                  📋 Izin
+                  <FileText size={16} /> Izin
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusAbsen("SAKIT")}
-                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl border-2 transition-all ${statusAbsen === "SAKIT" ? "bg-amber-50 border-amber-400 text-amber-700 shadow-sm" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}
+                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl border-2 flex items-center justify-center gap-1.5 transition-all ${statusAbsen === "SAKIT" ? "bg-amber-50 border-amber-400 text-amber-700 shadow-sm" : "border-slate-200 text-slate-400 hover:border-slate-300 bg-white"}`}
                 >
-                  🤒 Sakit
+                  <PlusSquare size={16} /> Sakit
                 </button>
               </div>
             </div>
@@ -347,8 +373,9 @@ export default function PerizinanClient({ santriOptions, sakanList, kelasList, p
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed mt-4">
               <strong>Info:</strong> 
-              {activeTab === "HARIAN" && " Izin otomatis berlaku untuk semua sesi kelas pada tanggal yang dipilih."}
-              {activeTab === "TABIROT" && " Izin otomatis berlaku untuk absensi Ta'birot pada tanggal/sesi ini."}
+              {activeTab === "HARIAN" && kategoriHarian === "SEKOLAH" && " Izin otomatis berlaku untuk semua sesi kelas pada tanggal yang dipilih."}
+              {activeTab === "HARIAN" && kategoriHarian === "KEGIATAN" && " Izin otomatis berlaku untuk absensi kegiatan pada tanggal yang dipilih."}
+              {activeTab === "HARIAN" && kategoriHarian === "TABIROT" && " Izin otomatis berlaku untuk absensi Ta'birot pada tanggal/sesi ini."}
               {activeTab === "BERHARI_HARI" && " Izin otomatis berlaku untuk absensi Kelas, Sakan, Kegiatan, dan Ta'birot pada rentang tanggal yang dipilih."}
               {activeTab === "KELUAR_PARE" && ` Izin keluar Pare otomatis mengizinkan santri di absen Kelas, Sakan, Kegiatan & Ta'birot pada tanggal tersebut. Batas waktu kepulangan akan diset ke jam ${globalBatasJamAkhir} WIB.`}
             </div>

@@ -37,7 +37,8 @@ export async function processAutoAbsensiIzin(
   tanggalSelesai: Date | null, 
   alasan: string,
   nomorTasrih: string,
-  statusAbsen: "IZIN" | "SAKIT" = "IZIN"
+  statusAbsen: "IZIN" | "SAKIT" = "IZIN",
+  kategoriHarian?: string
 ) {
   const allSesi = await getAllJadwalSesi();
   const sesiList: SesiKelas[] = allSesi.map(s => s.sesi);
@@ -59,7 +60,8 @@ export async function processAutoAbsensiIzin(
   }
 
   // Helper untuk format keterangan
-  const keterangan = tipeIzin === "HARIAN" ? `Izin Harian [${nomorTasrih}]: ${alasan}` : 
+  const keterangan = tipeIzin === "HARIAN" && kategoriHarian === "KEGIATAN" ? `Izin Kegiatan [${nomorTasrih}]: ${alasan}` : 
+                     tipeIzin === "HARIAN" ? `Izin Harian [${nomorTasrih}]: ${alasan}` : 
                      tipeIzin === "BERHARI_HARI" ? `Izin Berhari-hari [${nomorTasrih}]: ${alasan}` :
                      (tipeIzin as any) === "TABIROT" ? `Izin Ta'birot [${nomorTasrih}]: ${alasan}` :
                      `Izin Keluar Pare [${nomorTasrih}]: ${alasan}`;
@@ -78,8 +80,8 @@ export async function processAutoAbsensiIzin(
 
   // Lakukan proses untuk setiap hari
   for (const date of datesToProcess) {
-    // 1. Absen Kelas (semua sesi termasuk sesi tambahan, kecuali Tabirot)
-    if ((tipeIzin as any) !== "TABIROT") {
+    // 1. Absen Kelas (semua sesi termasuk sesi tambahan, kecuali Tabirot dan Kegiatan)
+    if ((tipeIzin as any) !== "TABIROT" && kategoriHarian !== "KEGIATAN") {
       for (const sesi of sesiList) {
         const existingKelas = await prisma.absenKelas.findUnique({
           where: { riwayatId_tanggal_sesi: { riwayatId, tanggal: date, sesi } }
@@ -106,9 +108,10 @@ export async function processAutoAbsensiIzin(
           create: { riwayatId, tanggal: date, status: statusAbsen, keterangan }
         });
       }
+    }
 
-      // 3. Absen Kegiatan (Yang sudah ada diabsen diubah jadi IZIN/SAKIT, atau auto isi untuk semua kategori aktif)
-      // Ambil semua kategori aktif
+    // 3. Absen Kegiatan (Yang sudah ada diabsen diubah jadi IZIN/SAKIT, atau auto isi untuk semua kategori aktif)
+    if (tipeIzin === "BERHARI_HARI" || tipeIzin === "KELUAR_PARE" || (tipeIzin === "HARIAN" && kategoriHarian === "KEGIATAN")) {
       const kategoriAktif = await prisma.kategoriKegiatan.findMany({ where: { aktif: true } });
       for (const kat of kategoriAktif) {
         const existingKegiatan = await prisma.absenKegiatan.findUnique({
