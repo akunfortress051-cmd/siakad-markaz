@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { sendWhatsAppMessage } from "@/lib/fonnte";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import prisma from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';

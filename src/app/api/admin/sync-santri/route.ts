@@ -12,6 +12,7 @@ type ApiSantriResponse = {
   tanggalLahir?: string | null;
   detailAlamat?: string | null;
   noWaSantri?: string | null;
+  noWaWali?: string | null;
   kabupaten?: string | null;
   riwayat?: Array<{
     status?: string;
@@ -218,6 +219,7 @@ export async function POST() {
           dufahNama: dufahNama,
           kategori: santri.kategori ?? "-",
           noWaSantri: santri.noWaSantri ?? "-",
+          noWaWali: santri.noWaWali ?? null,
           kabupaten: santri.kabupaten ?? "-",
           bulanKe: targetRiwayat.bulanKe ?? 0,
           isAktif: santri.isAktif ?? false,
@@ -235,6 +237,7 @@ export async function POST() {
           dufahNama: dufahNama,
           kategori: santri.kategori ?? "-",
           noWaSantri: santri.noWaSantri ?? "-",
+          noWaWali: santri.noWaWali ?? null,
           kabupaten: santri.kabupaten ?? "-",
           bulanKe: targetRiwayat.bulanKe ?? 0,
           isAktif: santri.isAktif ?? false,

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { parseWibDateString, getActiveRiwayatListForAbsen } from "@/lib/absensi";
 import { getMasterSantriList } from "@/lib/santri-api";
-import { sendWhatsAppMessage, formatKegiatanAlphaReport } from "@/lib/fonnte";
+import { sendWhatsAppMessage, formatKegiatanAlphaReport } from "@/lib/whatsapp";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -196,9 +196,9 @@ async function sendKegiatanAlphaWa(
   kategoriId: string,
   parsedDate: Date,
 ): Promise<{ sent: boolean; detail: string }> {
-  const target = process.env.FONNTE_WA_KEGIATAN_TARGET;
+  const target = process.env.WA_KEGIATAN_TARGET;
   if (!target) {
-    return { sent: false, detail: "FONNTE_WA_KEGIATAN_TARGET belum dikonfigurasi" };
+    return { sent: false, detail: "WA_KEGIATAN_TARGET belum dikonfigurasi" };
   }
 
   // Ambil nama kategori

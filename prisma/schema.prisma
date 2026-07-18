@@ -80,6 +80,7 @@ model SantriInternal {
   dufahNama             String?
   kategori              String?
   noWaSantri            String?
+  noWaWali              String?
   kabupaten             String?
   bulanKe               Int                 @default(0)
   isAktif               Boolean             @default(true)

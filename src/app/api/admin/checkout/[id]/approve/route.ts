@@ -61,7 +61,6 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
           where: { id: pengajuanId },
           data: { status: "DITOLAK" }
         });
-      } else if (allApproved) {
         await tx.checkoutPengajuan.update({
           where: { id: pengajuanId },
           data: { status: "DISETUJUI" }
@@ -73,6 +72,42 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         });
       }
     });
+
+    // 3. Send WhatsApp notification if all approved
+    const allApprovedFinal = (await prisma.checkoutApproval.findMany({
+      where: { pengajuanId }
+    })).every(a => a.status === "DISETUJUI");
+
+    if (allApprovedFinal) {
+      // Import dynamically to avoid top-level require circular dependency issues if any
+      const { sendWhatsAppMessage, formatCheckoutWaliMessage } = await import("@/lib/whatsapp");
+      
+      const santriData = await prisma.santriInternal.findUnique({
+        where: { id: pengajuan.santriId }
+      });
+      
+      if (santriData && santriData.noWaWali && santriData.noWaWali !== "-") {
+        const { formatTanggalWa } = await import("@/lib/whatsapp");
+        const todayStr = new Date().toISOString().split("T")[0];
+        
+        const message = formatCheckoutWaliMessage({
+          namaSantri: santriData.nama || "-",
+          tempatLahir: santriData.tempat_lahir || "-",
+          tanggalLahir: santriData.tanggal_lahir ? formatTanggalWa(santriData.tanggal_lahir) : "-",
+          alamat: santriData.alamat || "-",
+          sakan: santriData.sakan || "-",
+          kamar: santriData.kamar || "-",
+          kategori: santriData.kategori || "-",
+          alasan: pengajuan.alasan || "-",
+          tanggalCheckout: formatTanggalWa(todayStr),
+        });
+        
+        // Fire and forget
+        sendWhatsAppMessage(santriData.noWaWali, message).catch(err => {
+          console.error("Failed to send WA to wali on full checkout approval:", err);
+        });
+      }
+    }
 
     return NextResponse.json({ success: true });
 

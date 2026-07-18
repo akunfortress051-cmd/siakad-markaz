@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { getActiveRiwayatListForAbsen } from "@/lib/absensi";
 import { parseWibDateString } from "@/lib/jadwal-sesi";
 import { getMasterSantriList } from "@/lib/santri-api";
-import { sendWhatsAppMessage, formatKegiatanAlphaReport } from "@/lib/fonnte";
+import { sendWhatsAppMessage, formatKegiatanAlphaReport } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -16,10 +16,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const target = process.env.FONNTE_WA_KEGIATAN_TARGET;
+    const target = process.env.WA_KEGIATAN_TARGET;
     if (!target) {
       return NextResponse.json(
-        { error: "FONNTE_WA_KEGIATAN_TARGET belum dikonfigurasi" },
+        { error: "WA_KEGIATAN_TARGET belum dikonfigurasi" },
         { status: 500 }
       );
     }

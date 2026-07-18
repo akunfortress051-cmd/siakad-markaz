@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { sendReminderWhatsApp, formatReminderMessage, delay } from "@/lib/fonnte";
+import { sendReminderWhatsApp, formatReminderMessage, delay } from "@/lib/whatsapp";
 import { getTodayWibString, parseWibDateString } from "@/lib/absensi";
 
 export const dynamic = "force-dynamic";

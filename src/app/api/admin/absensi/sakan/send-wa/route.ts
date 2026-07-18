@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getMasterSantriList } from "@/lib/santri-api";
-import { sendWhatsAppMessage, formatSakanStatusReport } from "@/lib/fonnte";
+import { sendWhatsAppMessage, formatSakanStatusReport } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -11,10 +11,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tanggal harus diisi" }, { status: 400 });
     }
 
-    const groupId = process.env.FONNTE_WA_GROUP_ID;
+    const groupId = process.env.WA_GROUP_ID;
     if (!groupId) {
       return NextResponse.json(
-        { error: "FONNTE_WA_GROUP_ID belum dikonfigurasi" },
+        { error: "WA_GROUP_ID belum dikonfigurasi" },
         { status: 500 }
       );
     }

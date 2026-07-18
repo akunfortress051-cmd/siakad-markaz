@@ -1,6 +1,6 @@
 /**
- * Fonnte WhatsApp API integration
- * Utility untuk mengirim laporan absensi ke grup WhatsApp via Fonnte.
+ * WhatsApp API integration
+ * Utility untuk mengirim laporan absensi ke grup WhatsApp .
  */
 
 const WA_API_URL = "https://wa-multi-session.amtsilatipusat.com/api/v1";
@@ -16,7 +16,7 @@ export async function sendWhatsAppMessage(target: string, message: string): Prom
     return { success: false, detail: "WA_API_KEY belum dikonfigurasi" };
   }
 
-  // Handle multiple targets if Fonnte passed comma-separated targets
+  // Handle multiple targets if passed comma-separated targets
   const targets = target.split(",").map(t => t.trim()).filter(t => t.length > 0);
   
   if (targets.length === 0) {
@@ -296,6 +296,97 @@ export function formatKegiatanAlphaReport(
   lines.push("Saya tunggu sampai jam dari jam 11.45- 13.00");
   lines.push("");
   lines.push("NB : *tanda 1x menandakan tidak hadir pemanggilan 1x,tanda 2x menandakan tidak hadir pemanggilan 2x, tanda 3x tidak hadir pemanggilan 3x dan jika sudah sampai 3x maka akan berlaku SP 1 ,tambahan bagi yang telat ataupun tidak hadir*");
+
+  return lines.join("\n");
+}
+
+/**
+ * Format pesan pemberitahuan checkout ke DPO / Wali Santri.
+ */
+export function formatCheckoutWaliMessage(data: {
+  namaSantri: string;
+  tempatLahir: string;
+  tanggalLahir: string;
+  alamat: string;
+  sakan: string;
+  kamar: string;
+  kategori: string;
+  alasan: string;
+  tanggalCheckout: string;
+}): string {
+  const lines: string[] = [];
+  
+  lines.push(`Assalamu'alaikum Warahmatullahi Wabarakatuh,`);
+  lines.push("");
+  lines.push(`Pemberitahuan dari SIAKAD Markaz Arabiyah.`);
+  lines.push("");
+  lines.push(`Alhamdulillah, kami sampaikan bahwa santri atas nama:`);
+  lines.push(`*${data.namaSantri}*`);
+  lines.push("");
+  lines.push(`Dengan data diri:`);
+  lines.push(`- Tempat Lahir: *${data.tempatLahir || "-"}*`);
+  lines.push(`- Tanggal Lahir: *${data.tanggalLahir || "-"}*`);
+  lines.push(`- Sakan / Kamar: *${data.sakan || "-"} / ${data.kamar || "-"}*`);
+  lines.push(`- Kategori: *${data.kategori || "-"}*`);
+  lines.push(`- Alamat: *${data.alamat || "-"}*`);
+  lines.push(`- Alasan: *${data.alasan || "-"}*`);
+  lines.push("");
+  lines.push(`Telah resmi *Check Out (Keluar)* dari Markaz Arabiyyah pada tanggal *${data.tanggalCheckout}*.`);
+  lines.push("");
+  lines.push(`Jazakumullahu khoiron atas kepercayaan Bapak/Ibu. Semoga ilmu yang didapat bermanfaat dan berkah.`);
+  lines.push("");
+  lines.push(`ℹ️ _Pesan ini dikirim otomatis oleh SIAKAD Markaz Arabiyah._`);
+
+  return lines.join("\n");
+}
+
+/**
+ * Format pesan ke Keamanan untuk santri yang belum konfirmasi kehadiran setelah masa perizinan habis.
+ */
+export function formatKonfirmasiKeamananMessage(
+  santriList: { nama: string; sakan: string; tanggalSelesai: string }[]
+): string {
+  const lines: string[] = [];
+
+  lines.push(`🚨 *LAPORAN SANTRI BELUM KONFIRMASI KEHADIRAN* 🚨`);
+  lines.push(`Berikut adalah daftar santri dengan status izin *Keluar Pare / Berhari-hari* yang sudah melewati batas waktu izin namun *belum konfirmasi kehadiran* (belum kembali):`);
+  lines.push("");
+  
+  santriList.forEach((s, i) => {
+    lines.push(`${i + 1}. *${s.nama}*`);
+    lines.push(`   • Sakan: ${s.sakan || "-"}`);
+    lines.push(`   • Batas Izin: ${formatTanggalWa(s.tanggalSelesai)}`);
+  });
+  
+  lines.push("");
+  lines.push(`Mohon kerjasamanya untuk ditindaklanjuti.`);
+  lines.push(`ℹ️ _Sistem Pemantauan Perizinan SIAKAD_`);
+
+  return lines.join("\n");
+}
+
+/**
+ * Format pesan ke Santri (Warning) karena belum konfirmasi kehadiran.
+ */
+export function formatKonfirmasiSantriMessage(data: {
+  namaSantri: string;
+  nomorKeamanan: string;
+  tanggalSelesai: string;
+}): string {
+  const lines: string[] = [];
+
+  lines.push(`⚠️ *PERINGATAN KONFIRMASI KEHADIRAN* ⚠️`);
+  lines.push("");
+  lines.push(`Assalamu'alaikum ${data.namaSantri},`);
+  lines.push("");
+  lines.push(`Masa perizinan anda telah berakhir pada tanggal *${formatTanggalWa(data.tanggalSelesai)}*, namun anda *belum melakukan konfirmasi kehadiran*.`);
+  lines.push("");
+  lines.push(`Dimohon untuk *segera konfirmasi* ke nomor keamanan/pengurus di:`);
+  lines.push(`*${data.nomorKeamanan}*`);
+  lines.push("");
+  lines.push(`Anda **diwajibkan** menyertakan foto selfie di sakan dengan menunjukkan jam saat ini (bisa menggunakan HP teman).`);
+  lines.push("");
+  lines.push(`Harap segera direspon sebelum dikenakan sanksi indisipliner.`);
 
   return lines.join("\n");
 }
